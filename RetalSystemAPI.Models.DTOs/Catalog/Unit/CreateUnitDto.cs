@@ -1,0 +1,15 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace RetalSystemAPI.Models.DTOs.Catalog.Unit;
+
+public class CreateUnitDto
+{
+    [Required(ErrorMessage = "اسم الوحدة مطلوب")]
+    [MaxLength(100, ErrorMessage = "اسم الوحدة يجب أن لا يتجاوز 100 حرف")]
+    public string Name { get; set; } = null!;
+
+    public string? Description { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "عدد القطع يجب أن يكون 1 على الأقل")]
+    public int UnitPackage { get; set; } = 1;
+}
