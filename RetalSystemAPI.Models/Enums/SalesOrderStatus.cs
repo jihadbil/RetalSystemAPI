@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace RetalSystemAPI.Models.Enums;
 
-namespace RetalSystemAPI.Models.Enums
+public enum SalesOrderStatus
 {
-    internal class SalesOrderStatus
-    {
-    }
+    Draft = 0,
+    Confirmed = 1,
+    Processing = 2,
+    Shipped = 3,
+    Delivered = 4,
+    Cancelled = 5,
+    Returned = 6
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -34,7 +34,7 @@ namespace RetalSystemAPI.Models
         /// </summary>
         /// 
         [Required]
-        [RegularExpression(@"^(09\d{8}|\+2189\d{8})$", ErrorMessage = "رقم الهاتف غير صحيح.")]
+        [RegularExpression(ValidationConstants.LibyanPhonePattern, ErrorMessage = ValidationConstants.LibyanPhoneError)]
         public required string PhoneNumber { get; set; }
 
         /// <summary>

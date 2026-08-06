@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace RetalSystemAPI.Models.Enums;
 
-namespace RetalSystemAPI.Models.Enums
+public enum WarehouseType
 {
-    internal class WarehouseType
-    {
-    }
+    Main = 0,
+    Branch = 1,
+    Transit = 2,
+    Consignment = 3,
+    Virtual = 4
 }

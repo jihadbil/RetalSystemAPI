@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace RetalSystemAPI.Models.Enums;
 
-namespace RetalSystemAPI.Models.Enums
+public enum InvoiceStatus
 {
-    internal class InvoiceStatus
-    {
-    }
+    Draft = 0,
+    Pending = 1,
+    Paid = 2,
+    PartiallyPaid = 3,
+    Cancelled = 4,
+    Voided = 5
 }

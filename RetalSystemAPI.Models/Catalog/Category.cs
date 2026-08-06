@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -22,12 +22,6 @@ public class Category:BaseEntity
     public Guid? ParentCategoryId { get; set; }
 
     public Category? ParentCategory { get; set; }
-
-    /// <summary>
-    /// معرف المستأجر
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
 
     public bool IsActive { get; set; } = true;
 

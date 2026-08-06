@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -28,17 +28,7 @@ public class ProductImage:BaseEntity
     /// <summary>
     /// باركود الصنف الدي تنتمي اليه لاصورة الواحدة
     /// </summary>
-    public Guid BarcodeId { get; set; }
+    public Guid? BarcodeId { get; set; }
 
     public ProductBarCode? BarcodeCode { get; set; }
-
-    /// <summary>
-    /// معرف المستاجر الدي تنتمي اليه مجموعة الصور
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
-
-
-
-
 }

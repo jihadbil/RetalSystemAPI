@@ -21,8 +21,6 @@ public class Branch : BaseEntity
     /// </summary>
     public bool IsActive { get; set; } = true;
 
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
     public ICollection<BranchPhone> BranchPhones { get; set; } = new List<BranchPhone>();
 
     public ICollection<ApplicationUser> ApplicationUser { get; set; }=new List<ApplicationUser>();

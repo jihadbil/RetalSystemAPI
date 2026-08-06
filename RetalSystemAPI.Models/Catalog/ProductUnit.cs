@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -19,11 +19,6 @@ public class ProductUnit:BaseEntity
     /// </summary>
     public Guid UnitId { get; set; }
     public Unit? Unit { get; set; }
-    /// <summary>
-    /// معرف المستاجر
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
 
     public int ConversionFactor { get; set; }
 

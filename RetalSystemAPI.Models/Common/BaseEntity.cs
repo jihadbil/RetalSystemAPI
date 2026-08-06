@@ -8,25 +8,31 @@ public abstract class BaseEntity
     /// معرف الكيان الفريد في قاعدة البيانات.
     /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// معرف المستأجر الذي ينتمي إليه الكيان.
+    /// </summary>
+    public Guid TenantId { get; set; }
+
+    /// <summary>
+    /// الكائن المرجعي للمستأجر.
+    /// </summary>
+    public Tenant? Tenant { get; set; }
+
     /// <summary>
     /// تاريخ إنشاء الكيان.
     /// </summary>
     public DateTime CreatedAt { get; set; }
-
 
     /// <summary>
     /// تاريخ آخر تحديث للكيان.
     /// </summary>
     public DateTime? UpdatedAt { get; set; }
 
-
     /// <summary>
     /// حالة الحذف للكيان، حيث يشير إلى ما إذا كان الكيان قد تم حذفه من النظام أم لا.
     /// </summary>
     public bool IsDeleted { get; set; } = false;
-    
-
-
 
     public string? CreatedByUserId { get; set; }
     public string? UpdatedByUserId { get; set; }

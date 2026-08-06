@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -27,11 +27,6 @@ public class ProductBarCode:BaseEntity
     public Guid ProductId { get; set; }
 
     public Product? Product { get; set; }
-    /// <summary>
-    /// معر المستاجر
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
 
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();    
 }

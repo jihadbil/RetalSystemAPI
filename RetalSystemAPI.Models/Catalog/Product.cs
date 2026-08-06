@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -34,11 +34,6 @@ public class Product:BaseEntity
     public Guid CategoryId { get; set; }
 
     public Category? Category { get; set; } = null;
-    /// <summary>
-    /// معرف المستأجر   
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
 
 
 

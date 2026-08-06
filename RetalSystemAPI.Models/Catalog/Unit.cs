@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -22,18 +22,6 @@ public class Unit: BaseEntity
     /// عدد القطع في الوحدة (مثلا عدد القطع في الصندوق او الدستة)
     /// </summary>
     public int UnitPackage { get; set; } = 1;
-
-
-
-
-
-
-    /// <summary>
-    /// معرف المستأجر
-    /// </summary>
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
-
 
     public ICollection<ProductUnit> ProductUnits { get; set; } = new List<ProductUnit>();
 }

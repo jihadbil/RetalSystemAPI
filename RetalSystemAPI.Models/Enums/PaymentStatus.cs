@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace RetalSystemAPI.Models.Enums;
 
-namespace RetalSystemAPI.Models.Enums
+public enum PaymentStatus
 {
-    internal class PaymentStatus
-    {
-    }
+    Pending = 0,
+    Completed = 1,
+    Failed = 2,
+    Refunded = 3,
+    PartiallyRefunded = 4
 }
