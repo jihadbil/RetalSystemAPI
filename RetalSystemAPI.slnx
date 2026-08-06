@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="RetalSystemAPI.DataAccess/RetalSystemAPI.DataAccess.csproj" />
+  <Project Path="RetalSystemAPI.Desktop/RetalSystemAPI.Desktop.csproj" />
+  <Project Path="RetalSystemAPI.Models.DTOs/RetalSystemAPI.Models.DTOs.csproj" />
+  <Project Path="RetalSystemAPI.Models/RetalSystemAPI.Models.csproj" />
+  <Project Path="RetalSystemAPI.Services/RetalSystemAPI.Services.csproj" />
+  <Project Path="RetalSystemAPI/RetalSystemAPI.csproj" />
+</Solution>
