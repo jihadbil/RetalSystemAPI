@@ -12,11 +12,11 @@ public class Product:BaseEntity
     /// <summary>
     /// الإسم الأساسي للصنف
     /// </summary>
-    public string Name { get; set; }
+    public required string Name { get; set; }
     /// <summary>
     /// وصف الصنف
     /// </summary>
-    public string Description { get; set; }
+    public string? Description { get; set; }
     /// <summary>
     /// سعر تكلفة الصنف و يمتل ايضا اخر سعر شراء
     /// </summary>
@@ -31,7 +31,9 @@ public class Product:BaseEntity
     public decimal AveragePrice { get; set; }
 
 
+    public Guid CategoryId { get; set; }
 
+    public Category? Category { get; set; } = null;
     /// <summary>
     /// معرف المستأجر   
     /// </summary>

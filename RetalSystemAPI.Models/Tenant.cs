@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
 using RetalSystemAPI.Models.Catalog;
+using RetalSystemAPI.Models.Branchs;
+using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models
 {
@@ -14,21 +16,26 @@ namespace RetalSystemAPI.Models
         /// <summary>
         /// يمثل اسم المستأجر في النظام.
         /// </summary>
-        public string Name { get; set; }
+        /// 
+        [Required]
+        public required string Name { get; set; }
 
         /// <summary>
         /// يمثل وصف المستأجر في النظام، ويمكن استخدامه لتوضيح طبيعة النشاط أو الخدمات المقدمة من قبل المستأجر.
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
         /// <summary>
         /// يمثل البريد الإلكتروني للمستأجر في النظام، ويمكن استخدامه للتواصل مع المستأجر أو لإرسال الإشعارات والتنبيهات المتعلقة بالنظام.
         /// </summary>
-        public string ContactEmail { get; set; }
+        public string? ContactEmail { get; set; }
 
         /// <summary>
         /// يمثل رقم الهاتف للمستأجر في النظام.
         /// </summary>
-        public string PhoneNumber { get; set; }
+        /// 
+        [Required]
+        [RegularExpression(@"^(09\d{8}|\+2189\d{8})$", ErrorMessage = "رقم الهاتف غير صحيح.")]
+        public required string PhoneNumber { get; set; }
 
         /// <summary>
         /// يمثل عنوان المستأجر في النظام.
@@ -45,18 +52,6 @@ namespace RetalSystemAPI.Models
         public bool IsActive { get; set; } = true;
 
 
-
-        public ICollection<Category> Categories { get; set; } = new List<Category>();
-
-        public ICollection<Product> Products { get; set; } = new List<Product>();
-
-        public ICollection<Unit> Units { get; set; } = new List<Unit>();
-
-        public ICollection<ProductUnit> ProductUnits { get; set; } = new List<ProductUnit>();   
-
-        public ICollection<ProductBarCode> ProductBarCodes { get; set; }= new List<ProductBarCode>();
-
-        public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();    
 
     }
 }

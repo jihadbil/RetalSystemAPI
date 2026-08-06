@@ -13,11 +13,11 @@ public class Unit: BaseEntity
     /// <summary>
     /// اسم الوحدة  
     /// </summary>
-    public string Name { get; set; }
+    public required string Name { get; set; }
     /// <summary>
     /// وصف الوحدة
     /// </summary>
-    public string Description { get; set; }
+    public string? Description { get; set; }
     /// <summary>
     /// عدد القطع في الوحدة (مثلا عدد القطع في الصندوق او الدستة)
     /// </summary>

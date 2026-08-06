@@ -11,7 +11,7 @@ public class ProductImage:BaseEntity
     /// <summary>
     /// عنوان مسار الصورة على السيرفر او رابط خارجي للصورة  
     /// </summary>
-    public string ImageUrl { get; set; }
+    public required string ImageUrl { get; set; }
     /// <summary>
     /// يمتل ان كانت الصورة الأفتراضية للصنف التي تظهر بشكل عام
     /// </summary>
@@ -21,16 +21,16 @@ public class ProductImage:BaseEntity
     /// <summary>
     /// معرف الصنف الدي تنتمي اليه مجموعة الصور
     /// </summary>
-    public Guid ProductId { get; set; } '
+    public Guid ProductId { get; set; } 
     public Product? Product { get; set; }   
 
 
     /// <summary>
     /// باركود الصنف الدي تنتمي اليه لاصورة الواحدة
     /// </summary>
-    public string Barcode { get; set; }
+    public Guid BarcodeId { get; set; }
 
-    public ProductBarCode BarcodeCode { get; set; }
+    public ProductBarCode? BarcodeCode { get; set; }
 
     /// <summary>
     /// معرف المستاجر الدي تنتمي اليه مجموعة الصور

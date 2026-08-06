@@ -1,7 +1,7 @@
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Common;
 
-namespace RetalSystemAPI.Models.Entities.Branchs;
+namespace RetalSystemAPI.Models.Branchs;
 /// <summary>
 /// يمثل الكيان الخاص بالفروع في النظام، ويحتوي على الخصائص المتعلقة بالفرع مثل الاسم، العنوان، رقم الهاتف، وحالة النشاط.
 /// </summary>
@@ -21,9 +21,10 @@ public class Branch : BaseEntity
     /// </summary>
     public bool IsActive { get; set; } = true;
 
+    public Guid TenantId { get; set; }
+    public Tenant? Tenant { get; set; }
+    public ICollection<BranchPhone> BranchPhones { get; set; } = new List<BranchPhone>();
 
-
-
-    public ICollection<BranchPhones> BranchPhones { get; set; } = new List<BranchPhones>();
+    public ICollection<ApplicationUser> ApplicationUser { get; set; }=new List<ApplicationUser>();
 
 }

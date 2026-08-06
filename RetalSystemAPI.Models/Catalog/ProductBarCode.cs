@@ -12,15 +12,15 @@ public class ProductBarCode:BaseEntity
     /// <summary>
     /// الباركود الخاص بالمنتج
     /// </summary>
-    public string BarCode { get; set; }
+    public required string BarCode { get; set; }
     /// <summary>
     /// اسم المنتج متلا عصير النسيم برتقال-عصير النسيم مانجا
     /// </summary>
-    public string Title { get; set; }
+    public required string Title { get; set; }
     /// <summary>
     /// الوصف
     /// </summary>
-    public string Description { get; set; }
+    public string? Description { get; set; }
     /// <summary>
     /// معرف المنتج الدي ينتمي له الكود
     /// </summary>

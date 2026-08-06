@@ -24,8 +24,11 @@ public abstract class BaseEntity
     /// حالة الحذف للكيان، حيث يشير إلى ما إذا كان الكيان قد تم حذفه من النظام أم لا.
     /// </summary>
     public bool IsDeleted { get; set; } = false;
+    
 
-    // public string? CreatedByUserId { get; set; }
-    //public string? UpdatedByUserId { get; set; }
-   // public byte[] RowVersion { get; set; } = null!;
+
+
+    public string? CreatedByUserId { get; set; }
+    public string? UpdatedByUserId { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
 }

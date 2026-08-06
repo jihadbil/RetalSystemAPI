@@ -25,5 +25,7 @@ public class ProductUnit:BaseEntity
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
+    public int ConversionFactor { get; set; }
 
+    public bool IsDefault { get; set; } = false;    
 }

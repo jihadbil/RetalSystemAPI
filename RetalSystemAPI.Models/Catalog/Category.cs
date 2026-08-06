@@ -15,11 +15,11 @@ public class Category:BaseEntity
     /// <summary>
     /// اسم التصنيف
     /// </summary>
-    public string Name { get; set; } = null!;
+    public required string Name { get; set; } 
     /// <summary>
     /// معرف التصنيف الأب ان وجد
     /// </summary>
-    public int? ParentCategoryId { get; set; }
+    public Guid? ParentCategoryId { get; set; }
 
     public Category? ParentCategory { get; set; }
 
@@ -29,6 +29,11 @@ public class Category:BaseEntity
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
+    public int SortOrder { get; set; }  
+
+
     public ICollection<Category> SubCategories { get; set; } = new List<Category>();
-   // public ICollection<Product> Products { get; set; } = new List<Product>();
+    public ICollection<Product> Products { get; set; } = new List<Product>();
 }
