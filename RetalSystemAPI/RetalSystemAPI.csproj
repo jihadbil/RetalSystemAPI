@@ -27,4 +27,9 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.17" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RetalSystemAPI.DataAccess\RetalSystemAPI.DataAccess.csproj" />
+    <ProjectReference Include="..\RetalSystemAPI.Models\RetalSystemAPI.Models.csproj" />
+  </ItemGroup>
+
 </Project>

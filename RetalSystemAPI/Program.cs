@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
+using RetalSystemAPI.DataAccess.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add DataAccess layer services
+builder.Services.AddDataAccess(builder.Configuration);
 
 // Add services to the container.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
