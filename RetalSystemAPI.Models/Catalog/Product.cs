@@ -50,7 +50,7 @@ public class Product:BaseEntity
     public ICollection<ShowroomStock> ShowroomStocks { get; set; } = new List<ShowroomStock>();
 
 
-    public ICollection<PurchaseOrderItem> PurchaseOrderItems { get; set; }= new List<PurchaseOrderItem>();
+
 
 
 

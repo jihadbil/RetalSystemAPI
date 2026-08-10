@@ -13,11 +13,7 @@ public class PurchaseOrderItem : BaseEntity
     /// </summary>
     public Guid PurchaseOrderId { get; set; }
     public PurchaseOrder PurchaseOrder { get; set; } = null!;
-    /// <summary>
-    /// معرف الصنف الرئيسي الدي ينتمي اليه الباركود او اللون او النكهة
-    /// </summary>
-    public Guid ProductId { get; set; }
-    public Product Product { get; set; } = null!;
+
 
     /// <summary>
     /// معرف الباركود للنكهة او اللون
