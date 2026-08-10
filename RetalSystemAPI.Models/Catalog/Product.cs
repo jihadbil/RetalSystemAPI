@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
-using RetalSystemAPI.Models.Warehouse;
+using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
@@ -48,5 +49,9 @@ public class Product:BaseEntity
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
     public ICollection<ShowroomStock> ShowroomStocks { get; set; } = new List<ShowroomStock>();
     public ICollection<StorgeStock> StorgeStocks { get; set; } = new List<StorgeStock>();
+
+    public ICollection<PurchaseOrderItem> PurchaseOrderItems { get; set; }= new List<PurchaseOrderItem>();
+
+
 
 }
