@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
+using RetalSystemAPI.Models.Warehouse;
 
 namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
@@ -29,4 +30,5 @@ public class ProductBarCode:BaseEntity
     public Product? Product { get; set; }
 
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();    
+    public ICollection<StorgeStock> StorgeStocks { get; set; } = new List<StorgeStock>();
 }
