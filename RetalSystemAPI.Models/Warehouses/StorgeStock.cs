@@ -18,11 +18,6 @@ public class StorgeStock:BaseEntity
     /// </summary>
     public Guid ProductBarcodeId { get; set; }
   public ProductBarCode ProductBarcode { get; set; } = null!;
-    /// <summary>
-    /// معرف الصنف الأساسي الدي ينتمي اليه هدا الباركود
-    /// </summary>
-    public Guid ProductId { get; set; }
-   public Product Product { get; set; } = null!;
 
     /// <summary>
     /// الكمية
