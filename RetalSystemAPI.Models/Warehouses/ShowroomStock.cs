@@ -11,12 +11,12 @@ public class ShowroomStock:BaseEntity
    /// <summary>
    /// معرف المخزن(الصالة) التي تحوي الصنف
    /// </summary>
-    public int WarehouseId { get; set; }
+    public Guid WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     /// <summary>
     /// معرف الصنف
     /// </summary>
-    public int ProductId { get; set; }
+    public Guid ProductId { get; set; }
     public Product Product { get; set; } = null!;
     /// <summary>
     /// الكمية

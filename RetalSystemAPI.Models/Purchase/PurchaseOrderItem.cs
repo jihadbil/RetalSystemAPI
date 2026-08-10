@@ -11,7 +11,7 @@ public class PurchaseOrderItem : BaseEntity
     /// <summary>
     /// يمتل معرف الطلبية الدي ينتمي لها هذا المحتوي
     /// </summary>
-    public int PurchaseOrderId { get; set; }
+    public Guid PurchaseOrderId { get; set; }
     public PurchaseOrder PurchaseOrder { get; set; } = null!;
     /// <summary>
     /// معرف الصنف الرئيسي الدي ينتمي اليه الباركود او اللون او النكهة

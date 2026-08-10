@@ -13,7 +13,7 @@ public class Warehouse : BaseEntity
     /// <summary>
     /// معرف الفرع الدي ينتمي اليه المخزن او الصالة
     /// </summary>
-    public int BranchId { get; set; }
+    public Guid BranchId { get; set; }
     public Branch Branch { get; set; } = null!;
     /// <summary>
     /// اسم المخزن او الصالة

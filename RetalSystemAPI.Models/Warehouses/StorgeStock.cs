@@ -11,17 +11,17 @@ public class StorgeStock:BaseEntity
     /// <summary>
     /// معرف المخزن (المخزن) الدي ينتمي الي المخزون
     /// </summary>
-    public int WarehouseId { get; set; }
+    public Guid WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     /// <summary>
     /// معرف الباركود الخاص  بالنكهة و اللون الدي ينتمي الي المخزون
     /// </summary>
-    public int ProductBarcodeId { get; set; }
+    public Guid ProductBarcodeId { get; set; }
   public ProductBarCode ProductBarcode { get; set; } = null!;
     /// <summary>
     /// معرف الصنف الأساسي الدي ينتمي اليه هدا الباركود
     /// </summary>
-    public int ProductId { get; set; }
+    public Guid ProductId { get; set; }
    public Product Product { get; set; } = null!;
 
     /// <summary>
