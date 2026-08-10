@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RetalSystemAPI.MAUI.ViewModels.Catalog"
+             xmlns:models="clr-namespace:RetalSystemAPI.Models.DTOs.Catalog.Unit;assembly=RetalSystemAPI.Models.DTOs"
+             x:Class="RetalSystemAPI.MAUI.Views.Catalog.UnitsPage"
+             x:DataType="vm:UnitsViewModel"
+             Title="وحدات القياس"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="16,16,16,8">
+            <Label Text="إدارة وحدات القياس العامة للأصناف والمنتجات" Style="{StaticResource Headline}" FontSize="18" />
+        </Border>
+
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Units}" Margin="16,0,16,16">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:UnitResponseDto">
+                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="{Binding Name}" FontFamily="CairoBold" FontSize="16" />
+                                <Label Text="{Binding Symbol}" Style="{StaticResource SubHeadline}" FontSize="13" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

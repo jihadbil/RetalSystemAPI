@@ -5,6 +5,7 @@ namespace RetalSystemAPI.Models.DTOs.Catalog.Product;
 public class ProductSummaryDto : BaseDto
 {
     public string Name { get; set; } = null!;
+    public string Code { get; set; } = null!;
     public string CategoryName { get; set; } = null!;
     public decimal SalePrice { get; set; }
     public decimal CostPrice { get; set; }

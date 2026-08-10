@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using RetalSystemAPI.Models.DTOs.Catalog.ProductBarCode;
+using RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.Product;
 
@@ -21,4 +23,7 @@ public class UpdateProductDto
 
     [Required(ErrorMessage = "معرف التصنيف مطلوب")]
     public Guid CategoryId { get; set; }
+
+    public List<CreateProductBarCodeDto> BarCodes { get; set; } = new();
+    public List<CreateProductUnitDto> Units { get; set; } = new();
 }

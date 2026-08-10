@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RetalSystemAPI.MAUI.ViewModels.Catalog"
+             xmlns:dtoUnit="clr-namespace:RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;assembly=RetalSystemAPI.Models.DTOs"
+             xmlns:dtoBC="clr-namespace:RetalSystemAPI.Models.DTOs.Catalog.ProductBarCode;assembly=RetalSystemAPI.Models.DTOs"
+             x:Class="RetalSystemAPI.MAUI.Views.Catalog.ProductDetailPage"
+             x:DataType="vm:ProductDetailViewModel"
+             Title="تفاصيل الصنف"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="16">
+
+            <!-- Product Overview Card -->
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="{Binding Product.Name}" Style="{StaticResource Headline}" FontSize="20" />
+                    <HorizontalStackLayout Spacing="12">
+                        <Label Text="{Binding Product.Code, StringFormat='الكود: {0}'}" Style="{StaticResource SubHeadline}" />
+                        <Label Text="•" TextColor="{StaticResource TextMuted}" />
+                        <Label Text="{Binding Product.CategoryName, StringFormat='التصنيف: {0}'}" Style="{StaticResource SubHeadline}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Product Units Section -->
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="وحدات وتكلفة الصنف" Style="{StaticResource Headline}" FontSize="16" />
+                    <CollectionView ItemsSource="{Binding Units}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dtoUnit:ProductUnitResponseDto">
+                                <Grid ColumnDefinitions="*, Auto" Padding="0,6">
+                                    <Label Grid.Column="0" Text="{Binding UnitName}" FontFamily="CairoBold" />
+                                    <Label Grid.Column="1" Text="{Binding Price, StringFormat='{0} ر.س'}" TextColor="{StaticResource Primary}" FontFamily="CairoBold" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Product Barcodes Section -->
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="أكواد والباركودات المسجلة" Style="{StaticResource Headline}" FontSize="16" />
+                    <CollectionView ItemsSource="{Binding BarCodes}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dtoBC:ProductBarCodeResponseDto">
+                                <Border Padding="10" Margin="0,0,0,6">
+                                    <Label Text="{Binding BarCode}" FontFamily="CairoBold" FontSize="14" />
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

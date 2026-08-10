@@ -49,6 +49,11 @@ public class UnitOfWork : IUnitOfWork
         return await _context.SaveChangesAsync(ct);
     }
 
+    public System.Collections.Generic.IEnumerable<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry> ChangeTrackerEntries()
+    {
+        return _context.ChangeTracker.Entries();
+    }
+
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
         _transaction = await _context.Database.BeginTransactionAsync(ct);

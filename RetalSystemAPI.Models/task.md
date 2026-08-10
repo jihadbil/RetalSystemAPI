@@ -1,19 +1,3 @@
-# مهام بناء طبقة نواقل البيانات (DTOs Layer)
-
-## الحالة: ✅ مكتملة
-
----
-
-## المرحلة الأولى — إعداد المشروع
-
-- `[x]` **[1.1]** تعديل `RetalSystemAPI.Models.DTOs.csproj`
-  - إضافة `<PackageReference Include="AutoMapper" Version="13.0.1" />`
-  - إضافة `<ProjectReference>` إلى `RetalSystemAPI.Models.csproj`
-- `[x]` **[1.2]** التأكد من نجاح `dotnet build` بعد التعديل
-
----
-
-## المرحلة الثانية — Common
 
 - `[x]` **[2.1]** إنشاء `Common/BaseDto.cs`
   - خصائص: `Id: Guid`, `CreatedAt: DateTime`, `UpdatedAt: DateTime?`

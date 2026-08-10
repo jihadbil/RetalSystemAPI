@@ -25,6 +25,7 @@ public interface IUnitOfWork : IAsyncDisposable
 
     // ── Transaction Control ───────────────────────────────────
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+    IEnumerable<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry> ChangeTrackerEntries();
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);
     Task RollbackTransactionAsync(CancellationToken ct = default);

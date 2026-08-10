@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Interceptors;
+using RetalSystemAPI.Models;
 using RetalSystemAPI.DataAccess.Repositories.Implementations;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.DataAccess.Services;
@@ -37,8 +39,23 @@ public static class DataAccessServiceExtensions
                     connectionString,
                     sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
                 )
-                .AddInterceptors(interceptor);
+                .AddInterceptors(interceptor)
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
+
+        // ── Identity ──────────────────────────────────────────
+        services.AddIdentityCore<ApplicationUser>(options =>
+        {
+            options.Password.RequireDigit = false;
+            options.Password.RequireLowercase = false;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequiredLength = 6;
+            options.User.RequireUniqueEmail = false;
+        })
+        .AddRoles<IdentityRole>()
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
 
         // ── Generic Repository & Unit of Work ─────────────────
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

@@ -1,14 +1,168 @@
-﻿using System.Configuration;
-using System.Data;
+using System;
+using System.Net.Http;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using RetalSystemAPI.Desktop.Core.Auth;
+using RetalSystemAPI.Desktop.Core.Http;
+using RetalSystemAPI.Desktop.Core.Navigation;
+using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Catalog;
+using RetalSystemAPI.Desktop.ViewModels.Auth;
+using RetalSystemAPI.Desktop.ViewModels.Branches;
+using RetalSystemAPI.Desktop.ViewModels.Catalog;
+using RetalSystemAPI.Desktop.ViewModels.Dashboard;
+using RetalSystemAPI.Desktop.ViewModels.Shell;
+using RetalSystemAPI.Desktop.ViewModels.Tenants;
+using RetalSystemAPI.Desktop.Views.Auth;
+using RetalSystemAPI.Desktop.Views.Branches;
+using RetalSystemAPI.Desktop.Views.Catalog;
+using RetalSystemAPI.Desktop.Views.Dashboard;
+using RetalSystemAPI.Desktop.Views.Shell;
+using RetalSystemAPI.Desktop.Views.Tenants;
 
-namespace RetalSystemAPI.Desktop
+namespace RetalSystemAPI.Desktop;
+
+public partial class App : Application
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
+    public IServiceProvider Services { get; private set; } = null!;
+    private Window? _currentWindow;
+
+    protected override void OnStartup(StartupEventArgs e)
     {
+        base.OnStartup(e);
+
+        // منع إغلاق التطبيق تلقائياً عند إغلاق أو انتقال النواذف
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        var serviceCollection = new ServiceCollection();
+        ConfigureServices(serviceCollection);
+        Services = serviceCollection.BuildServiceProvider();
+
+        var authState = Services.GetRequiredService<AuthStateService>();
+
+        // الاستماع لتغيرات المصادقة للتوجيه تلقائياً إلى تسجيل الدخول عند انتهاء الجلسة
+        authState.AuthStateChanged += (s, e) =>
+        {
+            if (!authState.IsAuthenticated)
+            {
+                Dispatcher.Invoke(() => ShowLoginWindow());
+            }
+        };
+
+        if (authState.IsAuthenticated)
+        {
+            ShowMainWindow();
+        }
+        else
+        {
+            ShowLoginWindow();
+        }
     }
 
+    private void ConfigureServices(IServiceCollection services)
+    {
+        // Base API Address with Local SSL Bypass
+        services.AddHttpClient<ApiClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://localhost:7226/api/");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+        });
+
+        // Core Services
+        services.AddSingleton<CredentialStoreService>();
+        services.AddSingleton<AuthStateService>();
+        services.AddSingleton<INavigationService, NavigationService>();
+
+        // API Services
+        services.AddTransient<IAuthApiService, AuthApiService>();
+        services.AddTransient<ITenantApiService, TenantApiService>();
+        services.AddTransient<IBranchApiService, BranchApiService>();
+        services.AddTransient<ICategoryApiService, CategoryApiService>();
+        services.AddTransient<IProductApiService, ProductApiService>();
+        services.AddTransient<IUnitApiService, UnitApiService>();
+        services.AddTransient<IProductUnitApiService, ProductUnitApiService>();
+        services.AddTransient<IProductBarCodeApiService, ProductBarCodeApiService>();
+        services.AddTransient<IProductImageApiService, ProductImageApiService>();
+
+        // ViewModels
+        services.AddTransient<LoginViewModel>();
+        services.AddTransient<ShellViewModel>();
+        services.AddTransient<DashboardViewModel>();
+        services.AddTransient<TenantsViewModel>();
+        services.AddTransient<BranchesViewModel>();
+        services.AddTransient<BranchFormViewModel>();
+        services.AddTransient<CategoriesViewModel>();
+        services.AddTransient<CategoryFormViewModel>();
+        services.AddTransient<UnitsViewModel>();
+        services.AddTransient<UnitFormViewModel>();
+        services.AddTransient<ProductsViewModel>();
+        services.AddTransient<ProductFormViewModel>();
+
+        // Views
+        services.AddTransient<LoginView>();
+        services.AddTransient<ShellWindow>();
+        services.AddTransient<DashboardView>();
+        services.AddTransient<TenantsView>();
+        services.AddTransient<BranchesView>();
+        services.AddTransient<CategoriesView>();
+        services.AddTransient<UnitsView>();
+        services.AddTransient<ProductsView>();
+    }
+
+    public void ShowLoginWindow()
+    {
+        var oldWindow = _currentWindow;
+
+        var loginView = Services.GetRequiredService<LoginView>();
+        var loginVM = (LoginViewModel)loginView.DataContext;
+        loginVM.OnLoginSuccess = () => ShowMainWindow();
+
+        var loginWindow = new Window
+        {
+            Title = "تسجيل الدخول - Emerald Management Pro",
+            Content = loginView,
+            Width = 460,
+            Height = 520,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ResizeMode = ResizeMode.NoResize
+        };
+
+        loginWindow.Closed += (s, e) =>
+        {
+            if (_currentWindow == loginWindow)
+            {
+                Shutdown();
+            }
+        };
+
+        _currentWindow = loginWindow;
+        loginWindow.Show();
+        oldWindow?.Close();
+    }
+
+    public void ShowMainWindow()
+    {
+        var oldWindow = _currentWindow;
+
+        var shellWindow = Services.GetRequiredService<ShellWindow>();
+        _currentWindow = shellWindow;
+
+        shellWindow.Closed += (s, e) =>
+        {
+            if (_currentWindow == shellWindow)
+            {
+                Shutdown();
+            }
+        };
+
+        shellWindow.Show();
+        oldWindow?.Close();
+
+        // Navigate to Dashboard initially
+        var nav = Services.GetRequiredService<INavigationService>();
+        nav.NavigateTo<DashboardView>();
+    }
 }

@@ -10,6 +10,7 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     {
         builder.ToTable("Tenants");
         builder.HasKey(t => t.Id);
+        builder.Ignore(t => t.Tenant);
 
         builder.Property(t => t.Name)
             .IsRequired()

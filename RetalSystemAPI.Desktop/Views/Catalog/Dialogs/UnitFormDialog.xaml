@@ -1,0 +1,53 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Catalog.Dialogs.UnitFormDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource ModernDialogWindowStyle}"
+        AllowsTransparency="True" WindowStartupLocation="CenterOwner"
+        Title="بيانات الوحدة" Height="360" Width="440">
+    <Border Style="{StaticResource DialogCardBorderStyle}">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Dialog Header Bar -->
+            <Grid Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown" Background="Transparent" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="📏" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="بيانات وحدة القياس" Style="{StaticResource H2TextBlockStyle}" FontSize="16" />
+                    <TextBlock Text="إضافة أو تعديل وحدة قياس الأصناف" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="2" Style="{StaticResource DialogCloseButtonStyle}" Click="Cancel_Click" VerticalAlignment="Top" />
+            </Grid>
+
+            <!-- Form Body -->
+            <StackPanel Grid.Row="1">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" FontFamily="{StaticResource AppFontFamily}" FontSize="12" Margin="0,0,0,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
+
+                <TextBlock Text="اسم الوحدة *" Style="{StaticResource FormLabelStyle}" />
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,14" />
+
+                <TextBlock Text="الرمز / الاختصار *" Style="{StaticResource FormLabelStyle}" />
+                <TextBox Text="{Binding Symbol, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,16" />
+            </StackPanel>
+
+            <!-- Dialog Footer -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="حفظ البيانات" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveCommand}" Width="120" Margin="4,0" />
+                <Button Content="إلغاء" Style="{StaticResource GhostButtonStyle}" Click="Cancel_Click" Width="100" Margin="4,0" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

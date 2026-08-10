@@ -44,5 +44,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasIndex(p => p.TenantId);
         builder.HasIndex(p => new { p.TenantId, p.CategoryId });
         builder.HasIndex(p => new { p.TenantId, p.IsDeleted });
+        builder.HasIndex(p => new { p.TenantId, p.IsDeleted, p.Name });
     }
 }

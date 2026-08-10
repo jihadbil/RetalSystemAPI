@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Microsoft.AspNetCore.Http;
 
 namespace RetalSystemAPI.DataAccess.Services;
@@ -19,8 +20,12 @@ public class CurrentTenantService : ICurrentTenantService
     {
         get
         {
-            var tenantClaim = _httpContextAccessor.HttpContext?
-                .User?.FindFirst("TenantId")?.Value;
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user == null) return Guid.Empty;
+
+            var tenantClaim = user.FindFirst("TenantId")?.Value
+                              ?? user.FindFirst("tenantid")?.Value
+                              ?? user.FindFirst("tenant_id")?.Value;
 
             if (Guid.TryParse(tenantClaim, out var tenantId))
             {

@@ -1,0 +1,306 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Catalog.Dialogs.ProductFormDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource ModernDialogWindowStyle}"
+        AllowsTransparency="True" WindowStartupLocation="CenterOwner"
+        Title="بيانات المنتج الشاملة" Height="680" Width="760">
+    <Border Style="{StaticResource DialogCardBorderStyle}">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Dialog Header Bar -->
+            <Grid Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown" Background="Transparent" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="📦" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="إدارة بيانات المنتج والوحدات والباركودات والصور" Style="{StaticResource H2TextBlockStyle}" FontSize="16" />
+                    <TextBlock Text="البيانات الأساسية والأسعار، وحدات القياس، الأكواد المرتبطة والمرفقات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="2" Style="{StaticResource DialogCloseButtonStyle}" Click="Cancel_Click" VerticalAlignment="Top" />
+            </Grid>
+
+            <!-- Error Banner -->
+            <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" FontFamily="{StaticResource AppFontFamily}" FontSize="12" Margin="0,0,0,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
+
+            <!-- Tabbed Container -->
+            <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="0,0,0,16">
+                <!-- TAB 1: General Info & Prices -->
+                <TabItem Header="البيانات الأساسية والأسعار" FontSize="13" FontFamily="{StaticResource AppFontFamily}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,12">
+                        <StackPanel>
+                            <!-- Grid 2 columns for Name and Category -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="اسم المنتج *" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="التصنيف *" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox ItemsSource="{Binding Categories}"
+                                              SelectedValue="{Binding CategoryId, Mode=TwoWay}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Name"
+                                              Style="{StaticResource DefaultComboBoxStyle}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Code & Prices Grid -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="كود المنتج الداخلي" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="سعر التكلفة" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding CostPrice, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="سعر البيع" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding SalePrice, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Description -->
+                            <TextBlock Text="الوصف" Style="{StaticResource FormLabelStyle}" />
+                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Height="60" TextWrapping="Wrap" VerticalContentAlignment="Top" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 2: Product Units & Conversion Factors -->
+                <TabItem Header="وحدات القياس وعدد القطع" FontSize="13" FontFamily="{StaticResource AppFontFamily}">
+                    <Grid Margin="4,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Add Unit Form -->
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="اختر الوحدة" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding SelectedAddUnitId, Mode=TwoWay}" SelectedValuePath="Id" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="عدد القطع (المعامل)" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding SelectedAddConversionFactor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <CheckBox Grid.Column="4" Content="افتراضية" IsChecked="{Binding SelectedAddIsDefault}" VerticalAlignment="Bottom" Margin="0,0,0,8" FontFamily="{StaticResource AppFontFamily}" FontSize="12" />
+
+                                <Button Grid.Column="6" Content="+ إضافة الوحدة" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding AddProductUnitCommand}" VerticalAlignment="Bottom" Padding="12,8" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Units DataGrid -->
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding ProductUnits}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="اسم الوحدة" Binding="{Binding UnitName}" Width="*" />
+                                <DataGridTextColumn Header="عدد القطع (معامل التحويل)" Binding="{Binding ConversionFactor}" Width="160" />
+                                <DataGridCheckBoxColumn Header="الوحدة الافتراضية" Binding="{Binding IsDefault}" Width="110" />
+                                <DataGridTemplateColumn Header="إجراء" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Command="{Binding DataContext.RemoveProductUnitCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Padding="6,2" FontSize="11" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+
+                <!-- TAB 3: Multiple Barcodes with Custom Titles -->
+                <TabItem Header="الأكواد والباركودات المرتبطة" FontSize="13" FontFamily="{StaticResource AppFontFamily}">
+                    <Grid Margin="4,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Add Barcode Form -->
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="قيمة الباركود / الكود *" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding SelectedAddBarCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="اسم الكود / التسمية التمييزية" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding SelectedAddBarCodeTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="4" Content="+ إضافة الكود" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding AddProductBarCodeCommand}" VerticalAlignment="Bottom" Padding="12,8" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Barcodes DataGrid -->
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding ProductBarCodes}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="الباركود" Binding="{Binding BarCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" />
+                                <DataGridTextColumn Header="اسم الكود / التسمية التمييزية" Binding="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                <DataGridTextColumn Header="الوصف" Binding="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                <DataGridTemplateColumn Header="إجراء" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Command="{Binding DataContext.RemoveProductBarCodeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Padding="6,2" FontSize="11" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+
+                <!-- TAB 4: Product Images & Barcode Linking -->
+                <TabItem Header="صور المنتج والباركودات المرتبطة" FontSize="13" FontFamily="{StaticResource AppFontFamily}">
+                    <Grid Margin="4,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Upload Image Form -->
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- File Browser Row -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="مسار ملف الصورة *" Style="{StaticResource FormLabelStyle}" />
+                                        <TextBox Text="{Binding SelectedUploadFilePath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Style="{StaticResource DefaultTextBoxStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2" Content="استعراض صورة ..." Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BrowseImageFileCommand}" VerticalAlignment="Bottom" Padding="14,8" />
+                                </Grid>
+
+                                <!-- Options & Upload Button Row -->
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="ربط الصورة بكود/باركود معين (اختياري)" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox ItemsSource="{Binding ExistingBarCodesForImages}"
+                                                  SelectedValue="{Binding SelectedUploadBarcodeId, Mode=TwoWay}"
+                                                  SelectedValuePath="Id"
+                                                  DisplayMemberPath="Title"
+                                                  Style="{StaticResource DefaultComboBoxStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="2" Content="صورة افتراضية للمنتج" IsChecked="{Binding SelectedUploadIsDefault}" VerticalAlignment="Bottom" Margin="0,0,0,8" FontFamily="{StaticResource AppFontFamily}" FontSize="12" />
+
+                                    <Button Grid.Column="4" Content="رفع الصورة" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding UploadProductImageCommand}" VerticalAlignment="Bottom" Padding="16,8" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Product Images DataGrid / List -->
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding ProductImages}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="معاينة" Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Width="50" Height="50" CornerRadius="4" ClipToBounds="True" Background="#F1F5F9" HorizontalAlignment="Center">
+                                                <Image Source="{Binding FullImageUrl}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="الرابط / المسار" Binding="{Binding ImageUrl}" Width="*" />
+                                <DataGridTextColumn Header="الكود المرتبط" Binding="{Binding BarcodeTitle}" Width="160" />
+                                <DataGridCheckBoxColumn Header="صورة افتراضية" Binding="{Binding IsDefault}" Width="110" />
+
+                                <DataGridTemplateColumn Header="إجراءات" Width="190">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Content="تعيين كافتراضية" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding DataContext.SetDefaultProductImageCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,2" FontSize="11" />
+                                                <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Command="{Binding DataContext.RemoveProductImageCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,2" FontSize="11" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- Buttons Footer -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="حفظ البيانات" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveCommand}" Width="120" Margin="4,0" />
+                <Button Content="إلغاء" Style="{StaticResource GhostButtonStyle}" Click="Cancel_Click" Width="100" Margin="4,0" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -1,6 +1,9 @@
 <Solution>
   <Project Path="RetalSystemAPI.DataAccess/RetalSystemAPI.DataAccess.csproj" />
   <Project Path="RetalSystemAPI.Desktop/RetalSystemAPI.Desktop.csproj" />
+  <Project Path="RetalSystemAPI.MAUI/RetalSystemAPI.MAUI.csproj" Id="c396d595-964b-4b78-bc8b-710ff15e790d">
+    <Deploy Solution="Debug|*" />
+  </Project>
   <Project Path="RetalSystemAPI.Models.DTOs/RetalSystemAPI.Models.DTOs.csproj" />
   <Project Path="RetalSystemAPI.Models/RetalSystemAPI.Models.csproj" />
   <Project Path="RetalSystemAPI.Services/RetalSystemAPI.Services.csproj" />

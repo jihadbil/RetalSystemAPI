@@ -1,0 +1,55 @@
+<Window x:Class="RetalSystemAPI.Desktop.Controls.ModernConfirmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource ModernDialogWindowStyle}"
+        AllowsTransparency="True" WindowStartupLocation="CenterOwner"
+        Title="تأكيد" Height="260" Width="440">
+    <Border Style="{StaticResource DialogCardBorderStyle}">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header Row -->
+            <Grid Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown" Background="Transparent" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Icon Badge -->
+                <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="20" Background="#fee2e2" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="IconText" Text="⚠️" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <!-- Title & Category -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleTextBlock" Text="تأكيد الإجراء" Style="{StaticResource H2TextBlockStyle}" FontSize="16" />
+                    <TextBlock x:Name="SubtitleTextBlock" Text="تنبيه النظام" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <!-- Close Button -->
+                <Button Grid.Column="2" Style="{StaticResource DialogCloseButtonStyle}" Click="Cancel_Click" VerticalAlignment="Top" />
+            </Grid>
+
+            <!-- Message Body -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,20">
+                <TextBlock x:Name="MessageTextBlock"
+                           Text="هل أنت تأكد من رغبتك في إتمام هذا الإجراء؟ لا يمكن التراجع عن هذه العملية."
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           LineHeight="22" />
+            </ScrollViewer>
+
+            <!-- Action Buttons -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button x:Name="ConfirmButton" Content="تأكيد الحذف" Style="{StaticResource DangerButtonStyle}" Click="Confirm_Click" Width="120" Margin="4,0" />
+                <Button x:Name="CancelButton" Content="إلغاء" Style="{StaticResource GhostButtonStyle}" Click="Cancel_Click" Width="100" Margin="4,0" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

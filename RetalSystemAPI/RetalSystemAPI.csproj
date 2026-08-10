@@ -5,11 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-RetalSystemAPI-bb628dee-3c19-4d38-aaa1-c613c5f736a6</UserSecretsId>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" NoWarn="NU1605" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.10" NoWarn="NU1605" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
@@ -21,15 +21,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Identity.Web" Version="4.8.0" />
-    <PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="3.15.1" />
-    <PackageReference Include="Microsoft.Identity.Web.UI" Version="4.8.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.17" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\RetalSystemAPI.DataAccess\RetalSystemAPI.DataAccess.csproj" />
     <ProjectReference Include="..\RetalSystemAPI.Models\RetalSystemAPI.Models.csproj" />
+    <ProjectReference Include="..\RetalSystemAPI.Services\RetalSystemAPI.Services.csproj" />
   </ItemGroup>
+
 
 </Project>

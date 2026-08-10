@@ -1,0 +1,58 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Catalog.Dialogs.CategoryFormDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource ModernDialogWindowStyle}"
+        AllowsTransparency="True" WindowStartupLocation="CenterOwner"
+        Title="بيانات التصنيف" Height="380" Width="450">
+    <Border Style="{StaticResource DialogCardBorderStyle}">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Dialog Header Bar -->
+            <Grid Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown" Background="Transparent" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="📁" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="بيانات التصنيف" Style="{StaticResource H2TextBlockStyle}" FontSize="16" />
+                    <TextBlock Text="إدارة تصنيفات الأصناف والهيكلية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="2" Style="{StaticResource DialogCloseButtonStyle}" Click="Cancel_Click" VerticalAlignment="Top" />
+            </Grid>
+
+            <!-- Form Body -->
+            <StackPanel Grid.Row="1">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" FontFamily="{StaticResource AppFontFamily}" FontSize="12" Margin="0,0,0,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
+
+                <TextBlock Text="اسم التصنيف *" Style="{StaticResource FormLabelStyle}" />
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,14" />
+
+                <TextBlock Text="التصنيف الأب (اختياري)" Style="{StaticResource FormLabelStyle}" />
+                <ComboBox ItemsSource="{Binding AvailableParentCategories}"
+                          SelectedValue="{Binding ParentCategoryId, Mode=TwoWay}"
+                          SelectedValuePath="Id"
+                          DisplayMemberPath="Name"
+                          Style="{StaticResource DefaultComboBoxStyle}"
+                          Margin="0,0,0,16" />
+            </StackPanel>
+
+            <!-- Dialog Footer -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="حفظ البيانات" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveCommand}" Width="120" Margin="4,0" />
+                <Button Content="إلغاء" Style="{StaticResource GhostButtonStyle}" Click="Cancel_Click" Width="100" Margin="4,0" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

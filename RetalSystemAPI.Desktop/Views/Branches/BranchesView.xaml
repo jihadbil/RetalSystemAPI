@@ -1,0 +1,49 @@
+<UserControl x:Class="RetalSystemAPI.Desktop.Views.Branches.BranchesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
+             FlowDirection="RightToLeft">
+    <Grid Margin="24" Background="{StaticResource BgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Margin="0,0,0,16">
+            <TextBlock Text="إدارة الفروع" Style="{StaticResource H1TextBlockStyle}" VerticalAlignment="Center" />
+            <Button Content="+ إضافة فرع جديد" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding CreateBranchCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right" />
+        </DockPanel>
+
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Branches}" Style="{StaticResource DefaultDataGridStyle}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="اسم الفرع" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="العنوان" Binding="{Binding Address}" Width="*" />
+                <DataGridTemplateColumn Header="الحالة" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding IsActive, Converter={StaticResource StatusToColorConverter}}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Right">
+                                <TextBlock Text="{Binding IsActive, Converter={StaticResource StatusTextConverter}}" Foreground="White" FontSize="11" FontFamily="{StaticResource AppFontFamily}" />
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="الإجراءات" Width="180">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="تعديل" Style="{StaticResource GhostButtonStyle}" Command="{Binding DataContext.EditBranchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontSize="12" />
+                                <Button Content="حالة" Style="{StaticResource GhostButtonStyle}" Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontSize="12" />
+                                <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Command="{Binding DataContext.DeleteBranchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontSize="12" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <controls:PaginationControl Grid.Row="2" CurrentPage="{Binding CurrentPage}" TotalPages="{Binding TotalPages}" PageSize="{Binding PageSize, Mode=TwoWay}" IsLoading="{Binding IsLoading}" NextPageCommand="{Binding NextPageCommand}" PrevPageCommand="{Binding PrevPageCommand}" />
+
+        <controls:LoadingOverlay Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+    </Grid>
+</UserControl>

@@ -1,9 +1,28 @@
-﻿<Application x:Class="RetalSystemAPI.Desktop.App"
+<Application x:Class="RetalSystemAPI.Desktop.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:RetalSystemAPI.Desktop"
-             StartupUri="MainWindow.xaml">
+             xmlns:converters="clr-namespace:RetalSystemAPI.Desktop.Converters">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Typography.xaml" />
+                <ResourceDictionary Source="Resources/Icons/AppIcons.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ButtonStyles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/TextBoxStyles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ComboBoxStyles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/DataGridStyles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/CardStyles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/DialogStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+            <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
+            <converters:StatusTextConverter x:Key="StatusTextConverter" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

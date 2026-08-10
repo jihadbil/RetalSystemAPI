@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="RetalSystemAPI.MAUI.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:auth="clr-namespace:RetalSystemAPI.MAUI.Views.Auth"
+    xmlns:views="clr-namespace:RetalSystemAPI.MAUI.Views"
+    xmlns:tenants="clr-namespace:RetalSystemAPI.MAUI.Views.Tenants"
+    xmlns:branches="clr-namespace:RetalSystemAPI.MAUI.Views.Branches"
+    xmlns:catalog="clr-namespace:RetalSystemAPI.MAUI.Views.Catalog"
+    Title="Emerald Management Pro"
+    FlowDirection="RightToLeft">
+
+    <!-- Auth Pages (Hidden from Nav) -->
+    <ShellContent
+        Title="تسجيل الدخول"
+        ContentTemplate="{DataTemplate auth:LoginPage}"
+        Route="LoginPage"
+        Shell.FlyoutItemIsVisible="False"
+        Shell.NavBarIsVisible="False" />
+
+    <ShellContent
+        Title="إنشاء حساب"
+        ContentTemplate="{DataTemplate auth:RegisterPage}"
+        Route="RegisterPage"
+        Shell.FlyoutItemIsVisible="False"
+        Shell.NavBarIsVisible="False" />
+
+    <!-- Main Navigation Flyout / Tabs -->
+    <FlyoutItem Title="الرئيسية" Icon="dotnet_bot.png">
+        <ShellContent Route="DashboardPage" ContentTemplate="{DataTemplate views:DashboardPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="الأصناف والمنتجات">
+        <ShellContent Route="ProductsPage" ContentTemplate="{DataTemplate catalog:ProductsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="التصنيفات">
+        <ShellContent Route="CategoriesPage" ContentTemplate="{DataTemplate catalog:CategoriesPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="وحدات القياس">
+        <ShellContent Route="UnitsPage" ContentTemplate="{DataTemplate catalog:UnitsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="الفروع">
+        <ShellContent Route="BranchesPage" ContentTemplate="{DataTemplate branches:BranchesPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="المستأجرين">
+        <ShellContent Route="TenantsPage" ContentTemplate="{DataTemplate tenants:TenantsPage}" />
+    </FlyoutItem>
+
+</Shell>

@@ -22,7 +22,7 @@ public class DesignDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .Build();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? "Server=(localdb)\\mssqllocaldb;Database=RetalSystemDB;Trusted_Connection=True;MultipleActiveResultSets=true";
+            ?? "Server=(local);Database=RetalSystemDB;Trusted_Connection=True;MultipleActiveResultSets=true";
 
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         builder.UseSqlServer(connectionString, sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));

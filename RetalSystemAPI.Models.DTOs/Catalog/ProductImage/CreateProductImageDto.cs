@@ -5,7 +5,6 @@ namespace RetalSystemAPI.Models.DTOs.Catalog.ProductImage;
 public class CreateProductImageDto
 {
     [Required(ErrorMessage = "رابط الصورة مطلوب")]
-    [Url(ErrorMessage = "رابط الصورة غير صحيح")]
     public string ImageUrl { get; set; } = null!;
 
     public bool IsDefault { get; set; } = false;
