@@ -24,7 +24,7 @@ public class SupplierPhone:BaseEntity
     /// <summary>
     /// اسم صاحب الهاتف
     /// </summary>
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
 
 
