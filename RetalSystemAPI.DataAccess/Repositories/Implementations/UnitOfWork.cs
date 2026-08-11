@@ -7,6 +7,9 @@ using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Catalog;
+using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Suppliers;
+using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 
@@ -28,6 +31,13 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<ProductBarCode>? _productBarCodes;
     private IRepository<ProductImage>? _productImages;
     private IRepository<Unit>? _units;
+    private IRepository<Supplier>? _suppliers;
+    private IRepository<SupplierPhone>? _supplierPhones;
+    private IRepository<Warehouse>? _warehouses;
+    private IRepository<StorgeStock>? _storgeStocks;
+    private IRepository<ShowroomStock>? _showroomStocks;
+    private IRepository<PurchaseOrder>? _purchaseOrders;
+    private IRepository<PurchaseOrderItem>? _purchaseOrderItems;
 
     public UnitOfWork(AppDbContext context)
     {
@@ -43,6 +53,13 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<ProductBarCode> ProductBarCodes => _productBarCodes ??= new Repository<ProductBarCode>(_context);
     public IRepository<ProductImage> ProductImages => _productImages ??= new Repository<ProductImage>(_context);
     public IRepository<Unit> Units => _units ??= new Repository<Unit>(_context);
+    public IRepository<Supplier> Suppliers => _suppliers ??= new Repository<Supplier>(_context);
+    public IRepository<SupplierPhone> SupplierPhones => _supplierPhones ??= new Repository<SupplierPhone>(_context);
+    public IRepository<Warehouse> Warehouses => _warehouses ??= new Repository<Warehouse>(_context);
+    public IRepository<StorgeStock> StorgeStocks => _storgeStocks ??= new Repository<StorgeStock>(_context);
+    public IRepository<ShowroomStock> ShowroomStocks => _showroomStocks ??= new Repository<ShowroomStock>(_context);
+    public IRepository<PurchaseOrder> PurchaseOrders => _purchaseOrders ??= new Repository<PurchaseOrder>(_context);
+    public IRepository<PurchaseOrderItem> PurchaseOrderItems => _purchaseOrderItems ??= new Repository<PurchaseOrderItem>(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

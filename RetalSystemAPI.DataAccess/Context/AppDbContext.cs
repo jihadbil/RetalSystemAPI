@@ -7,6 +7,9 @@ using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.Common;
+using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Suppliers;
+using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context;
 
@@ -33,6 +36,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductBarCode> ProductBarCodes => Set<ProductBarCode>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<SupplierPhone> SupplierPhones => Set<SupplierPhone>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<StorgeStock> StorgeStocks => Set<StorgeStock>();
+    public DbSet<ShowroomStock> ShowroomStocks => Set<ShowroomStock>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
