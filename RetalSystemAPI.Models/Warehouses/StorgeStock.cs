@@ -22,7 +22,7 @@ public class StorgeStock:BaseEntity
     /// <summary>
     /// الكمية
     /// </summary>
-    public decimal Quantity { get; set; }
+    public int Quantity { get; set; }
 
     /// <summary>
     /// المستوى الأدنى للمخزون، وهو الحد الأدنى الذي يجب أن يكون موجودًا.
