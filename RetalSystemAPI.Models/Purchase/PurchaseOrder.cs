@@ -18,12 +18,12 @@ public class PurchaseOrder : BaseEntity
    /// يمتل المخزن او الصالة التي تحتاج هده الطلبية
    /// </summary>
     public Guid? WarehouseId { get; set; }
-    public Warehouse Warehouse { get; set; }
+    public Warehouse? Warehouse { get; set; }
     /// <summary>
     /// معرف الفرع الدي تنتمي اليه الطلبية
     /// </summary>
     public Guid BranchId { get; set; }
-    public Branch Branch { get; set; }
+    public Branch Branch { get; set; } = null!;
     /// <summary>
     /// تاريخ انشاء الطلبية
     /// </summary>

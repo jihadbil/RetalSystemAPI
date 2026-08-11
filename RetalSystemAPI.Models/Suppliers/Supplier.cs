@@ -1,6 +1,4 @@
 using RetalSystemAPI.Models.Common;
-using RetalSystemAPI.Models.Purchase;
-using RetalSystemAPI.Models.Suppliers;
 
 namespace RetalSystemAPI.Models.Suppliers;
 /// <summary>

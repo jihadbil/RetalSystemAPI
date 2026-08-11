@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RetalSystemAPI.Models.Common;
@@ -15,7 +15,7 @@ public class SupplierPhone:BaseEntity
     /// معرف المورد
     /// </summary>
     public Guid SupplierId { get; set; }
-        public Supplier Supplier { get; set; } 
+    public Supplier Supplier { get; set; } = null!;
 
     /// <summary>
     /// رقم الهاتف
