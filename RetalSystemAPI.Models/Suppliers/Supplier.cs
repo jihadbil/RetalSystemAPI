@@ -23,7 +23,7 @@ public class Supplier : BaseEntity
 
     public ICollection<SupplierPhone> SupplierPhones { get; set; } = new List<SupplierPhone>();
 
-    public ICollection<SupplierTransaction> SupplierTransactions { get; set; } = new List<SupplierTransaction>();
+
 
 
 }
