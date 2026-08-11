@@ -20,15 +20,14 @@ public class ShowroomStock:BaseEntity
     public Product Product { get; set; } = null!;
 
 
-    public Guid BranchId { get; set; }
-    public Branch Branch { get; set; } = null!;
+   
 
 
 
     /// <summary>
     /// الكمية
     /// </summary>
-    public decimal Quantity { get; set; }
+    public int Quantity { get; set; }
     /// <summary>
     /// اقل قيمة مسموح بها للصنف عندها يتم طلب تلقائي
     /// </summary>

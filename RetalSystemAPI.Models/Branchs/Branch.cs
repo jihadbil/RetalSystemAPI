@@ -30,6 +30,6 @@ public class Branch : BaseEntity
     public ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>(); 
 
     public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
-    public ICollection<ShowroomStock> ShowroomStocks { get; set; } = new List<ShowroomStock>();
+
 
 }
