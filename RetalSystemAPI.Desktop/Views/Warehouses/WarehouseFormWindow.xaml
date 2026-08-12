@@ -1,0 +1,39 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Warehouses.WarehouseFormWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        Title="بيانات المخزن / صالة العرض" Height="360" Width="450" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="🏪 بيانات المخزن أو صالة العرض" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#1F2937"/>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="اسم المخزن / الصالة *" FontWeight="SemiBold" Margin="0,5,0,5"/>
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+
+            <TextBlock Text="الفرع *" FontWeight="SemiBold" Margin="0,10,0,5"/>
+            <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="32" VerticalContentAlignment="Center"/>
+
+            <TextBlock Text="نوع الموقع *" FontWeight="SemiBold" Margin="0,10,0,5"/>
+            <ComboBox SelectedValue="{Binding Type}" SelectedValuePath="Tag" Height="32" VerticalContentAlignment="Center">
+                <ComboBoxItem Content="مخزن تخزين (Storge)" Tag="{x:Static sys:WarehouseType.Storge}" xmlns:sys="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"/>
+                <ComboBoxItem Content="صالة عرض (Showroom)" Tag="{x:Static sys:WarehouseType.Show}" xmlns:sys="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"/>
+            </ComboBox>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" Margin="0,10,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
+            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#10B981" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+            <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="#9CA3AF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

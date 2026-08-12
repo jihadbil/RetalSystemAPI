@@ -9,13 +9,19 @@ using RetalSystemAPI.Services.Catalog.Implementations;
 using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.FileUpload.Implementations;
 using RetalSystemAPI.Services.FileUpload.Interfaces;
+using RetalSystemAPI.Services.Purchase.Implementations;
+using RetalSystemAPI.Services.Purchase.Interfaces;
+using RetalSystemAPI.Services.Suppliers.Implementations;
+using RetalSystemAPI.Services.Suppliers.Interfaces;
 using RetalSystemAPI.Services.Tenant.Implementations;
 using RetalSystemAPI.Services.Tenant.Interfaces;
+using RetalSystemAPI.Services.Warehouses.Implementations;
+using RetalSystemAPI.Services.Warehouses.Interfaces;
 
 namespace RetalSystemAPI.Services.Extensions;
 
 /// <summary>
-/// امتدادات تسجيل خدمات طبقة الخدمات (Services Layer) في كاوية الاعتمادية (Dependency Injection Container).
+/// امتدادات تسجيل خدمات طبقة الخدمات (Services Layer) في حاوية الاعتمادية (Dependency Injection Container).
 /// </summary>
 public static class ServicesLayerExtensions
 {
@@ -27,7 +33,10 @@ public static class ServicesLayerExtensions
         services.AddAutoMapper(
             typeof(CatalogMappingProfile).Assembly,
             typeof(BranchMappingProfile).Assembly,
-            typeof(TenantMappingProfile).Assembly
+            typeof(TenantMappingProfile).Assembly,
+            typeof(SupplierMappingProfile).Assembly,
+            typeof(WarehouseMappingProfile).Assembly,
+            typeof(PurchaseMappingProfile).Assembly
         );
 
         // ── Services Registration ─────────────────────────────────
@@ -42,6 +51,11 @@ public static class ServicesLayerExtensions
         services.AddScoped<IProductUnitService, ProductUnitService>();
         services.AddScoped<IProductBarCodeService, ProductBarCodeService>();
         services.AddScoped<IProductImageService, ProductImageService>();
+
+        services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<IWarehouseService, WarehouseService>();
+        services.AddScoped<IStockService, StockService>();
+        services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
         services.AddScoped<IFileUploadService, FileUploadService>();
 

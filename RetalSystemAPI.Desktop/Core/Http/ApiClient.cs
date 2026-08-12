@@ -177,6 +177,36 @@ public class ApiClient
         }
     }
 
+    public async Task<ApiResponse<T>> PatchAsync<T>(string endpoint, object body, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(body, _jsonOptions);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var request = CreateRequest(HttpMethod.Patch, endpoint, content);
+            using var response = await _httpClient.SendAsync(request, ct);
+            return await HandleResponseAsync<T>(response, ct);
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<T> { Success = false, Message = ex.Message, ErrorCode = "NETWORK_ERROR" };
+        }
+    }
+
+    public async Task<ApiResponse> PatchAsync(string endpoint, CancellationToken ct = default)
+    {
+        try
+        {
+            using var request = CreateRequest(HttpMethod.Patch, endpoint);
+            using var response = await _httpClient.SendAsync(request, ct);
+            return await HandleVoidResponseAsync(response, ct);
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { Success = false, Message = ex.Message, ErrorCode = "NETWORK_ERROR" };
+        }
+    }
+
     public async Task<ApiResponse<T>> PostMultipartAsync<T>(string endpoint, MultipartFormDataContent content, CancellationToken ct = default)
     {
         try
@@ -205,8 +235,30 @@ public class ApiClient
             return new ApiResponse<T> { Success = response.IsSuccessStatusCode, Message = response.ReasonPhrase };
         }
 
-        var result = JsonSerializer.Deserialize<ApiResponse<T>>(json, _jsonOptions);
-        return result ?? new ApiResponse<T> { Success = false, Message = "فشل في معالجة الاستجابة" };
+        try
+        {
+            var result = JsonSerializer.Deserialize<ApiResponse<T>>(json, _jsonOptions);
+            if (result != null)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Success = false;
+                }
+
+                if (!result.Success && string.IsNullOrWhiteSpace(result.Message))
+                {
+                    result.Message = ExtractValidationErrorMessage(json) ?? response.ReasonPhrase ?? "خطأ في تنفيذ الطلب";
+                }
+                return result;
+            }
+        }
+        catch
+        {
+            // تجاهل خطأ التحليل المباشر لتجربة استخراج الأخطاء من الـ JSON
+        }
+
+        var fallbackMsg = ExtractValidationErrorMessage(json) ?? response.ReasonPhrase ?? "فشل في معالجة الاستجابة";
+        return new ApiResponse<T> { Success = response.IsSuccessStatusCode, Message = fallbackMsg };
     }
 
     private async Task<ApiResponse> HandleVoidResponseAsync(HttpResponseMessage response, CancellationToken ct)
@@ -223,7 +275,69 @@ public class ApiClient
             return new ApiResponse { Success = response.IsSuccessStatusCode, Message = response.ReasonPhrase };
         }
 
-        var result = JsonSerializer.Deserialize<ApiResponse>(json, _jsonOptions);
-        return result ?? new ApiResponse { Success = false, Message = "فشل في معالجة الاستجابة" };
+        try
+        {
+            var result = JsonSerializer.Deserialize<ApiResponse>(json, _jsonOptions);
+            if (result != null)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Success = false;
+                }
+
+                if (!result.Success && string.IsNullOrWhiteSpace(result.Message))
+                {
+                    result.Message = ExtractValidationErrorMessage(json) ?? response.ReasonPhrase ?? "خطأ في تنفيذ الطلب";
+                }
+                return result;
+            }
+        }
+        catch
+        {
+            // تجاهل خطأ التحليل المباشر
+        }
+
+        var fallbackMsg = ExtractValidationErrorMessage(json) ?? response.ReasonPhrase ?? "فشل في معالجة الاستجابة";
+        return new ApiResponse { Success = response.IsSuccessStatusCode, Message = fallbackMsg };
+    }
+
+    private string? ExtractValidationErrorMessage(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Object)
+            {
+                var errorMessages = new System.Collections.Generic.List<string>();
+                foreach (var prop in errorsProp.EnumerateObject())
+                {
+                    foreach (var err in prop.Value.EnumerateArray())
+                    {
+                        var str = err.GetString();
+                        if (!string.IsNullOrWhiteSpace(str))
+                        {
+                            errorMessages.Add(str);
+                        }
+                    }
+                }
+                if (errorMessages.Count > 0)
+                {
+                    return string.Join(" | ", errorMessages);
+                }
+            }
+
+            if (root.TryGetProperty("title", out var titleProp))
+            {
+                return titleProp.GetString();
+            }
+        }
+        catch
+        {
+            // Ignore JSON parsing errors
+        }
+
+        return null;
     }
 }

@@ -7,7 +7,11 @@ using RetalSystemAPI.Desktop.ViewModels.Base;
 using RetalSystemAPI.Desktop.Views.Branches;
 using RetalSystemAPI.Desktop.Views.Catalog;
 using RetalSystemAPI.Desktop.Views.Dashboard;
+using RetalSystemAPI.Desktop.Views.Purchase;
+using RetalSystemAPI.Desktop.Views.Stock;
+using RetalSystemAPI.Desktop.Views.Suppliers;
 using RetalSystemAPI.Desktop.Views.Tenants;
+using RetalSystemAPI.Desktop.Views.Warehouses;
 
 namespace RetalSystemAPI.Desktop.ViewModels.Shell;
 
@@ -70,6 +74,34 @@ public partial class ShellViewModel : BaseViewModel
     {
         CurrentTitle = "وحدات القياس";
         _navigationService.NavigateTo<UnitsView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToSuppliers()
+    {
+        CurrentTitle = "الموردين";
+        _navigationService.NavigateTo<SuppliersView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToWarehouses()
+    {
+        CurrentTitle = "المخازن وصالات العرض";
+        _navigationService.NavigateTo<WarehousesView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToStock()
+    {
+        CurrentTitle = "إدارة المخزون والتسوية";
+        _navigationService.NavigateTo<StockView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToPurchaseOrders()
+    {
+        CurrentTitle = "الطلبيات والمشتريات";
+        _navigationService.NavigateTo<PurchaseOrdersView>();
     }
 
     [RelayCommand]

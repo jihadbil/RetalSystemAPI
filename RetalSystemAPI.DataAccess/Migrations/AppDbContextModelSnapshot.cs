@@ -449,6 +449,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "IsDeleted");
 
+                    b.HasIndex("TenantId", "IsDeleted", "Name");
+
                     b.ToTable("Products", (string)null);
                 });
 
@@ -672,6 +674,244 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.ToTable("Units", (string)null);
                 });
 
+            modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ExpectedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("OrderDate");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "OrderNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("PurchaseOrders", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("ProductBarCodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductBarCodeId");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.ToTable("PurchaseOrderItems", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "IsDeleted", "Name");
+
+                    b.ToTable("Suppliers", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierPhone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("TenantId", "PhoneNumber")
+                        .IsUnique();
+
+                    b.ToTable("SupplierPhones", (string)null);
+                });
+
             modelBuilder.Entity("RetalSystemAPI.Models.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -726,9 +966,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("TenantId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -740,9 +977,192 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.HasIndex("TenantId1");
-
                     b.ToTable("Tenants", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.ShowroomStock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MinStockLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("WarehouseId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("ShowroomStocks", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StorgeStock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MinStockLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("ProductBarcodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductBarcodeId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("WarehouseId", "ProductBarcodeId")
+                        .IsUnique();
+
+                    b.ToTable("StorgeStocks", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.Warehouse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.ToTable("Warehouses", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -965,11 +1385,158 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("RetalSystemAPI.Models.Tenant", b =>
+            modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrder", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrderItem", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany("PurchaseOrderItems")
+                        .HasForeignKey("ProductBarCodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("Items")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ProductBarCode");
+
+                    b.Navigation("PurchaseOrder");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.Supplier", b =>
                 {
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
-                        .HasForeignKey("TenantId1");
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierPhone", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany("SupplierPhones")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Supplier");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.ShowroomStock", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany("ShowroomStocks")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
+                        .WithMany("ShowroomStocks")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StorgeStock", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarcode")
+                        .WithMany("StorgeStocks")
+                        .HasForeignKey("ProductBarcodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
+                        .WithMany("WarehouseStocks")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductBarcode");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.Warehouse", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("Warehouses")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
 
                     b.Navigation("Tenant");
                 });
@@ -979,6 +1546,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("ApplicationUser");
 
                     b.Navigation("BranchPhones");
+
+                    b.Navigation("PurchaseOrders");
+
+                    b.Navigation("Warehouses");
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Category", b =>
@@ -995,16 +1566,41 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("ProductImages");
 
                     b.Navigation("ProductUnits");
+
+                    b.Navigation("ShowroomStocks");
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.ProductBarCode", b =>
                 {
                     b.Navigation("ProductImages");
+
+                    b.Navigation("PurchaseOrderItems");
+
+                    b.Navigation("StorgeStocks");
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Unit", b =>
                 {
                     b.Navigation("ProductUnits");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrder", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.Supplier", b =>
+                {
+                    b.Navigation("SupplierPhones");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.Warehouse", b =>
+                {
+                    b.Navigation("PurchaseOrders");
+
+                    b.Navigation("ShowroomStocks");
+
+                    b.Navigation("WarehouseStocks");
                 });
 #pragma warning restore 612, 618
         }

@@ -68,6 +68,7 @@ public class CreateProductRequest
     public decimal CostPrice { get; set; }
     public decimal SalePrice { get; set; }
     public Guid CategoryId { get; set; }
+    public int InitialShowroomQuantity { get; set; } = 0;
     public List<CreateProductBarCodeRequest> BarCodes { get; set; } = new();
     public List<CreateProductUnitRequest> Units { get; set; } = new();
 }
@@ -116,6 +117,7 @@ public class CreateProductBarCodeRequest
     public string BarCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public int InitialQuantity { get; set; } = 0;
 }
 
 public class UpdateProductBarCodeRequest

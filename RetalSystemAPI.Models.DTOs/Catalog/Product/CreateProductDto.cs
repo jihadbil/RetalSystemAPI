@@ -21,6 +21,9 @@ public class CreateProductDto
     [Required(ErrorMessage = "معرف التصنيف مطلوب")]
     public Guid CategoryId { get; set; }
 
+    [Range(0, int.MaxValue, ErrorMessage = "الكمية المبدئية في الصالة يجب أن تكون أكبر من أو تساوي 0")]
+    public int InitialShowroomQuantity { get; set; } = 0;
+
     public List<CreateProductBarCodeDto> BarCodes { get; set; } = new();
     public List<CreateProductUnitDto> Units { get; set; } = new();
 }

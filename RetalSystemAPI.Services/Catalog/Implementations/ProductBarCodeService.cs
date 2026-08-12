@@ -7,6 +7,8 @@ using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.DataAccess.Specifications;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductBarCode;
+using RetalSystemAPI.Models.Enums;
+using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
@@ -64,6 +66,21 @@ public class ProductBarCodeService : IProductBarCodeService
         barCodeEntity.ProductId = productId;
 
         await _unitOfWork.ProductBarCodes.AddAsync(barCodeEntity, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        // توليد سجل مخزون التخزين لكل مخزن تخزين قائم لهذه النكهة الجديدة
+        var storgeWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+        foreach (var storgeWh in storgeWarehouses)
+        {
+            var storgeStock = new StorgeStock
+            {
+                WarehouseId = storgeWh.Id,
+                ProductBarcodeId = barCodeEntity.Id,
+                Quantity = dto.InitialQuantity,
+                MinStockLevel = 0
+            };
+            await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+        }
         await _unitOfWork.SaveChangesAsync(ct);
 
         var responseDto = _mapper.Map<ProductBarCodeResponseDto>(barCodeEntity);

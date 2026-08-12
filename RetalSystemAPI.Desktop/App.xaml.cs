@@ -7,18 +7,29 @@ using RetalSystemAPI.Desktop.Core.Http;
 using RetalSystemAPI.Desktop.Core.Navigation;
 using RetalSystemAPI.Desktop.Services;
 using RetalSystemAPI.Desktop.Services.Catalog;
+using RetalSystemAPI.Desktop.Services.Purchase;
+using RetalSystemAPI.Desktop.Services.Suppliers;
+using RetalSystemAPI.Desktop.Services.Warehouses;
 using RetalSystemAPI.Desktop.ViewModels.Auth;
 using RetalSystemAPI.Desktop.ViewModels.Branches;
 using RetalSystemAPI.Desktop.ViewModels.Catalog;
 using RetalSystemAPI.Desktop.ViewModels.Dashboard;
+using RetalSystemAPI.Desktop.ViewModels.Purchase;
 using RetalSystemAPI.Desktop.ViewModels.Shell;
+using RetalSystemAPI.Desktop.ViewModels.Stock;
+using RetalSystemAPI.Desktop.ViewModels.Suppliers;
 using RetalSystemAPI.Desktop.ViewModels.Tenants;
+using RetalSystemAPI.Desktop.ViewModels.Warehouses;
 using RetalSystemAPI.Desktop.Views.Auth;
 using RetalSystemAPI.Desktop.Views.Branches;
 using RetalSystemAPI.Desktop.Views.Catalog;
 using RetalSystemAPI.Desktop.Views.Dashboard;
+using RetalSystemAPI.Desktop.Views.Purchase;
 using RetalSystemAPI.Desktop.Views.Shell;
+using RetalSystemAPI.Desktop.Views.Stock;
+using RetalSystemAPI.Desktop.Views.Suppliers;
 using RetalSystemAPI.Desktop.Views.Tenants;
+using RetalSystemAPI.Desktop.Views.Warehouses;
 
 namespace RetalSystemAPI.Desktop;
 
@@ -31,7 +42,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // منع إغلاق التطبيق تلقائياً عند إغلاق أو انتقال النواذف
+        // منع إغلاق التطبيق تلقائياً عند إغلاق أو انتقال النوافذ
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         var serviceCollection = new ServiceCollection();
@@ -87,6 +98,11 @@ public partial class App : Application
         services.AddTransient<IProductBarCodeApiService, ProductBarCodeApiService>();
         services.AddTransient<IProductImageApiService, ProductImageApiService>();
 
+        services.AddTransient<ISupplierApiService, SupplierApiService>();
+        services.AddTransient<IWarehouseApiService, WarehouseApiService>();
+        services.AddTransient<IStockApiService, StockApiService>();
+        services.AddTransient<IPurchaseOrderApiService, PurchaseOrderApiService>();
+
         // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
@@ -101,6 +117,15 @@ public partial class App : Application
         services.AddTransient<ProductsViewModel>();
         services.AddTransient<ProductFormViewModel>();
 
+        services.AddTransient<SuppliersViewModel>();
+        services.AddTransient<SupplierFormViewModel>();
+        services.AddTransient<WarehousesViewModel>();
+        services.AddTransient<WarehouseFormViewModel>();
+        services.AddTransient<StockViewModel>();
+        services.AddTransient<SetStockFormViewModel>();
+        services.AddTransient<PurchaseOrdersViewModel>();
+        services.AddTransient<PurchaseOrderFormViewModel>();
+
         // Views
         services.AddTransient<LoginView>();
         services.AddTransient<ShellWindow>();
@@ -110,6 +135,11 @@ public partial class App : Application
         services.AddTransient<CategoriesView>();
         services.AddTransient<UnitsView>();
         services.AddTransient<ProductsView>();
+
+        services.AddTransient<SuppliersView>();
+        services.AddTransient<WarehousesView>();
+        services.AddTransient<StockView>();
+        services.AddTransient<PurchaseOrdersView>();
     }
 
     public void ShowLoginWindow()

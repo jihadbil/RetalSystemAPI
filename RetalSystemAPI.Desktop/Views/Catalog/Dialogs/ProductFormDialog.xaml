@@ -91,6 +91,12 @@
                                 </StackPanel>
                             </Grid>
 
+                            <!-- Initial Showroom Stock Quantity -->
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="الكمية الافتتاحية / المبدئية في صالات العرض" Style="{StaticResource FormLabelStyle}" />
+                                <TextBox Text="{Binding InitialShowroomQuantity, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Width="200" HorizontalAlignment="Left" />
+                            </StackPanel>
+
                             <!-- Description -->
                             <TextBlock Text="الوصف" Style="{StaticResource FormLabelStyle}" />
                             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Height="60" TextWrapping="Wrap" VerticalContentAlignment="Top" />

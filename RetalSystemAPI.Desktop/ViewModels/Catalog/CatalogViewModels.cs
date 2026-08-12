@@ -472,11 +472,14 @@ public partial class ProductFormViewModel : BaseViewModel
     [ObservableProperty] private int _selectedAddConversionFactor = 1;
     [ObservableProperty] private bool _selectedAddIsDefault;
 
+    [ObservableProperty] private int _initialShowroomQuantity;
+
     // Multi-Barcode support
     [ObservableProperty] private ObservableCollection<CreateProductBarCodeRequest> _productBarCodes = new();
     [ObservableProperty] private string _selectedAddBarCode = string.Empty;
     [ObservableProperty] private string _selectedAddBarCodeTitle = string.Empty;
     [ObservableProperty] private string? _selectedAddBarCodeDescription;
+    [ObservableProperty] private int _selectedAddBarCodeInitialQuantity;
 
     // Product Images support
     [ObservableProperty] private ObservableCollection<ProductImageDto> _productImages = new();
@@ -751,12 +754,14 @@ public partial class ProductFormViewModel : BaseViewModel
         {
             BarCode = SelectedAddBarCode.Trim(),
             Title = title,
-            Description = SelectedAddBarCodeDescription?.Trim()
+            Description = SelectedAddBarCodeDescription?.Trim(),
+            InitialQuantity = SelectedAddBarCodeInitialQuantity
         });
 
         SelectedAddBarCode = string.Empty;
         SelectedAddBarCodeTitle = string.Empty;
         SelectedAddBarCodeDescription = string.Empty;
+        SelectedAddBarCodeInitialQuantity = 0;
     }
 
     [RelayCommand]
@@ -802,6 +807,7 @@ public partial class ProductFormViewModel : BaseViewModel
                     CostPrice = CostPrice,
                     SalePrice = SalePrice,
                     CategoryId = CategoryId,
+                    InitialShowroomQuantity = InitialShowroomQuantity,
                     Units = ProductUnits.ToList(),
                     BarCodes = ProductBarCodes.ToList()
                 };

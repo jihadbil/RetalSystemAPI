@@ -48,4 +48,22 @@ public static class ErrorCodes
     public const string InvalidFileType = "INVALID_FILE_TYPE";
     public const string FileTooLarge = "FILE_TOO_LARGE";
     public const string UploadFailed = "UPLOAD_FAILED";
+
+    // ── Suppliers ──────────────────────────────────────────
+    public const string SupplierNotFound = "SUPPLIER_NOT_FOUND";
+    public const string SupplierNameExists = "SUPPLIER_NAME_EXISTS";
+
+    // ── Warehouses ─────────────────────────────────────────
+    public const string WarehouseNotFound = "WAREHOUSE_NOT_FOUND";
+    public const string WarehouseNameExists = "WAREHOUSE_NAME_EXISTS";
+    public const string WarehouseHasStock = "WAREHOUSE_HAS_STOCK";
+
+    // ── Stock ──────────────────────────────────────────────
+    public const string StockNotFound = "STOCK_NOT_FOUND";
+    public const string InsufficientStock = "INSUFFICIENT_STOCK";
+
+    // ── Purchase Orders ────────────────────────────────────
+    public const string PurchaseOrderNotFound = "PURCHASE_ORDER_NOT_FOUND";
+    public const string PurchaseOrderNumberExists = "PURCHASE_ORDER_NUMBER_EXISTS";
+    public const string PurchaseOrderInvalidStatus = "PURCHASE_ORDER_INVALID_STATUS";
 }

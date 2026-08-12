@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -7,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Catalog.Product;
+using RetalSystemAPI.Models.Enums;
+using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Catalog.Specifications;
 using RetalSystemAPI.Services.Common.Models;
@@ -115,6 +118,45 @@ public class ProductService : IProductService
         }
 
         await _unitOfWork.Products.AddAsync(product, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        // 1. توليد سجل مخزون الصالة لكل صالة عرض قائمة
+        var showrooms = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Show, ct);
+        foreach (var show in showrooms)
+        {
+            var showStock = new ShowroomStock
+            {
+                WarehouseId = show.Id,
+                ProductId = product.Id,
+                Quantity = dto.InitialShowroomQuantity,
+                MinStockLevel = 0
+            };
+            await _unitOfWork.ShowroomStocks.AddAsync(showStock, ct);
+        }
+
+        // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم
+        var storgeWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+        if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
+        {
+            var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode, b => b.InitialQuantity) ?? new Dictionary<string, int>();
+
+            foreach (var storgeWh in storgeWarehouses)
+            {
+                foreach (var bc in product.ProductBarCodes)
+                {
+                    int initQty = initialQtyMap.TryGetValue(bc.BarCode, out int q) ? q : 0;
+                    var storgeStock = new StorgeStock
+                    {
+                        WarehouseId = storgeWh.Id,
+                        ProductBarcodeId = bc.Id,
+                        Quantity = initQty,
+                        MinStockLevel = 0
+                    };
+                    await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+                }
+            }
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         var createdProduct = await _unitOfWork.Products.FirstOrDefaultAsync(new ProductWithDetailsSpec(product.Id), ct) ?? product;

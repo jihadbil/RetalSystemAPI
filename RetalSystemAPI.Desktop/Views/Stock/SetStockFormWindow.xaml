@@ -1,0 +1,48 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Stock.SetStockFormWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        Title="تعديل وتسوية الرصيد" Height="340" Width="450" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="📝 تعديل وتسوية رصيد عنصر" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#1F2937"/>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="اسم المخزن / الصالة" FontWeight="SemiBold" Margin="0,5,0,5" Foreground="#6B7280"/>
+            <TextBox Text="{Binding Warehouse.Name}" IsReadOnly="True" Background="#F3F4F6" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+
+            <TextBlock Text="العنصر المراد تعديله" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="#6B7280"/>
+            <TextBox Text="{Binding Title}" IsReadOnly="True" Background="#F3F4F6" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,5,0">
+                    <TextBlock Text="الكمية الجديدة *" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                    <TextBlock Text="الحد الأدنى للمخزون *" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding MinStockLevel, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" Margin="0,10,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
+            <Button Content="حفظ التسوية" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#10B981" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+            <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="#9CA3AF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

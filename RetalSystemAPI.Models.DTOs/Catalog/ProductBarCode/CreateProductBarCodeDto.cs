@@ -14,4 +14,7 @@ public class CreateProductBarCodeDto
 
     [Required(ErrorMessage = "معرف المنتج مطلوب")]
     public Guid ProductId { get; set; }
+
+    [Range(0, int.MaxValue, ErrorMessage = "الكمية المبدئية يجب أن تكون أكبر من أو تساوي 0")]
+    public int InitialQuantity { get; set; } = 0;
 }

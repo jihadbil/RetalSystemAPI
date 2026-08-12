@@ -34,6 +34,10 @@
                     <Button Content="التصنيفات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToCategoriesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                     <Button Content="وحدات القياس" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUnitsCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                     <Button Content="المنتجات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToProductsCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
+                    <Button Content="👥 الموردين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToSuppliersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
+                    <Button Content="🏪 المخازن والصالات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToWarehousesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
+                    <Button Content="📦 إدارة المخزون" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
+                    <Button Content="📝 الطلبيات والمشتريات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToPurchaseOrdersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                 </StackPanel>
 
                 <!-- Footer Logout -->
