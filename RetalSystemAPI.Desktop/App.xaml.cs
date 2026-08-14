@@ -102,6 +102,7 @@ public partial class App : Application
         services.AddTransient<IWarehouseApiService, WarehouseApiService>();
         services.AddTransient<IStockApiService, StockApiService>();
         services.AddTransient<IPurchaseOrderApiService, PurchaseOrderApiService>();
+        services.AddTransient<RetalSystemAPI.Desktop.Services.Users.IUserApiService, RetalSystemAPI.Desktop.Services.Users.UserApiService>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
@@ -125,6 +126,9 @@ public partial class App : Application
         services.AddTransient<SetStockFormViewModel>();
         services.AddTransient<PurchaseOrdersViewModel>();
         services.AddTransient<PurchaseOrderFormViewModel>();
+        services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UsersViewModel>();
+        services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UserFormViewModel>();
+        services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.ResetPasswordViewModel>();
 
         // Views
         services.AddTransient<LoginView>();
@@ -140,6 +144,7 @@ public partial class App : Application
         services.AddTransient<WarehousesView>();
         services.AddTransient<StockView>();
         services.AddTransient<PurchaseOrdersView>();
+        services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UsersView>();
     }
 
     public void ShowLoginWindow()

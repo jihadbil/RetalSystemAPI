@@ -25,6 +25,16 @@ public class ProductBarCodesController : BaseApiController
     }
 
     /// <summary>
+    /// الحصول على جميع الأكواد/الباركودات الشاملة بالنظام مع إمكانية البحث باسم المنتج أو الباركود.
+    /// </summary>
+    [HttpGet("/api/catalog/barcodes")]
+    public async Task<IActionResult> GetAllBarCodes([FromQuery] string? search, CancellationToken ct)
+    {
+        var result = await _productBarCodeService.GetAllAsync(search, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
     /// الحصول على جميع الأكواد/الباركودات التابعة لمنتج معين.
     /// </summary>
     [HttpGet]

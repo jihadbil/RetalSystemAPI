@@ -58,6 +58,7 @@ public static class ServicesLayerExtensions
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
         services.AddScoped<IFileUploadService, FileUploadService>();
+        services.AddScoped<RetalSystemAPI.Services.Users.Interfaces.IUserService, RetalSystemAPI.Services.Users.Implementations.UserService>();
 
         return services;
     }

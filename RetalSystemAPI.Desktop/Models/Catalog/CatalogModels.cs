@@ -69,8 +69,27 @@ public class CreateProductRequest
     public decimal SalePrice { get; set; }
     public Guid CategoryId { get; set; }
     public int InitialShowroomQuantity { get; set; } = 0;
+    public Guid? ShowroomWarehouseId { get; set; }
+    public Guid? StorageWarehouseId { get; set; }
+    public List<CreateShowroomStockQuantityRequest> ShowroomInitialQuantities { get; set; } = new();
+    public List<CreateStorageStockQuantityRequest> StorageInitialQuantities { get; set; } = new();
     public List<CreateProductBarCodeRequest> BarCodes { get; set; } = new();
     public List<CreateProductUnitRequest> Units { get; set; } = new();
+}
+
+public class CreateShowroomStockQuantityRequest
+{
+    public Guid WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+}
+
+public class CreateStorageStockQuantityRequest
+{
+    public Guid WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = string.Empty;
+    public string BarCode { get; set; } = string.Empty;
+    public int Quantity { get; set; }
 }
 
 public class UpdateProductRequest
@@ -110,6 +129,8 @@ public class ProductBarCodeDto
     public string BarCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public decimal CostPrice { get; set; }
 }
 
 public class CreateProductBarCodeRequest

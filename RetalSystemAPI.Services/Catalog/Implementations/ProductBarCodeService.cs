@@ -18,6 +18,20 @@ public class ProductBarCodesByProductSpec : BaseSpecification<ProductBarCode>
 {
     public ProductBarCodesByProductSpec(Guid productId) : base(b => b.ProductId == productId)
     {
+        AddInclude(b => b.Product!);
+        AddInclude(b => b.ProductImages);
+    }
+}
+
+public class AllProductBarCodesSpec : BaseSpecification<ProductBarCode>
+{
+    public AllProductBarCodesSpec(string? search = null)
+        : base(b => string.IsNullOrWhiteSpace(search) ||
+                   b.BarCode.Contains(search) ||
+                   b.Title.Contains(search) ||
+                   (b.Product != null && b.Product.Name.Contains(search)))
+    {
+        AddInclude(b => b.Product!);
         AddInclude(b => b.ProductImages);
     }
 }
@@ -34,6 +48,15 @@ public class ProductBarCodeService : IProductBarCodeService
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+    }
+
+    public async Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetAllAsync(string? search = null, CancellationToken ct = default)
+    {
+        var spec = new AllProductBarCodesSpec(search);
+        var barCodes = await _unitOfWork.ProductBarCodes.FindAsync(spec, ct);
+        var dtos = _mapper.Map<IReadOnlyList<ProductBarCodeResponseDto>>(barCodes);
+
+        return ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>.Success(dtos);
     }
 
     public async Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)

@@ -194,6 +194,16 @@ public partial class PurchaseOrdersViewModel : BaseViewModel
     }
 }
 
+public class BarcodeOptionItem
+{
+    public Guid BarCodeId { get; set; }
+    public string BarcodeValue { get; set; } = string.Empty;
+    public string BarcodeTitle { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public decimal CostPrice { get; set; }
+    public string DisplayText => $"[{BarcodeValue}] {ProductName} - {BarcodeTitle} ({CostPrice:N2} د.ل)";
+}
+
 public partial class PurchaseOrderFormViewModel : BaseViewModel
 {
     private readonly IPurchaseOrderApiService _purchaseOrderApiService;
@@ -220,6 +230,24 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
     private WarehouseSummaryDto? _selectedWarehouse;
 
     [ObservableProperty]
+    private string _itemSearchQuery = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<BarcodeOptionItem> _barcodeOptions = new();
+
+    [ObservableProperty]
+    private ObservableCollection<BarcodeOptionItem> _filteredBarcodeOptions = new();
+
+    [ObservableProperty]
+    private BarcodeOptionItem? _selectedBarcodeOption;
+
+    [ObservableProperty]
+    private decimal _inputQuantity = 1;
+
+    [ObservableProperty]
+    private decimal _inputUnitPrice = 0;
+
+    [ObservableProperty]
     private DateTime _orderDate = DateTime.Now;
 
     [ObservableProperty]
@@ -233,6 +261,47 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private bool _isEditMode;
+
+    partial void OnItemSearchQueryChanged(string value)
+    {
+        FilterBarcodeOptions();
+    }
+
+    partial void OnSelectedBarcodeOptionChanged(BarcodeOptionItem? value)
+    {
+        if (value != null)
+        {
+            InputUnitPrice = value.CostPrice;
+            if (InputQuantity <= 0) InputQuantity = 1;
+        }
+    }
+
+    private void FilterBarcodeOptions()
+    {
+        if (string.IsNullOrWhiteSpace(ItemSearchQuery))
+        {
+            FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(BarcodeOptions);
+        }
+        else
+        {
+            var q = ItemSearchQuery.Trim();
+            var filtered = BarcodeOptions.Where(b =>
+                b.ProductName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                b.BarcodeValue.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                b.BarcodeTitle.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(filtered);
+        }
+
+        if (FilteredBarcodeOptions.Count > 0)
+        {
+            SelectedBarcodeOption = FilteredBarcodeOptions[0];
+        }
+        else
+        {
+            SelectedBarcodeOption = null;
+        }
+    }
 
     public Action? CloseWindowHandler { get; set; }
 
@@ -256,6 +325,22 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
         var wRes = await _warehouseApiService.GetAllAsync();
         if (wRes.Success && wRes.Data != null) Warehouses = new ObservableCollection<WarehouseSummaryDto>(wRes.Data);
 
+        var bcRes = await _barCodeApiService.GetAllAsync();
+        if (bcRes.Success && bcRes.Data != null)
+        {
+            var options = bcRes.Data.Select(bc => new BarcodeOptionItem
+            {
+                BarCodeId = bc.Id,
+                BarcodeValue = bc.BarCode,
+                BarcodeTitle = bc.Title,
+                ProductName = bc.ProductName,
+                CostPrice = bc.CostPrice
+            }).ToList();
+
+            BarcodeOptions = new ObservableCollection<BarcodeOptionItem>(options);
+            FilterBarcodeOptions();
+        }
+
         if (id.HasValue)
         {
             IsEditMode = true;
@@ -268,7 +353,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
             OrderId = null;
             OrderNumber = $"PO-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
             SelectedBranch = Branches.Count > 0 ? Branches[0] : null;
-            SelectedWarehouse = null;
+            SelectedWarehouse = Warehouses.Count > 0 ? Warehouses[0] : null;
             OrderDate = DateTime.Now;
             ExpectedDate = DateTime.Now.AddDays(7);
             Items = new ObservableCollection<PurchaseOrderItemDto>();
@@ -296,10 +381,39 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private void AddItem(PurchaseOrderItemDto item)
+    private void AddItem()
     {
+        if (SelectedBarcodeOption == null)
+        {
+            ErrorMessage = "يرجى كتابة اسم المنتج أو الباركود واختيار الصنف المطابق أولاً";
+            return;
+        }
+
+        if (InputQuantity <= 0)
+        {
+            ErrorMessage = "يرجى إدخال كمية أكبر من صفر";
+            return;
+        }
+
+        var item = new PurchaseOrderItemDto
+        {
+            ProductBarCodeId = SelectedBarcodeOption.BarCodeId,
+            BarcodeValue = SelectedBarcodeOption.BarcodeValue,
+            BarcodeTitle = SelectedBarcodeOption.BarcodeTitle,
+            ProductName = SelectedBarcodeOption.ProductName,
+            Quantity = InputQuantity,
+            UnitPrice = InputUnitPrice,
+            LineTotal = InputQuantity * InputUnitPrice
+        };
+
         Items.Add(item);
         RecalculateTotal();
+        ErrorMessage = string.Empty;
+
+        ItemSearchQuery = string.Empty;
+        SelectedBarcodeOption = null;
+        InputQuantity = 1;
+        InputUnitPrice = 0;
     }
 
     [RelayCommand]
@@ -329,6 +443,12 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
         if (SelectedBranch == null)
         {
             ErrorMessage = "اختيار الفرع مطلوب";
+            return;
+        }
+
+        if (Items.Count == 0)
+        {
+            ErrorMessage = "يرجى إضافة بند واحد على الأقل للطلبية";
             return;
         }
 

@@ -79,4 +79,42 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             }
         }
     }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditAndTenantInfo();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAuditAndTenantInfo();
+        return base.SaveChanges();
+    }
+
+    private void ApplyAuditAndTenantInfo()
+    {
+        var tenantId = CurrentTenantId;
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.TenantId == Guid.Empty && tenantId != Guid.Empty)
+                {
+                    entry.Entity.TenantId = tenantId;
+                }
+
+                if (entry.Entity.CreatedAt == default)
+                {
+                    entry.Entity.CreatedAt = now;
+                }
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
+            }
+        }
+    }
 }

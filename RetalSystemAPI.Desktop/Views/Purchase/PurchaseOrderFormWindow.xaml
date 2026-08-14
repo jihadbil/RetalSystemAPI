@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         mc:Ignorable="d" 
-        Title="تفاصيل أمر الشراء / الطلبية" Height="580" Width="680" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft">
+        Title="تفاصيل أمر الشراء / الطلبية" Height="620" Width="720" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" Background="#F6F8F7">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -13,7 +13,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="📝 تفاصيل أمر الشراء / الطلبية" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#1F2937"/>
+        <TextBlock Grid.Row="0" Text="📝 تفاصيل أمر الشراء / الطلبية" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#111827"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
@@ -23,12 +23,12 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Margin="0,0,5,0">
-                        <TextBlock Text="رقم الطلبية *" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding OrderNumber, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                        <TextBlock Text="رقم الطلبية *" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#111827"/>
+                        <TextBox Text="{Binding OrderNumber, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                        <TextBlock Text="الفرع *" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="32" VerticalContentAlignment="Center"/>
+                        <TextBlock Text="الفرع *" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#111827"/>
+                        <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
                     </StackPanel>
                 </Grid>
 
@@ -38,31 +38,75 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Margin="0,0,5,0">
-                        <TextBlock Text="المخزن / الصالة" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="32" VerticalContentAlignment="Center"/>
+                        <TextBlock Text="المخزن / الصالة" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#111827"/>
+                        <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                        <TextBlock Text="التاريخ المتوقع للاستلام" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <DatePicker SelectedDate="{Binding ExpectedDate}" Height="32" VerticalContentAlignment="Center"/>
+                        <TextBlock Text="التاريخ المتوقع للاستلام" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#111827"/>
+                        <DatePicker SelectedDate="{Binding ExpectedDate}" Height="34" VerticalContentAlignment="Center"/>
                     </StackPanel>
                 </Grid>
 
-                <!-- Items Section -->
-                <Border BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,10,0,0" Padding="10" CornerRadius="6" Background="#F9FAFB">
+                <!-- Items Section Card -->
+                <Border BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,10,0,0" Padding="12" CornerRadius="8" Background="#FFFFFF">
                     <StackPanel>
-                        <TextBlock Text="📦 بنود الطلبية" FontWeight="Bold" Margin="0,0,0,10" Foreground="#374151"/>
+                        <TextBlock Text="📦 بنود الطلبية والمشتريات" FontWeight="Bold" Margin="0,0,0,10" Foreground="#111827" FontSize="14"/>
 
-                        <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="False" Height="160" HeadersVisibility="Column">
+                        <!-- Add Item Controls Bar -->
+                        <Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.5*"/>
+                                        <ColumnDefinition Width="2*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Search Input -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="🔍 ابحث بالاسم أو الباركود *" FontSize="11" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding ItemSearchQuery, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
+                                    </StackPanel>
+
+                                    <!-- Filtered Results Dropdown -->
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="الأصناف المطابقة للبحث *" FontSize="11" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding FilteredBarcodeOptions}" SelectedItem="{Binding SelectedBarcodeOption}" DisplayMemberPath="DisplayText" Height="34" VerticalContentAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="الكمية *" FontSize="11" Foreground="#6B7280" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding InputQuantity, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="6,0" VerticalContentAlignment="Center" TextAlignment="Center" Background="#FFFFFF"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Text="سعر الشراء للوحدة *" FontSize="11" Foreground="#6B7280" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding InputUnitPrice, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="6,0" VerticalContentAlignment="Center" TextAlignment="Center" Background="#FFFFFF"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2" Content="+ إضافة بند للطلبية" Command="{Binding AddItemCommand}" Height="34" Padding="15,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" VerticalAlignment="Bottom"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="False" MinHeight="140" MaxHeight="220" HeadersVisibility="Column" Background="#FFFFFF">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="اسم المنتج" Binding="{Binding ProductName}" Width="2*"/>
-                                <DataGridTextColumn Header="الباركود" Binding="{Binding BarcodeValue}" Width="1.5*"/>
+                                <DataGridTextColumn Header="الباركود / النكهة" Binding="{Binding BarcodeValue}" Width="1.5*"/>
                                 <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="1*"/>
                                 <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}" Width="1*"/>
                                 <DataGridTextColumn Header="الإجمالي" Binding="{Binding LineTotal, StringFormat={}{0:N2}}" IsReadOnly="True" Width="1.2*"/>
                                 <DataGridTemplateColumn Header="إجراء" Width="60">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="حذف" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" BorderThickness="0" Padding="4,2"/>
+                                            <Button Content="حذف" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Padding="4,2"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -70,8 +114,8 @@
                         </DataGrid>
 
                         <DockPanel Margin="0,10,0,0">
-                            <TextBlock Text="إجمالي التكلفة الكلية:" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontWeight="Bold" FontSize="16" Foreground="#10B981" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBlock Text="إجمالي التكلفة الكلية:" FontWeight="Bold" FontSize="15" Foreground="#111827" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontWeight="Bold" FontSize="18" Foreground="#38E07B" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </DockPanel>
                     </StackPanel>
                 </Border>
@@ -81,7 +125,7 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
-            <Button Content="حفظ الطلبية" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#10B981" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+            <Button Content="حفظ الطلبية" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
             <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="#9CA3AF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
     </Grid>

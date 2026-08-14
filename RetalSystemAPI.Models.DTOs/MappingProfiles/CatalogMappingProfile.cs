@@ -32,7 +32,9 @@ public class CatalogMappingProfile : Profile
 
         // ProductBarCode
         CreateMap<ProductBarCode, ProductBarCodeResponseDto>()
-            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ProductImages));
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ProductImages))
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty))
+            .ForMember(dest => dest.CostPrice, opt => opt.MapFrom(src => src.Product != null ? src.Product.CostPrice : 0m));
         CreateMap<CreateProductBarCodeDto, ProductBarCode>();
 
         // ProductImage

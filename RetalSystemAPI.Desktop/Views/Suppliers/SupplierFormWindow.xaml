@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         mc:Ignorable="d" 
-        Title="بيانات المورد والهواتف" Height="500" Width="550" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft">
+        Title="بيانات المورد والهواتف" Height="500" Width="550" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" Background="#F6F8F7">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -13,41 +13,42 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="👤 بيانات المورد والهواتف" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#1F2937"/>
+        <TextBlock Grid.Row="0" Text="👤 بيانات المورد والهواتف" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#111827"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <TextBlock Text="اسم المورد *" FontWeight="SemiBold" Margin="0,5,0,5"/>
-                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                <TextBlock Text="اسم المورد *" FontWeight="SemiBold" Margin="0,5,0,5" Foreground="#111827"/>
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
 
-                <TextBlock Text="العنوان" FontWeight="SemiBold" Margin="0,10,0,5"/>
-                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                <TextBlock Text="العنوان" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="#111827"/>
+                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
 
-                <TextBlock Text="الرصيد الافتتاحي" FontWeight="SemiBold" Margin="0,10,0,5"/>
-                <TextBox Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}" Height="32" Padding="5,0" VerticalContentAlignment="Center"/>
+                <TextBlock Text="الرصيد الافتتاحي" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="#111827"/>
+                <TextBox Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
 
-                <Border BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,15,0,0" Padding="10" CornerRadius="6" Background="#F9FAFB">
+                <!-- Supplier Phones Section Card -->
+                <Border BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,15,0,0" Padding="12" CornerRadius="8" Background="#FFFFFF">
                     <StackPanel>
-                        <TextBlock Text="📞 إدارة هواتف المورد" FontWeight="Bold" Margin="0,0,0,10" Foreground="#374151"/>
+                        <TextBlock Text="📞 إدارة هواتف المورد" FontWeight="Bold" Margin="0,0,0,10" Foreground="#111827"/>
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Text="{Binding NewPhoneNumber, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center" Padding="5,0" Margin="0,0,5,0"/>
-                            <TextBox Grid.Column="1" Text="{Binding NewPhoneName, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center" Padding="5,0" Margin="5,0"/>
-                            <Button Grid.Column="2" Content="+ إضافة" Command="{Binding AddPhoneCommand}" Height="32" Padding="10,0" Background="#10B981" Foreground="White" BorderThickness="0"/>
+                            <TextBox Text="{Binding NewPhoneNumber, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,0,5,0" Background="#F9FAFB"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewPhoneName, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="5,0" Background="#F9FAFB"/>
+                            <Button Grid.Column="2" Content="+ إضافة" Command="{Binding AddPhoneCommand}" Height="34" Padding="14,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
 
-                        <DataGrid ItemsSource="{Binding Phones}" AutoGenerateColumns="False" IsReadOnly="True" Height="120" HeadersVisibility="Column">
+                        <DataGrid ItemsSource="{Binding Phones}" AutoGenerateColumns="False" IsReadOnly="True" Height="120" HeadersVisibility="Column" Background="#FFFFFF">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="رقم الهاتف" Binding="{Binding PhoneNumber}" Width="2*"/>
                                 <DataGridTextColumn Header="الاسم / الملاحظات" Binding="{Binding Name}" Width="2*"/>
                                 <DataGridTemplateColumn Header="إجراء" Width="70">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="حذف" Command="{Binding DataContext.DeletePhoneCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" BorderThickness="0" Padding="4,2"/>
+                                            <Button Content="حذف" Command="{Binding DataContext.DeletePhoneCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Padding="4,2" Cursor="Hand"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -61,7 +62,7 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
-            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#10B981" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
             <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="#9CA3AF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
     </Grid>

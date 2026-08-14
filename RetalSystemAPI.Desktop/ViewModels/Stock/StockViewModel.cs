@@ -37,13 +37,29 @@ public partial class StockViewModel : BaseViewModel
     [ObservableProperty]
     private int _selectedTabIndex = 0; // 0: Storge, 1: Showroom, 2: Low Stock Alerts
 
+    [ObservableProperty] private int _pageNumber = 1;
+    [ObservableProperty] private int _pageSize = 10;
+    [ObservableProperty] private int _totalPages = 1;
+    [ObservableProperty] private int _totalCount = 0;
+    [ObservableProperty] private string _searchTerm = string.Empty;
+    [ObservableProperty] private bool _hasPreviousPage = false;
+    [ObservableProperty] private bool _hasNextPage = false;
+
     partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
     {
+        PageNumber = 1;
         _ = RefreshCurrentTabAsync();
     }
 
     partial void OnSelectedTabIndexChanged(int value)
     {
+        PageNumber = 1;
+        _ = RefreshCurrentTabAsync();
+    }
+
+    partial void OnPageSizeChanged(int value)
+    {
+        PageNumber = 1;
         _ = RefreshCurrentTabAsync();
     }
 
@@ -76,6 +92,33 @@ public partial class StockViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    public async Task SearchAsync()
+    {
+        PageNumber = 1;
+        await RefreshCurrentTabAsync();
+    }
+
+    [RelayCommand]
+    public async Task NextPageAsync()
+    {
+        if (HasNextPage)
+        {
+            PageNumber++;
+            await RefreshCurrentTabAsync();
+        }
+    }
+
+    [RelayCommand]
+    public async Task PreviousPageAsync()
+    {
+        if (HasPreviousPage && PageNumber > 1)
+        {
+            PageNumber--;
+            await RefreshCurrentTabAsync();
+        }
+    }
+
+    [RelayCommand]
     public async Task RefreshCurrentTabAsync()
     {
         await ExecuteAsync(async () =>
@@ -84,18 +127,32 @@ public partial class StockViewModel : BaseViewModel
             {
                 if (SelectedWarehouse != null)
                 {
-                    var res = await _stockApiService.GetStorgeStocksByWarehouseAsync(SelectedWarehouse.Id);
+                    var res = await _stockApiService.GetPagedStorgeStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm);
                     if (res.Success && res.Data != null)
-                        StorgeStocks = new ObservableCollection<StorgeStockDto>(res.Data);
+                    {
+                        StorgeStocks = new ObservableCollection<StorgeStockDto>(res.Data.Items);
+                        PageNumber = res.Data.PageNumber;
+                        TotalPages = res.Data.TotalPages;
+                        TotalCount = res.Data.TotalCount;
+                        HasPreviousPage = res.Data.HasPreviousPage;
+                        HasNextPage = res.Data.HasNextPage;
+                    }
                 }
             }
             else if (SelectedTabIndex == 1)
             {
                 if (SelectedWarehouse != null)
                 {
-                    var res = await _stockApiService.GetShowroomStocksByWarehouseAsync(SelectedWarehouse.Id);
+                    var res = await _stockApiService.GetPagedShowroomStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm);
                     if (res.Success && res.Data != null)
-                        ShowroomStocks = new ObservableCollection<ShowroomStockDto>(res.Data);
+                    {
+                        ShowroomStocks = new ObservableCollection<ShowroomStockDto>(res.Data.Items);
+                        PageNumber = res.Data.PageNumber;
+                        TotalPages = res.Data.TotalPages;
+                        TotalCount = res.Data.TotalCount;
+                        HasPreviousPage = res.Data.HasPreviousPage;
+                        HasNextPage = res.Data.HasNextPage;
+                    }
                 }
             }
             else if (SelectedTabIndex == 2)

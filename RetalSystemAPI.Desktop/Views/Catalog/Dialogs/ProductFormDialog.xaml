@@ -91,11 +91,43 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Initial Showroom Stock Quantity -->
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="الكمية الافتتاحية / المبدئية في صالات العرض" Style="{StaticResource FormLabelStyle}" />
-                                <TextBox Text="{Binding InitialShowroomQuantity, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Width="200" HorizontalAlignment="Left" />
-                            </StackPanel>
+                            <!-- Initial Showroom Stock Quantity & Target Showroom -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="15" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="صالة العرض المستهدفة (افتراضي)" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox ItemsSource="{Binding Showrooms}" SelectedItem="{Binding SelectedShowroom}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="الكمية الافتتاحية في الصالة" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding InitialShowroomQuantity, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Multi Showroom Stock Quantities Distribution -->
+                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🏪 توزيع الكميات المبدئية للصنف على صالات العرض" Style="{StaticResource FormLabelStyle}" FontWeight="Bold" Foreground="#1E40AF" Margin="0,0,0,8" />
+                                    <DataGrid ItemsSource="{Binding ShowroomInitialQuantities}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="70" MaxHeight="160">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="صالة العرض / المخزن" Binding="{Binding WarehouseName}" IsReadOnly="True" Width="*" FontWeight="SemiBold" />
+                                            <DataGridTemplateColumn Header="الكمية المبدئية بالصالة" Width="180">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBox Text="{Binding Quantity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" TextAlignment="Center" Padding="4" FontWeight="Bold" Foreground="#059669" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </StackPanel>
+                            </Border>
 
                             <!-- Description -->
                             <TextBlock Text="الوصف" Style="{StaticResource FormLabelStyle}" />
@@ -164,16 +196,28 @@
                     <Grid Margin="4,12">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <!-- Add Barcode Form -->
+                        <!-- Storage Warehouse Selector -->
                         <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="مخزن التخزين المستهدف للكمية المبدئية (افتراضي):" Style="{StaticResource FormLabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox ItemsSource="{Binding StorageWarehouses}" SelectedItem="{Binding SelectedStorageWarehouse}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Width="250" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Add Barcode Form -->
+                        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="8" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="120" />
                                     <ColumnDefinition Width="8" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
@@ -188,15 +232,21 @@
                                     <TextBox Text="{Binding SelectedAddBarCodeTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
                                 </StackPanel>
 
-                                <Button Grid.Column="4" Content="+ إضافة الكود" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding AddProductBarCodeCommand}" VerticalAlignment="Bottom" Padding="12,8" />
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="الكمية المبدئية بالمخزن" Style="{StaticResource FormLabelStyle}" />
+                                    <TextBox Text="{Binding SelectedAddBarCodeInitialQuantity, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="6" Content="+ إضافة الكود" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding AddProductBarCodeCommand}" VerticalAlignment="Bottom" Padding="12,8" />
                             </Grid>
                         </Border>
 
                         <!-- Barcodes DataGrid -->
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding ProductBarCodes}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding ProductBarCodes}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="140">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="الباركود" Binding="{Binding BarCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" />
+                                <DataGridTextColumn Header="الباركود" Binding="{Binding BarCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="150" />
                                 <DataGridTextColumn Header="اسم الكود / التسمية التمييزية" Binding="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                <DataGridTextColumn Header="الكمية المبدئية" Binding="{Binding InitialQuantity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110" />
                                 <DataGridTextColumn Header="الوصف" Binding="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*" />
                                 <DataGridTemplateColumn Header="إجراء" Width="80">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -207,6 +257,26 @@
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
+
+                        <!-- Storage Quantities Distribution Grid -->
+                        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
+                            <StackPanel>
+                                <TextBlock Text="🏬 مصفوفة توزيع كميات النكهات والباركودات على مخازن التخزين المختلفة" Style="{StaticResource FormLabelStyle}" FontWeight="Bold" Foreground="#1E40AF" Margin="0,0,0,8" />
+                                <DataGrid ItemsSource="{Binding StorageInitialQuantities}" Style="{StaticResource DefaultDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="90" MaxHeight="200">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="المخزن المستهدف" Binding="{Binding WarehouseName}" IsReadOnly="True" Width="200" FontWeight="SemiBold" />
+                                        <DataGridTextColumn Header="الباركود / النكهة" Binding="{Binding BarCode}" IsReadOnly="True" Width="180" Foreground="#4B5563" />
+                                        <DataGridTemplateColumn Header="الكمية المبدئية بالمخزن" Width="*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBox Text="{Binding Quantity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" TextAlignment="Center" Padding="4" FontWeight="Bold" Foreground="#2563EB" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </TabItem>
 

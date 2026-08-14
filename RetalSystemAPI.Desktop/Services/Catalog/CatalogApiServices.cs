@@ -184,6 +184,7 @@ public class ProductUnitApiService : IProductUnitApiService
 
 public interface IProductBarCodeApiService
 {
+    Task<ApiResponse<List<ProductBarCodeDto>>> GetAllAsync(string? search = null, CancellationToken ct = default);
     Task<ApiResponse<List<ProductBarCodeDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default);
     Task<ApiResponse<ProductBarCodeDto>> AddAsync(Guid productId, CreateProductBarCodeRequest request, CancellationToken ct = default);
     Task<ApiResponse<ProductBarCodeDto>> UpdateAsync(Guid productId, Guid barCodeId, UpdateProductBarCodeRequest request, CancellationToken ct = default);
@@ -197,6 +198,13 @@ public class ProductBarCodeApiService : IProductBarCodeApiService
     public ProductBarCodeApiService(ApiClient apiClient)
     {
         _apiClient = apiClient;
+    }
+
+    public Task<ApiResponse<List<ProductBarCodeDto>>> GetAllAsync(string? search = null, CancellationToken ct = default)
+    {
+        var url = "catalog/barcodes";
+        if (!string.IsNullOrWhiteSpace(search)) url += $"?search={Uri.EscapeDataString(search)}";
+        return _apiClient.GetAsync<List<ProductBarCodeDto>>(url, ct);
     }
 
     public Task<ApiResponse<List<ProductBarCodeDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default) =>

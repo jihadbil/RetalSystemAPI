@@ -24,6 +24,25 @@ public class CreateProductDto
     [Range(0, int.MaxValue, ErrorMessage = "الكمية المبدئية في الصالة يجب أن تكون أكبر من أو تساوي 0")]
     public int InitialShowroomQuantity { get; set; } = 0;
 
+    public Guid? ShowroomWarehouseId { get; set; }
+    public Guid? StorageWarehouseId { get; set; }
+
+    public List<CreateShowroomStockQuantityDto> ShowroomInitialQuantities { get; set; } = new();
+    public List<CreateStorageStockQuantityDto> StorageInitialQuantities { get; set; } = new();
+
     public List<CreateProductBarCodeDto> BarCodes { get; set; } = new();
     public List<CreateProductUnitDto> Units { get; set; } = new();
+}
+
+public class CreateShowroomStockQuantityDto
+{
+    public Guid WarehouseId { get; set; }
+    public int Quantity { get; set; }
+}
+
+public class CreateStorageStockQuantityDto
+{
+    public Guid WarehouseId { get; set; }
+    public string BarCode { get; set; } = null!;
+    public int Quantity { get; set; }
 }

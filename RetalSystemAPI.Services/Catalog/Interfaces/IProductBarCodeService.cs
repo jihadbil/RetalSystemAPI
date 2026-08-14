@@ -12,6 +12,7 @@ namespace RetalSystemAPI.Services.Catalog.Interfaces;
 /// </summary>
 public interface IProductBarCodeService
 {
+    Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetAllAsync(string? search = null, CancellationToken ct = default);
     Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default);
     Task<ServiceResult<ProductBarCodeResponseDto>> AddBarCodeAsync(Guid productId, CreateProductBarCodeDto dto, CancellationToken ct = default);
     Task<ServiceResult<ProductBarCodeResponseDto>> UpdateBarCodeAsync(Guid barCodeId, UpdateProductBarCodeDto dto, CancellationToken ct = default);

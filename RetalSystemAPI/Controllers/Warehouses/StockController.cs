@@ -37,6 +37,21 @@ public class StockController : BaseApiController
     }
 
     /// <summary>
+    /// الحصول على الكميات المخزنية لمخزن تخزين محدد مقسمة لصفحات وبحث.
+    /// </summary>
+    [HttpGet("storge/{warehouseId:guid}/paged")]
+    public async Task<IActionResult> GetPagedStorgeStocksByWarehouse(
+        [FromRoute] Guid warehouseId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null,
+        CancellationToken ct = default)
+    {
+        var result = await _stockService.GetPagedStorgeStocksByWarehouseAsync(warehouseId, pageNumber, pageSize, searchTerm, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
     /// الحصول على رصيد باركود محدد في مخزن تخزين معين.
     /// </summary>
     [HttpGet("storge/{warehouseId:guid}/barcode/{productBarcodeId:guid}")]
@@ -75,6 +90,21 @@ public class StockController : BaseApiController
     public async Task<IActionResult> GetShowroomStocksByWarehouse([FromRoute] Guid warehouseId, CancellationToken ct)
     {
         var result = await _stockService.GetShowroomStocksByWarehouseAsync(warehouseId, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// الحصول على الكميات المخزنية لصالة عرض محددة مقسمة لصفحات وبحث.
+    /// </summary>
+    [HttpGet("showroom/{warehouseId:guid}/paged")]
+    public async Task<IActionResult> GetPagedShowroomStocksByWarehouse(
+        [FromRoute] Guid warehouseId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null,
+        CancellationToken ct = default)
+    {
+        var result = await _stockService.GetPagedShowroomStocksByWarehouseAsync(warehouseId, pageNumber, pageSize, searchTerm, ct);
         return ToActionResult(result);
     }
 

@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft">
+             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft" Background="#F6F8F7">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -15,58 +15,124 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,15">
-            <Button Content="تحديث الأرصدة" Command="{Binding RefreshCurrentTabCommand}" DockPanel.Dock="Left" Height="36" Padding="15,0" Background="#3B82F6" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="📦 إدارة وتسويه المخزون" FontSize="22" FontWeight="Bold" Foreground="#1F2937" VerticalAlignment="Center"/>
+            <Button Content="تحديث الأرصدة" Command="{Binding RefreshCurrentTabCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="📦 إدارة وتسويه المخزون" FontSize="22" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
         </DockPanel>
 
-        <!-- Warehouse Selector Bar -->
-        <Border Grid.Row="1" Background="White" CornerRadius="6" Padding="10" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="المخزن / الصالة المحدد:" VerticalAlignment="Center" Margin="5,0,10,0" FontWeight="SemiBold"/>
-                <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Width="250" Height="32" VerticalContentAlignment="Center"/>
-            </StackPanel>
+        <!-- Warehouse Selector & Search Bar Card -->
+        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <TextBox Text="{Binding SearchTerm, UpdateSourceTrigger=PropertyChanged}" Width="240" Height="34" VerticalContentAlignment="Center" Padding="10,0" Margin="0,0,8,0" Background="#F9FAFB" BorderBrush="#E5E7EB">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="🔍 بحث" Command="{Binding SearchCommand}" Height="34" Padding="15,0" Background="#111827" Foreground="#FFFFFF" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="المخزن / الصالة المحدد:" VerticalAlignment="Center" Margin="5,0,10,0" FontWeight="SemiBold" Foreground="#111827"/>
+                    <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Width="220" Height="34" VerticalContentAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Tabs -->
-        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex}" Background="White" BorderBrush="#E5E7EB">
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex}" Background="#FFFFFF" BorderBrush="#E5E7EB">
             <!-- Tab 1: Storage Stock -->
             <TabItem Header="🏬 مخزون التخزين (بالباركود)" FontSize="14" FontWeight="SemiBold" Padding="15,8">
-                <DataGrid ItemsSource="{Binding StorgeStocks}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" RowHeight="40">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="المنتج" Binding="{Binding ProductName}" Width="2*"/>
-                        <DataGridTextColumn Header="عنصر الباركود" Binding="{Binding BarcodeTitle}" Width="2*"/>
-                        <DataGridTextColumn Header="الباركود" Binding="{Binding BarcodeValue}" Width="2*"/>
-                        <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity}" Width="1*"/>
-                        <DataGridTextColumn Header="الحد الأدنى" Binding="{Binding MinStockLevel}" Width="1*"/>
-                        <DataGridCheckBoxColumn Header="نقص بالمخزون" Binding="{Binding IsBelowMinLevel}" Width="1*"/>
-                        <DataGridTemplateColumn Header="تعديل الرصيد" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Button Content="تسويه" Command="{Binding DataContext.EditStorgeStockCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#F59E0B" Foreground="White" BorderThickness="0" Padding="8,4" Cursor="Hand"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <DataGrid Grid.Row="0" ItemsSource="{Binding StorgeStocks}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" RowHeight="42" Background="#FFFFFF">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="المنتج" Binding="{Binding ProductName}" Width="2*"/>
+                            <DataGridTextColumn Header="عنصر الباركود" Binding="{Binding BarcodeTitle}" Width="2*"/>
+                            <DataGridTextColumn Header="الباركود" Binding="{Binding BarcodeValue}" Width="2*"/>
+                            <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity}" Width="1*"/>
+                            <DataGridTextColumn Header="الحد الأدنى" Binding="{Binding MinStockLevel}" Width="1*"/>
+                            <DataGridCheckBoxColumn Header="نقص بالمخزون" Binding="{Binding IsBelowMinLevel}" Width="1*"/>
+                            <DataGridTemplateColumn Header="تعديل الرصيد" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="تسويه" Command="{Binding DataContext.EditStorgeStockCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Padding="10,4" Cursor="Hand"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Pagination Controls -->
+                    <Border Grid.Row="1" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,4,0,0">
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                <TextBlock Text="إجمالي السجلات: " Foreground="#6B7280" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding TotalCount}" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center" Margin="0,0,15,0" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Content="◀ السابق" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding HasPreviousPage}" Height="30" Padding="12,0" Margin="4,0" Background="#E5E7EB" Foreground="#111827" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                                <TextBlock VerticalAlignment="Center" Margin="8,0">
+                                    <Run Text="الصفحة " Foreground="#6B7280" />
+                                    <Run Text="{Binding PageNumber}" FontWeight="Bold" Foreground="#38E07B" />
+                                    <Run Text=" من " Foreground="#6B7280" />
+                                    <Run Text="{Binding TotalPages}" FontWeight="Bold" Foreground="#111827" />
+                                </TextBlock>
+                                <Button Content="التالي ▶" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasNextPage}" Height="30" Padding="12,0" Margin="4,0" Background="#E5E7EB" Foreground="#111827" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </Grid>
             </TabItem>
 
             <!-- Tab 2: Showroom Stock -->
             <TabItem Header="🛍️ مخزون صالة العرض (بالمنتج)" FontSize="14" FontWeight="SemiBold" Padding="15,8">
-                <DataGrid ItemsSource="{Binding ShowroomStocks}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" RowHeight="40">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="اسم المنتج" Binding="{Binding ProductName}" Width="3*"/>
-                        <DataGridTextColumn Header="الكمية بالصالة" Binding="{Binding Quantity}" Width="1.5*"/>
-                        <DataGridTextColumn Header="الحد الأدنى" Binding="{Binding MinStockLevel}" Width="1.5*"/>
-                        <DataGridCheckBoxColumn Header="نقص بالمخزون" Binding="{Binding IsBelowMinLevel}" Width="1.5*"/>
-                        <DataGridTemplateColumn Header="تعديل الرصيد" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Button Content="تسويه" Command="{Binding DataContext.EditShowroomStockCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#F59E0B" Foreground="White" BorderThickness="0" Padding="8,4" Cursor="Hand"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DataGrid Grid.Row="0" ItemsSource="{Binding ShowroomStocks}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" RowHeight="42" Background="#FFFFFF">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="اسم المنتج" Binding="{Binding ProductName}" Width="3*"/>
+                            <DataGridTextColumn Header="الكمية بالصالة" Binding="{Binding Quantity}" Width="1.5*"/>
+                            <DataGridTextColumn Header="الحد الأدنى" Binding="{Binding MinStockLevel}" Width="1.5*"/>
+                            <DataGridCheckBoxColumn Header="نقص بالمخزون" Binding="{Binding IsBelowMinLevel}" Width="1.5*"/>
+                            <DataGridTemplateColumn Header="تعديل الرصيد" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="تسويه" Command="{Binding DataContext.EditShowroomStockCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Padding="10,4" Cursor="Hand"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Pagination Controls -->
+                    <Border Grid.Row="1" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,4,0,0">
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                <TextBlock Text="إجمالي السجلات: " Foreground="#6B7280" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding TotalCount}" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center" Margin="0,0,15,0" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Content="◀ السابق" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding HasPreviousPage}" Height="30" Padding="12,0" Margin="4,0" Background="#E5E7EB" Foreground="#111827" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                                <TextBlock VerticalAlignment="Center" Margin="8,0">
+                                    <Run Text="الصفحة " Foreground="#6B7280" />
+                                    <Run Text="{Binding PageNumber}" FontWeight="Bold" Foreground="#38E07B" />
+                                    <Run Text=" من " Foreground="#6B7280" />
+                                    <Run Text="{Binding TotalPages}" FontWeight="Bold" Foreground="#111827" />
+                                </TextBlock>
+                                <Button Content="التالي ▶" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasNextPage}" Height="30" Padding="12,0" Margin="4,0" Background="#E5E7EB" Foreground="#111827" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </Grid>
             </TabItem>
 
             <!-- Tab 3: Low Stock Alerts -->
@@ -74,7 +140,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="تنبيهات مخازن التخزين (Storge Alerts)" FontWeight="Bold" Foreground="#DC2626" FontSize="16" Margin="0,5,0,10"/>
-                        <DataGrid ItemsSource="{Binding LowStorgeAlerts}" AutoGenerateColumns="False" IsReadOnly="True" Height="180" HeadersVisibility="Column">
+                        <DataGrid ItemsSource="{Binding LowStorgeAlerts}" AutoGenerateColumns="False" IsReadOnly="True" Height="180" HeadersVisibility="Column" Background="#FFFFFF">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="المخزن" Binding="{Binding WarehouseName}" Width="1.5*"/>
                                 <DataGridTextColumn Header="المنتج" Binding="{Binding ProductName}" Width="2*"/>
@@ -85,7 +151,7 @@
                         </DataGrid>
 
                         <TextBlock Text="تنبيهات صالات العرض (Showroom Alerts)" FontWeight="Bold" Foreground="#DC2626" FontSize="16" Margin="0,15,0,10"/>
-                        <DataGrid ItemsSource="{Binding LowShowroomAlerts}" AutoGenerateColumns="False" IsReadOnly="True" Height="180" HeadersVisibility="Column">
+                        <DataGrid ItemsSource="{Binding LowShowroomAlerts}" AutoGenerateColumns="False" IsReadOnly="True" Height="180" HeadersVisibility="Column" Background="#FFFFFF">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="الصالة" Binding="{Binding WarehouseName}" Width="2*"/>
                                 <DataGridTextColumn Header="اسم المنتج" Binding="{Binding ProductName}" Width="3*"/>

@@ -8,9 +8,11 @@ using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.DTOs.Purchase;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Purchase.Interfaces;
 using RetalSystemAPI.Services.Purchase.Specifications;
+using RetalSystemAPI.Services.Warehouses.Specifications;
 
 namespace RetalSystemAPI.Services.Purchase.Implementations;
 
@@ -172,8 +174,75 @@ public class PurchaseOrderService : IPurchaseOrderService
             return ServiceResult<PurchaseOrderResponseDto>.Failure("أمر الشراء/الطلبية غير موجودة", ErrorCodes.PurchaseOrderNotFound);
         }
 
+        bool isNewlyReceived = (status == PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.Received);
         order.Status = status;
         _unitOfWork.PurchaseOrders.Update(order);
+
+        if (isNewlyReceived && order.WarehouseId.HasValue && order.Items != null && order.Items.Count > 0)
+        {
+            var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(order.WarehouseId.Value, ct);
+            if (warehouse != null)
+            {
+                if (warehouse.Type == WarehouseType.Storge)
+                {
+                    foreach (var item in order.Items)
+                    {
+                        if (item.ProductBarCodeId == Guid.Empty) continue;
+
+                        var spec = new StorgeStockWithDetailsSpec(order.WarehouseId.Value, item.ProductBarCodeId);
+                        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(spec, ct);
+                        if (stock != null)
+                        {
+                            stock.Quantity += (int)item.Quantity;
+                            _unitOfWork.StorgeStocks.Update(stock);
+                        }
+                        else
+                        {
+                            var newStock = new StorgeStock
+                            {
+                                TenantId = order.TenantId,
+                                WarehouseId = order.WarehouseId.Value,
+                                ProductBarcodeId = item.ProductBarCodeId,
+                                Quantity = (int)item.Quantity,
+                                MinStockLevel = 0
+                            };
+                            await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                        }
+                    }
+                }
+                else if (warehouse.Type == WarehouseType.Show)
+                {
+                    foreach (var item in order.Items)
+                    {
+                        if (item.ProductBarCodeId == Guid.Empty) continue;
+
+                        var bc = await _unitOfWork.ProductBarCodes.GetByIdAsync(item.ProductBarCodeId, ct);
+                        if (bc == null) continue;
+
+                        var spec = new ShowroomStockWithDetailsSpec(order.WarehouseId.Value, bc.ProductId);
+                        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(spec, ct);
+                        if (stock != null)
+                        {
+                            stock.Quantity += (int)item.Quantity;
+                            _unitOfWork.ShowroomStocks.Update(stock);
+                        }
+                        else
+                        {
+                            var newStock = new ShowroomStock
+                            {
+                                TenantId = order.TenantId,
+                                WarehouseId = order.WarehouseId.Value,
+                                ProductId = bc.ProductId,
+                                Quantity = (int)item.Quantity,
+                                MinStockLevel = 0
+                            };
+                            await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                        }
+                    }
+                }
+            }
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         var updatedOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct) ?? order;

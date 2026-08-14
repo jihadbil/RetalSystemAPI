@@ -38,6 +38,7 @@
                     <Button Content="🏪 المخازن والصالات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToWarehousesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                     <Button Content="📦 إدارة المخزون" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                     <Button Content="📝 الطلبيات والمشتريات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToPurchaseOrdersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
+                    <Button Content="👤 إدارة المستخدمين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUsersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
                 </StackPanel>
 
                 <!-- Footer Logout -->

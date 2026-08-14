@@ -120,33 +120,92 @@ public class ProductService : IProductService
         await _unitOfWork.Products.AddAsync(product, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        // 1. توليد سجل مخزون الصالة لكل صالة عرض قائمة
+        // 1. توليد سجل مخزون الصالة لكل صالة عرض قائمة (مع التراجع لجلب كافة المخازن إن لم تتوفر صالات مصنفة)
         var showrooms = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Show, ct);
+        if (showrooms.Count == 0)
+        {
+            showrooms = await _unitOfWork.Warehouses.GetAllAsync(ct);
+        }
+
+        var showroomQtyMap = dto.ShowroomInitialQuantities?.ToDictionary(s => s.WarehouseId, s => s.Quantity) ?? new Dictionary<Guid, int>();
+
         foreach (var show in showrooms)
         {
+            int initShowQty = 0;
+            if (showroomQtyMap.TryGetValue(show.Id, out int showQty))
+            {
+                initShowQty = showQty;
+            }
+            else if (dto.ShowroomWarehouseId.HasValue)
+            {
+                if (show.Id == dto.ShowroomWarehouseId.Value)
+                {
+                    initShowQty = dto.InitialShowroomQuantity;
+                }
+            }
+            else
+            {
+                if (showrooms.Count > 0 && show.Id == showrooms[0].Id)
+                {
+                    initShowQty = dto.InitialShowroomQuantity;
+                }
+            }
+
             var showStock = new ShowroomStock
             {
+                TenantId = product.TenantId,
                 WarehouseId = show.Id,
                 ProductId = product.Id,
-                Quantity = dto.InitialShowroomQuantity,
+                Quantity = initShowQty,
                 MinStockLevel = 0
             };
             await _unitOfWork.ShowroomStocks.AddAsync(showStock, ct);
         }
 
-        // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم
+        // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم (مع التراجع لجلب كافة المخازن)
         var storgeWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+        if (storgeWarehouses.Count == 0)
+        {
+            storgeWarehouses = await _unitOfWork.Warehouses.GetAllAsync(ct);
+        }
         if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
         {
             var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode, b => b.InitialQuantity) ?? new Dictionary<string, int>();
+            var storageMultiQtyMap = dto.StorageInitialQuantities?.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode}", s => s.Quantity) ?? new Dictionary<string, int>();
 
             foreach (var storgeWh in storgeWarehouses)
             {
                 foreach (var bc in product.ProductBarCodes)
                 {
-                    int initQty = initialQtyMap.TryGetValue(bc.BarCode, out int q) ? q : 0;
+                    int initQty = 0;
+                    string key = $"{storgeWh.Id}_{bc.BarCode}";
+
+                    if (storageMultiQtyMap.TryGetValue(key, out int multiQty))
+                    {
+                        initQty = multiQty;
+                    }
+                    else
+                    {
+                        int requestedQty = initialQtyMap.TryGetValue(bc.BarCode, out int q) ? q : 0;
+                        if (dto.StorageWarehouseId.HasValue)
+                        {
+                            if (storgeWh.Id == dto.StorageWarehouseId.Value)
+                            {
+                                initQty = requestedQty;
+                            }
+                        }
+                        else
+                        {
+                            if (storgeWarehouses.Count > 0 && storgeWh.Id == storgeWarehouses[0].Id)
+                            {
+                                initQty = requestedQty;
+                            }
+                        }
+                    }
+
                     var storgeStock = new StorgeStock
                     {
+                        TenantId = product.TenantId,
                         WarehouseId = storgeWh.Id,
                         ProductBarcodeId = bc.Id,
                         Quantity = initQty,

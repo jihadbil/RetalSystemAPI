@@ -105,6 +105,13 @@ public partial class ShellViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private void NavigateToUsers()
+    {
+        CurrentTitle = "إدارة المستخدمين والصلاحيات";
+        _navigationService.NavigateTo<RetalSystemAPI.Desktop.Views.Users.UsersView>();
+    }
+
+    [RelayCommand]
     private void Logout()
     {
         _authStateService.ClearToken();

@@ -58,6 +58,7 @@ public class StockService : IStockService
             {
                 var newStock = new StorgeStock
                 {
+                    TenantId = bc.TenantId,
                     WarehouseId = warehouseId,
                     ProductBarcodeId = bc.Id,
                     Quantity = 0,
@@ -78,6 +79,29 @@ public class StockService : IStockService
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
 
         return ServiceResult<IReadOnlyList<StorgeStockResponseDto>>.Success(dtos);
+    }
+
+    public async Task<ServiceResult<PagedResult<StorgeStockResponseDto>>> GetPagedStorgeStocksByWarehouseAsync(
+        Guid warehouseId,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string? searchTerm = null,
+        CancellationToken ct = default)
+    {
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
+
+        var countSpec = new StorgeStockCountSpec(warehouseId, searchTerm);
+        int totalCount = await _unitOfWork.StorgeStocks.CountAsync(countSpec, ct);
+
+        var pagedSpec = new StorgeStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, isPaged: true);
+        var stocks = await _unitOfWork.StorgeStocks.FindAsync(pagedSpec, ct);
+
+        var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
+        var pagedResult = PagedResult<StorgeStockResponseDto>.Create(dtos, totalCount, pageNumber, pageSize);
+
+        return ServiceResult<PagedResult<StorgeStockResponseDto>>.Success(pagedResult);
     }
 
     public async Task<ServiceResult<StorgeStockResponseDto>> SetStorgeStockAsync(SetStorgeStockDto dto, CancellationToken ct = default)
@@ -101,6 +125,7 @@ public class StockService : IStockService
         {
             stock = new StorgeStock
             {
+                TenantId = warehouse.TenantId,
                 WarehouseId = dto.WarehouseId,
                 ProductBarcodeId = dto.ProductBarcodeId,
                 Quantity = (int)dto.Quantity,
@@ -162,6 +187,7 @@ public class StockService : IStockService
             {
                 var newStock = new ShowroomStock
                 {
+                    TenantId = p.TenantId,
                     WarehouseId = warehouseId,
                     ProductId = p.Id,
                     Quantity = 0,
@@ -182,6 +208,29 @@ public class StockService : IStockService
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
 
         return ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>.Success(dtos);
+    }
+
+    public async Task<ServiceResult<PagedResult<ShowroomStockResponseDto>>> GetPagedShowroomStocksByWarehouseAsync(
+        Guid warehouseId,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string? searchTerm = null,
+        CancellationToken ct = default)
+    {
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
+
+        var countSpec = new ShowroomStockCountSpec(warehouseId, searchTerm);
+        int totalCount = await _unitOfWork.ShowroomStocks.CountAsync(countSpec, ct);
+
+        var pagedSpec = new ShowroomStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, isPaged: true);
+        var stocks = await _unitOfWork.ShowroomStocks.FindAsync(pagedSpec, ct);
+
+        var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
+        var pagedResult = PagedResult<ShowroomStockResponseDto>.Create(dtos, totalCount, pageNumber, pageSize);
+
+        return ServiceResult<PagedResult<ShowroomStockResponseDto>>.Success(pagedResult);
     }
 
     public async Task<ServiceResult<ShowroomStockResponseDto>> SetShowroomStockAsync(SetShowroomStockDto dto, CancellationToken ct = default)
@@ -205,6 +254,7 @@ public class StockService : IStockService
         {
             stock = new ShowroomStock
             {
+                TenantId = warehouse.TenantId,
                 WarehouseId = dto.WarehouseId,
                 ProductId = dto.ProductId,
                 Quantity = (int)dto.Quantity,

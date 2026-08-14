@@ -88,6 +88,7 @@ public class WarehouseService : IWarehouseService
             {
                 var storgeStock = new StorgeStock
                 {
+                    TenantId = warehouse.TenantId,
                     WarehouseId = warehouse.Id,
                     ProductBarcodeId = bc.Id,
                     Quantity = 0,
@@ -104,6 +105,7 @@ public class WarehouseService : IWarehouseService
             {
                 var showStock = new ShowroomStock
                 {
+                    TenantId = warehouse.TenantId,
                     WarehouseId = warehouse.Id,
                     ProductId = p.Id,
                     Quantity = 0,

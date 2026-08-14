@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft">
+             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft" Background="#F6F8F7">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -16,12 +16,12 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,15">
-            <Button Content="+ إضافة مخزن/صالة جديدة" Command="{Binding CreateWarehouseCommand}" DockPanel.Dock="Left" Height="36" Padding="15,0" Background="#10B981" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="🏪 إدارة المخازن وصالات العرض" FontSize="22" FontWeight="Bold" Foreground="#1F2937" VerticalAlignment="Center"/>
+            <Button Content="+ إضافة مخزن/صالة جديدة" Command="{Binding CreateWarehouseCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="🏪 إدارة المخازن وصالات العرض" FontSize="22" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
         </DockPanel>
 
-        <!-- Filters Bar -->
-        <Border Grid.Row="1" Background="White" CornerRadius="6" Padding="10" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
+        <!-- Filters Bar Card -->
+        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -30,33 +30,33 @@
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="الفرع:" VerticalAlignment="Center" Margin="5,0,10,0" FontWeight="SemiBold"/>
-                <ComboBox Grid.Column="1" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="32" VerticalContentAlignment="Center"/>
+                <TextBlock Text="الفرع:" VerticalAlignment="Center" Margin="5,0,10,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Column="2" Text="النوع:" VerticalAlignment="Center" Margin="15,0,10,0" FontWeight="SemiBold"/>
-                <ComboBox Grid.Column="3" SelectedItem="{Binding SelectedType}" Height="32" VerticalContentAlignment="Center">
+                <TextBlock Grid.Column="2" Text="النوع:" VerticalAlignment="Center" Margin="15,0,10,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <ComboBox Grid.Column="3" SelectedItem="{Binding SelectedType}" Height="34" VerticalContentAlignment="Center">
                     <ComboBoxItem Content="الكل" Tag="{x:Null}"/>
                 </ComboBox>
 
-                <Button Grid.Column="4" Content="تحديث البيانات" Command="{Binding LoadWarehousesCommand}" Margin="15,0,0,0" Padding="15,0" Height="32" Background="#3B82F6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                <Button Grid.Column="4" Content="تحديث البيانات" Command="{Binding LoadWarehousesCommand}" Margin="15,0,0,0" Padding="15,0" Height="34" Background="#111827" Foreground="#FFFFFF" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
             </Grid>
         </Border>
 
-        <!-- DataGrid -->
-        <Border Grid.Row="2" Background="White" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1">
-            <DataGrid ItemsSource="{Binding Warehouses}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" Background="Transparent" RowHeight="40">
+        <!-- DataGrid Card -->
+        <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Warehouses}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" Background="Transparent" RowHeight="42">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="الاسم" Binding="{Binding Name}" Width="2*"/>
                     <DataGridTextColumn Header="الفرع" Binding="{Binding BranchName}" Width="2*"/>
                     <DataGridTextColumn Header="النوع" Binding="{Binding TypeName}" Width="1.5*"/>
                     <DataGridCheckBoxColumn Header="فعال" Binding="{Binding IsActive}" Width="1*"/>
-                    <DataGridTemplateColumn Header="الإجراءات" Width="200">
+                    <DataGridTemplateColumn Header="الإجراءات" Width="210">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Button Content="تفعيل/تعطيل" Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" Background="#3B82F6" Foreground="White" BorderThickness="0"/>
-                                    <Button Content="تعديل" Command="{Binding DataContext.EditWarehouseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" Background="#F59E0B" Foreground="White" BorderThickness="0"/>
-                                    <Button Content="حذف" Command="{Binding DataContext.DeleteWarehouseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" Background="#EF4444" Foreground="White" BorderThickness="0"/>
+                                    <Button Content="تفعيل/تعطيل" Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#0EA5E9" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Content="تعديل" Command="{Binding DataContext.EditWarehouseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Content="حذف" Command="{Binding DataContext.DeleteWarehouseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -68,11 +68,11 @@
         <!-- Pagination -->
         <DockPanel Grid.Row="3" Margin="0,15,0,0">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="السابق" Command="{Binding PrevPageCommand}" Height="32" Padding="12,0" Margin="0,0,5,0" Background="#E5E7EB" Foreground="#374151" BorderThickness="0"/>
-                <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" FontWeight="Bold" Margin="5,0"/>
-                <TextBlock Text="من" VerticalAlignment="Center" Margin="2,0"/>
-                <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" FontWeight="Bold" Margin="5,0"/>
-                <Button Content="التالي" Command="{Binding NextPageCommand}" Height="32" Padding="12,0" Margin="5,0,0,0" Background="#E5E7EB" Foreground="#374151" BorderThickness="0"/>
+                <Button Content="السابق" Command="{Binding PrevPageCommand}" Height="32" Padding="14,0" Margin="0,0,5,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
+                <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#38E07B" Margin="5,0"/>
+                <TextBlock Text="من" VerticalAlignment="Center" Foreground="#6B7280" Margin="2,0"/>
+                <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#111827" Margin="5,0"/>
+                <Button Content="التالي" Command="{Binding NextPageCommand}" Height="32" Padding="14,0" Margin="5,0,0,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
             </StackPanel>
             <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
         </DockPanel>

@@ -15,9 +15,10 @@ public static class ErrorCodes
     public const string TenantNotFound = "TENANT_NOT_FOUND";
     public const string TenantNameExists = "TENANT_NAME_EXISTS";
 
-    // ── Auth ───────────────────────────────────────────────
+    // ── Auth & Users ───────────────────────────────────────
     public const string InvalidCredentials = "INVALID_CREDENTIALS";
     public const string UserAlreadyExists = "USER_ALREADY_EXISTS";
+    public const string UserNotFound = "USER_NOT_FOUND";
 
     // ── Branch ─────────────────────────────────────────────
     public const string BranchNotFound = "BRANCH_NOT_FOUND";

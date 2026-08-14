@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Catalog;
+using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services.Catalog;
+using RetalSystemAPI.Desktop.Services.Warehouses;
 using RetalSystemAPI.Desktop.ViewModels.Base;
 
 namespace RetalSystemAPI.Desktop.ViewModels.Catalog;
@@ -454,6 +456,7 @@ public partial class ProductFormViewModel : BaseViewModel
     private readonly ICategoryApiService _categoryApiService;
     private readonly IUnitApiService _unitApiService;
     private readonly IProductImageApiService _productImageApiService;
+    private readonly IWarehouseApiService _warehouseApiService;
 
     [ObservableProperty] private Guid? _productId;
     [ObservableProperty] private string _name = string.Empty;
@@ -465,6 +468,13 @@ public partial class ProductFormViewModel : BaseViewModel
 
     [ObservableProperty] private ObservableCollection<CategoryDto> _categories = new();
     [ObservableProperty] private ObservableCollection<UnitDto> _units = new();
+    [ObservableProperty] private ObservableCollection<WarehouseSummaryDto> _showrooms = new();
+    [ObservableProperty] private WarehouseSummaryDto? _selectedShowroom;
+    [ObservableProperty] private ObservableCollection<WarehouseSummaryDto> _storageWarehouses = new();
+    [ObservableProperty] private WarehouseSummaryDto? _selectedStorageWarehouse;
+
+    [ObservableProperty] private ObservableCollection<CreateShowroomStockQuantityRequest> _showroomInitialQuantities = new();
+    [ObservableProperty] private ObservableCollection<CreateStorageStockQuantityRequest> _storageInitialQuantities = new();
 
     // Multi-Unit support
     [ObservableProperty] private ObservableCollection<CreateProductUnitRequest> _productUnits = new();
@@ -495,22 +505,48 @@ public partial class ProductFormViewModel : BaseViewModel
         IProductApiService productApiService,
         ICategoryApiService categoryApiService,
         IUnitApiService unitApiService,
-        IProductImageApiService productImageApiService)
+        IProductImageApiService productImageApiService,
+        IWarehouseApiService warehouseApiService)
     {
         _productApiService = productApiService;
         _categoryApiService = categoryApiService;
         _unitApiService = unitApiService;
         _productImageApiService = productImageApiService;
+        _warehouseApiService = warehouseApiService;
     }
 
     public async Task InitializeAsync(ProductDto? p)
     {
-        // 1. Load Categories & Units first so drop-downs are populated
+        // 1. Load Categories, Units, Showrooms & Storage Warehouses (with full fallback to all active warehouses)
         var catRes = await _categoryApiService.GetAllAsync();
         if (catRes.Success && catRes.Data != null) Categories = new ObservableCollection<CategoryDto>(catRes.Data);
 
         var unitRes = await _unitApiService.GetAllAsync();
         if (unitRes.Success && unitRes.Data != null) Units = new ObservableCollection<UnitDto>(unitRes.Data);
+
+        var allWhRes = await _warehouseApiService.GetAllAsync();
+        var allWarehouses = (allWhRes.Success && allWhRes.Data != null) ? allWhRes.Data : new System.Collections.Generic.List<WarehouseSummaryDto>();
+
+        var showRes = await _warehouseApiService.GetAllAsync(type: WarehouseType.Show);
+        var showroomList = (showRes.Success && showRes.Data != null && showRes.Data.Count > 0) ? showRes.Data : allWarehouses;
+        Showrooms = new ObservableCollection<WarehouseSummaryDto>(showroomList);
+        SelectedShowroom = Showrooms.Count > 0 ? Showrooms[0] : null;
+
+        ShowroomInitialQuantities = new ObservableCollection<CreateShowroomStockQuantityRequest>(
+            Showrooms.Select(s => new CreateShowroomStockQuantityRequest
+            {
+                WarehouseId = s.Id,
+                WarehouseName = s.Name,
+                Quantity = 0
+            })
+        );
+
+        var storgeRes = await _warehouseApiService.GetAllAsync(type: WarehouseType.Storge);
+        var storgeList = (storgeRes.Success && storgeRes.Data != null && storgeRes.Data.Count > 0) ? storgeRes.Data : allWarehouses;
+        StorageWarehouses = new ObservableCollection<WarehouseSummaryDto>(storgeList);
+        SelectedStorageWarehouse = StorageWarehouses.Count > 0 ? StorageWarehouses[0] : null;
+
+        SyncStorageQuantitiesMap();
 
         // 2. Set Product values
         if (p != null)
@@ -750,13 +786,16 @@ public partial class ProductFormViewModel : BaseViewModel
             return;
         }
 
+        string barCodeVal = SelectedAddBarCode.Trim();
         ProductBarCodes.Add(new CreateProductBarCodeRequest
         {
-            BarCode = SelectedAddBarCode.Trim(),
+            BarCode = barCodeVal,
             Title = title,
             Description = SelectedAddBarCodeDescription?.Trim(),
             InitialQuantity = SelectedAddBarCodeInitialQuantity
         });
+
+        SyncStorageQuantitiesMap();
 
         SelectedAddBarCode = string.Empty;
         SelectedAddBarCodeTitle = string.Empty;
@@ -767,7 +806,42 @@ public partial class ProductFormViewModel : BaseViewModel
     [RelayCommand]
     private void RemoveProductBarCode(CreateProductBarCodeRequest? barCode)
     {
-        if (barCode != null) ProductBarCodes.Remove(barCode);
+        if (barCode != null)
+        {
+            ProductBarCodes.Remove(barCode);
+            SyncStorageQuantitiesMap();
+        }
+    }
+
+    private void SyncStorageQuantitiesMap()
+    {
+        if (StorageWarehouses == null || StorageWarehouses.Count == 0) return;
+
+        var existingMap = StorageInitialQuantities != null
+            ? StorageInitialQuantities.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode.ToLower()}", s => s.Quantity)
+            : new System.Collections.Generic.Dictionary<string, int>();
+
+        var newList = new System.Collections.Generic.List<CreateStorageStockQuantityRequest>();
+        foreach (var wh in StorageWarehouses)
+        {
+            foreach (var bc in ProductBarCodes)
+            {
+                if (string.IsNullOrWhiteSpace(bc.BarCode)) continue;
+
+                string key = $"{wh.Id}_{bc.BarCode.Trim().ToLower()}";
+                int initQty = existingMap.TryGetValue(key, out int q) ? q : bc.InitialQuantity;
+
+                newList.Add(new CreateStorageStockQuantityRequest
+                {
+                    WarehouseId = wh.Id,
+                    WarehouseName = wh.Name,
+                    BarCode = bc.BarCode.Trim(),
+                    Quantity = initQty
+                });
+            }
+        }
+
+        StorageInitialQuantities = new ObservableCollection<CreateStorageStockQuantityRequest>(newList);
     }
 
     [RelayCommand]
@@ -808,6 +882,10 @@ public partial class ProductFormViewModel : BaseViewModel
                     SalePrice = SalePrice,
                     CategoryId = CategoryId,
                     InitialShowroomQuantity = InitialShowroomQuantity,
+                    ShowroomWarehouseId = SelectedShowroom?.Id,
+                    StorageWarehouseId = SelectedStorageWarehouse?.Id,
+                    ShowroomInitialQuantities = ShowroomInitialQuantities.Where(s => s.Quantity > 0).ToList(),
+                    StorageInitialQuantities = StorageInitialQuantities.Where(s => s.Quantity > 0).ToList(),
                     Units = ProductUnits.ToList(),
                     BarCodes = ProductBarCodes.ToList()
                 };
