@@ -12,7 +12,6 @@ public class StorgeStockConfiguration : IEntityTypeConfiguration<StorgeStock>
         builder.HasKey(ss => ss.Id);
 
         builder.Property(ss => ss.Quantity)
-            .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
 
         builder.Property(ss => ss.MinStockLevel)

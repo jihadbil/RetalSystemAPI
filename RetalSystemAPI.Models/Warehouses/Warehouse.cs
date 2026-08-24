@@ -8,7 +8,7 @@ namespace RetalSystemAPI.Models.Warehouses;
 /// <summary>
 ///يمتل المخازن و صالات العرض الخاصة بالمحل
 /// </summary>
-public class Warehouse : BaseEntity
+public class Warehouse : TenantBaseEntity
 {
     /// <summary>
     /// معرف الفرع الدي ينتمي اليه المخزن او الصالة

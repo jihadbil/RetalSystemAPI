@@ -6,7 +6,7 @@ namespace RetalSystemAPI.Models.Warehouses;
 /// معرف المخزن اخاص بالمحل الدي يقوم صاحب المحل بحفظ مخزونه فيه تم فصله عن مخزون الصالات لان المخزن يتعمال مع 
 /// كل صنف و نكهة بالباركود حتى و ان كان للصنف نفس السعر او البيع هنا يتم التعامل مع كل لون و نكهة على حدى
 /// </summary>
-public class StorgeStock:BaseEntity
+public class StorgeStock : TenantBaseEntity
 {
     /// <summary>
     /// معرف المخزن (المخزن) الدي ينتمي الي المخزون

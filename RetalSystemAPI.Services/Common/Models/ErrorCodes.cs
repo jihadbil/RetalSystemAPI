@@ -67,4 +67,29 @@ public static class ErrorCodes
     public const string PurchaseOrderNotFound = "PURCHASE_ORDER_NOT_FOUND";
     public const string PurchaseOrderNumberExists = "PURCHASE_ORDER_NUMBER_EXISTS";
     public const string PurchaseOrderInvalidStatus = "PURCHASE_ORDER_INVALID_STATUS";
+
+    // ── Customers ──────────────────────────────────────────
+    public const string CustomerNotFound = "CUSTOMER_NOT_FOUND";
+    public const string CustomerCodeExists = "CUSTOMER_CODE_EXISTS";
+    public const string CustomerCreditExceeded = "CUSTOMER_CREDIT_EXCEEDED";
+
+    // ── Sales Invoices ─────────────────────────────────────
+    public const string SalesInvoiceNotFound = "SALES_INVOICE_NOT_FOUND";
+    public const string SalesInvoiceNumberExists = "SALES_INVOICE_NUMBER_EXISTS";
+    public const string SalesInvoiceInvalidStatus = "SALES_INVOICE_INVALID_STATUS";
+    public const string InsufficientShowroomStock = "INSUFFICIENT_SHOWROOM_STOCK";
+
+    // ── Sales Returns ──────────────────────────────────────
+    public const string SalesReturnNotFound = "SALES_RETURN_NOT_FOUND";
+    public const string SalesReturnNumberExists = "SALES_RETURN_NUMBER_EXISTS";
+
+    // ── Stock Transfers ────────────────────────────────────
+    public const string StockTransferNotFound = "STOCK_TRANSFER_NOT_FOUND";
+    public const string StockTransferNumberExists = "STOCK_TRANSFER_NUMBER_EXISTS";
+    public const string StockTransferInvalidStatus = "STOCK_TRANSFER_INVALID_STATUS";
+    public const string StockTransferSameWarehouse = "STOCK_TRANSFER_SAME_WAREHOUSE";
+
+    // ── Stock Adjustments ──────────────────────────────────
+    public const string StockAdjustmentNotFound = "STOCK_ADJUSTMENT_NOT_FOUND";
+    public const string StockAdjustmentNumberExists = "STOCK_ADJUSTMENT_NUMBER_EXISTS";
 }

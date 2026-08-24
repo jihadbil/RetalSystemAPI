@@ -7,14 +7,19 @@ using RetalSystemAPI.Desktop.Core.Http;
 using RetalSystemAPI.Desktop.Core.Navigation;
 using RetalSystemAPI.Desktop.Services;
 using RetalSystemAPI.Desktop.Services.Catalog;
+using RetalSystemAPI.Desktop.Services.Customers;
 using RetalSystemAPI.Desktop.Services.Purchase;
+using RetalSystemAPI.Desktop.Services.Sales;
 using RetalSystemAPI.Desktop.Services.Suppliers;
 using RetalSystemAPI.Desktop.Services.Warehouses;
 using RetalSystemAPI.Desktop.ViewModels.Auth;
 using RetalSystemAPI.Desktop.ViewModels.Branches;
 using RetalSystemAPI.Desktop.ViewModels.Catalog;
+using RetalSystemAPI.Desktop.ViewModels.Customers;
 using RetalSystemAPI.Desktop.ViewModels.Dashboard;
+using RetalSystemAPI.Desktop.ViewModels.Pos;
 using RetalSystemAPI.Desktop.ViewModels.Purchase;
+using RetalSystemAPI.Desktop.ViewModels.Sales;
 using RetalSystemAPI.Desktop.ViewModels.Shell;
 using RetalSystemAPI.Desktop.ViewModels.Stock;
 using RetalSystemAPI.Desktop.ViewModels.Suppliers;
@@ -23,8 +28,11 @@ using RetalSystemAPI.Desktop.ViewModels.Warehouses;
 using RetalSystemAPI.Desktop.Views.Auth;
 using RetalSystemAPI.Desktop.Views.Branches;
 using RetalSystemAPI.Desktop.Views.Catalog;
+using RetalSystemAPI.Desktop.Views.Customers;
 using RetalSystemAPI.Desktop.Views.Dashboard;
+using RetalSystemAPI.Desktop.Views.Pos;
 using RetalSystemAPI.Desktop.Views.Purchase;
+using RetalSystemAPI.Desktop.Views.Sales;
 using RetalSystemAPI.Desktop.Views.Shell;
 using RetalSystemAPI.Desktop.Views.Stock;
 using RetalSystemAPI.Desktop.Views.Suppliers;
@@ -98,16 +106,24 @@ public partial class App : Application
         services.AddTransient<IProductBarCodeApiService, ProductBarCodeApiService>();
         services.AddTransient<IProductImageApiService, ProductImageApiService>();
 
+        services.AddTransient<ICustomerApiService, CustomerApiService>();
+        services.AddTransient<ISalesInvoiceApiService, SalesInvoiceApiService>();
+        services.AddTransient<ISalesReturnApiService, SalesReturnApiService>();
+
         services.AddTransient<ISupplierApiService, SupplierApiService>();
         services.AddTransient<IWarehouseApiService, WarehouseApiService>();
         services.AddTransient<IStockApiService, StockApiService>();
+        services.AddTransient<IStockTransferApiService, StockTransferApiService>();
+        services.AddTransient<IStockAdjustmentApiService, StockAdjustmentApiService>();
         services.AddTransient<IPurchaseOrderApiService, PurchaseOrderApiService>();
+        services.AddTransient<IPurchaseInvoiceApiService, PurchaseInvoiceApiService>();
         services.AddTransient<RetalSystemAPI.Desktop.Services.Users.IUserApiService, RetalSystemAPI.Desktop.Services.Users.UserApiService>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
         services.AddTransient<DashboardViewModel>();
+        services.AddTransient<PosViewModel>();
         services.AddTransient<TenantsViewModel>();
         services.AddTransient<BranchesViewModel>();
         services.AddTransient<BranchFormViewModel>();
@@ -118,14 +134,27 @@ public partial class App : Application
         services.AddTransient<ProductsViewModel>();
         services.AddTransient<ProductFormViewModel>();
 
+        services.AddTransient<CustomersViewModel>();
+        services.AddTransient<CustomerFormViewModel>();
+        services.AddTransient<SalesInvoicesViewModel>();
+        services.AddTransient<SalesInvoiceFormViewModel>();
+        services.AddTransient<SalesReturnsViewModel>();
+        services.AddTransient<SalesReturnFormViewModel>();
+
         services.AddTransient<SuppliersViewModel>();
         services.AddTransient<SupplierFormViewModel>();
         services.AddTransient<WarehousesViewModel>();
         services.AddTransient<WarehouseFormViewModel>();
         services.AddTransient<StockViewModel>();
         services.AddTransient<SetStockFormViewModel>();
+        services.AddTransient<StockTransfersViewModel>();
+        services.AddTransient<StockTransferFormViewModel>();
+        services.AddTransient<StockAdjustmentsViewModel>();
+        services.AddTransient<StockAdjustmentFormViewModel>();
         services.AddTransient<PurchaseOrdersViewModel>();
         services.AddTransient<PurchaseOrderFormViewModel>();
+        services.AddTransient<PurchaseInvoicesViewModel>();
+        services.AddTransient<PurchaseInvoiceFormViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UsersViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UserFormViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.ResetPasswordViewModel>();
@@ -134,16 +163,24 @@ public partial class App : Application
         services.AddTransient<LoginView>();
         services.AddTransient<ShellWindow>();
         services.AddTransient<DashboardView>();
+        services.AddTransient<PosView>();
         services.AddTransient<TenantsView>();
         services.AddTransient<BranchesView>();
         services.AddTransient<CategoriesView>();
         services.AddTransient<UnitsView>();
         services.AddTransient<ProductsView>();
 
+        services.AddTransient<CustomersView>();
+        services.AddTransient<SalesInvoicesView>();
+        services.AddTransient<SalesReturnsView>();
+
         services.AddTransient<SuppliersView>();
         services.AddTransient<WarehousesView>();
         services.AddTransient<StockView>();
+        services.AddTransient<StockTransfersView>();
+        services.AddTransient<StockAdjustmentsView>();
         services.AddTransient<PurchaseOrdersView>();
+        services.AddTransient<PurchaseInvoicesView>();
         services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UsersView>();
     }
 

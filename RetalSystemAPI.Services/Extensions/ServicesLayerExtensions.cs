@@ -7,10 +7,14 @@ using RetalSystemAPI.Services.Branch.Implementations;
 using RetalSystemAPI.Services.Branch.Interfaces;
 using RetalSystemAPI.Services.Catalog.Implementations;
 using RetalSystemAPI.Services.Catalog.Interfaces;
+using RetalSystemAPI.Services.Customers.Implementations;
+using RetalSystemAPI.Services.Customers.Interfaces;
 using RetalSystemAPI.Services.FileUpload.Implementations;
 using RetalSystemAPI.Services.FileUpload.Interfaces;
 using RetalSystemAPI.Services.Purchase.Implementations;
 using RetalSystemAPI.Services.Purchase.Interfaces;
+using RetalSystemAPI.Services.Sales.Implementations;
+using RetalSystemAPI.Services.Sales.Interfaces;
 using RetalSystemAPI.Services.Suppliers.Implementations;
 using RetalSystemAPI.Services.Suppliers.Interfaces;
 using RetalSystemAPI.Services.Tenant.Implementations;
@@ -52,10 +56,17 @@ public static class ServicesLayerExtensions
         services.AddScoped<IProductBarCodeService, ProductBarCodeService>();
         services.AddScoped<IProductImageService, ProductImageService>();
 
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<ISalesInvoiceService, SalesInvoiceService>();
+        services.AddScoped<ISalesReturnService, SalesReturnService>();
+
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IStockService, StockService>();
+        services.AddScoped<IStockTransferService, StockTransferService>();
+        services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
 
         services.AddScoped<IFileUploadService, FileUploadService>();
         services.AddScoped<RetalSystemAPI.Services.Users.Interfaces.IUserService, RetalSystemAPI.Services.Users.Implementations.UserService>();

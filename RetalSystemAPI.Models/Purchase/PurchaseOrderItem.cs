@@ -6,7 +6,7 @@ namespace RetalSystemAPI.Models.Purchase;
 /// <summary>
 /// يمتل محتويات الطلبية 
 /// </summary>
-public class PurchaseOrderItem : BaseEntity
+public class PurchaseOrderItem : TenantBaseEntity
 {
     /// <summary>
     /// يمتل معرف الطلبية الدي ينتمي لها هذا المحتوي

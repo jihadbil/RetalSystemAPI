@@ -132,7 +132,7 @@ public class BranchService : IBranchService
             return ServiceResult.Failure("الفرع غير موجود", ErrorCodes.BranchNotFound);
         }
 
-        if (branch.ApplicationUser.Any())
+        if (branch.ApplicationUsers.Any())
         {
             return ServiceResult.Failure("لا يمكن حذف الفرع لوجود مستخدمين نشطين مرتبطين به", ErrorCodes.BranchHasUsers);
         }

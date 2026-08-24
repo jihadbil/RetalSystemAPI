@@ -1,0 +1,142 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Sales.SalesReturnFormWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"
+        Title="تسجيل مرتجع مبيعات" Height="680" Width="800"
+        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
+        Background="#FFFFFF" ResizeMode="NoResize">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="🔄 تسجيل مرتجع مبيعات وإعادة البضاعة للمخزون" 
+                   FontSize="20" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,10,0">
+                <!-- Master Info -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                        <TextBlock Text="رقم المرتجع *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding ReturnNumber, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="6,0,6,0">
+                        <TextBlock Text="الفرع *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Margin="6,0,0,0">
+                        <TextBlock Text="المستودع / الصالة المستلمة *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                        <TextBlock Text="العميل" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                        <TextBlock Text="سبب الإرجاع" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <ComboBox SelectedValue="{Binding Reason}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}">
+                            <ComboBoxItem Content="تراجع العميل" Tag="{x:Static sales:SalesReturnReason.CustomerChangedMind}" IsSelected="True"/>
+                            <ComboBoxItem Content="تالف / مكسور" Tag="{x:Static sales:SalesReturnReason.Damaged}"/>
+                            <ComboBoxItem Content="معيب / غير صالح" Tag="{x:Static sales:SalesReturnReason.Defective}"/>
+                            <ComboBoxItem Content="منتهي الصلاحية" Tag="{x:Static sales:SalesReturnReason.Expired}"/>
+                            <ComboBoxItem Content="صنف خاطئ" Tag="{x:Static sales:SalesReturnReason.WrongItem}"/>
+                            <ComboBoxItem Content="أسباب أخرى" Tag="{x:Static sales:SalesReturnReason.Other}"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Add Items Section (visible only in create mode) -->
+                <Border Background="#F9FAFB" CornerRadius="8" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12"
+                        Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="🛒 إضافة بنود الأصناف المرتجعة" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.5*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="الصنف" FontSize="11" Foreground="#6B7280"/>
+                                <ComboBox ItemsSource="{Binding AvailableProducts}" SelectedItem="{Binding SelectedProductToAdd}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="4,0,4,0">
+                                <TextBlock Text="الكمية" FontSize="11" Foreground="#6B7280"/>
+                                <TextBox Text="{Binding QuantityToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="4,0,4,0">
+                                <TextBlock Text="سعر الوحدة" FontSize="11" Foreground="#6B7280"/>
+                                <TextBox Text="{Binding UnitPriceToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="3" Content="+ إضافة بند" Command="{Binding AddItemCommand}" VerticalAlignment="Bottom" Height="34" Padding="14,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Items DataGrid -->
+                <Border Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12">
+                    <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="140" MaxHeight="200" GridLinesVisibility="Horizontal" HeadersVisibility="Column" Background="Transparent" RowHeight="34">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="2.5*"/>
+                            <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity}" Width="1*"/>
+                            <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPrice, StringFormat={}{0:N2} د.ل}" Width="1.5*"/>
+                            <DataGridTextColumn Header="الإجمالي" Binding="{Binding LineTotal, StringFormat={}{0:N2} د.ل}" Width="1.5*"/>
+                            <DataGridTemplateColumn Header="حذف" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <!-- Calculations Summary Card -->
+                <Border Background="#F3F4F6" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                    <DockPanel>
+                        <TextBlock Text="إجمالي قيمة المرتجع المستردة:" FontWeight="Bold" Foreground="#374151" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontSize="18" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Right"/>
+                    </DockPanel>
+                </Border>
+
+                <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer Actions -->
+        <DockPanel Grid.Row="2" Margin="0,16,0,0">
+            <Button Content="تسجيل المرتجع" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                    Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+        </DockPanel>
+    </Grid>
+</Window>

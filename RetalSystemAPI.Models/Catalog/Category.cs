@@ -10,7 +10,7 @@ namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
 /// يمتل التصنيفات علي شكل هيكل هرمي بحيث يمكن ان يكون هناك تصنيف رئيسي و تصنيفات فرعية له
 /// </summary>
-public class Category:BaseEntity
+public class Category : TenantBaseEntity
 {
     /// <summary>
     /// اسم التصنيف

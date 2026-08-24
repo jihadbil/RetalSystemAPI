@@ -11,7 +11,7 @@ namespace RetalSystemAPI.Models
     /// <summary>
     /// يمتل بيانات المستأجر في النظام، بما في ذلك معلومات الاتصال والتفاصيل الأخرى ذات الصلة.
     /// </summary>
-    public class Tenant : BaseEntity
+    public class Tenant : TenantBaseEntity
     {
         /// <summary>
         /// يمثل اسم المستأجر في النظام.

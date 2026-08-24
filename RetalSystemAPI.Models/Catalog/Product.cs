@@ -9,7 +9,7 @@ namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
 /// جدول بيانات ا لأصناف الأساسية في النظام (المنتجات) ويمتل كل صنف علي شكل منتج واحد فقط
 /// </summary>
-public class Product:BaseEntity
+public class Product : TenantBaseEntity
 {
     /// <summary>
     /// الإسم الأساسي للصنف

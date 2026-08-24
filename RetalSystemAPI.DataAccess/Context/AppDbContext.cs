@@ -7,7 +7,9 @@ using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.Common;
+using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Sales;
 using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.Models.Warehouses;
 
@@ -43,6 +45,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ShowroomStock> ShowroomStocks => Set<ShowroomStock>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+    public DbSet<PurchaseInvoiceItem> PurchaseInvoiceItems => Set<PurchaseInvoiceItem>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerPhone> CustomerPhones => Set<CustomerPhone>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+    public DbSet<SalesInvoiceItem> SalesInvoiceItems => Set<SalesInvoiceItem>();
+    public DbSet<SalesReturn> SalesReturns => Set<SalesReturn>();
+    public DbSet<SalesReturnItem> SalesReturnItems => Set<SalesReturnItem>();
+    public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
+    public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+    public DbSet<StockAdjustmentItem> StockAdjustmentItems => Set<StockAdjustmentItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -54,7 +68,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         // ── Global Query Filters (Soft Delete + Multi-Tenancy) ───────
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            if (entityType.ClrType == typeof(Tenant))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                
+                // Soft Delete Filter: !e.IsDeleted
+                var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
+
+                var lambda = Expression.Lambda(compareIsDeleted, parameter);
+                builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+            else if (typeof(TenantBaseEntity).IsAssignableFrom(entityType.ClrType))
             {
                 var parameter = Expression.Parameter(entityType.ClrType, "e");
                 
@@ -62,19 +87,25 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
                 var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
                 
-                Expression filterExpression = compareIsDeleted;
+                // 2. Multi-Tenant Filter: e.TenantId == CurrentTenantId
+                var tenantIdProperty = Expression.Property(parameter, nameof(TenantBaseEntity.TenantId));
+                var currentTenantIdProperty = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
+                var compareTenantId = Expression.Equal(tenantIdProperty, currentTenantIdProperty);
 
-                // 2. Multi-Tenant Filter: e.TenantId == CurrentTenantId (لكافة الكيانات عدا المستأجر نفسه)
-                if (entityType.ClrType != typeof(Tenant))
-                {
-                    var tenantIdProperty = Expression.Property(parameter, nameof(BaseEntity.TenantId));
-                    var currentTenantIdProperty = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
-
-                    var compareTenantId = Expression.Equal(tenantIdProperty, currentTenantIdProperty);
-                    filterExpression = Expression.AndAlso(filterExpression, compareTenantId);
-                }
+                var filterExpression = Expression.AndAlso(compareIsDeleted, compareTenantId);
 
                 var lambda = Expression.Lambda(filterExpression, parameter);
+                builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+            else if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                
+                // Soft Delete Filter: !e.IsDeleted
+                var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
+
+                var lambda = Expression.Lambda(compareIsDeleted, parameter);
                 builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
         }
@@ -101,9 +132,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             if (entry.State == EntityState.Added)
             {
-                if (entry.Entity.TenantId == Guid.Empty && tenantId != Guid.Empty)
+                if (entry.Entity is TenantBaseEntity tenantEntity && tenantEntity.TenantId == Guid.Empty && tenantId != Guid.Empty)
                 {
-                    entry.Entity.TenantId = tenantId;
+                    tenantEntity.TenantId = tenantId;
                 }
 
                 if (entry.Entity.CreatedAt == default)

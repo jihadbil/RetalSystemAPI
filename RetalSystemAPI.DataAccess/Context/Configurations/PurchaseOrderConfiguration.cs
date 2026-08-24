@@ -45,7 +45,14 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
             .HasForeignKey(po => po.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(po => po.Supplier)
+            .WithMany()
+            .HasForeignKey(po => po.SupplierId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(po => new { po.TenantId, po.OrderNumber }).IsUnique();
+        builder.HasIndex(po => new { po.TenantId, po.SupplierId });
         builder.HasIndex(po => new { po.TenantId, po.Status });
         builder.HasIndex(po => new { po.TenantId, po.BranchId });
         builder.HasIndex(po => new { po.TenantId, po.IsDeleted });

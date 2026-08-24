@@ -9,15 +9,7 @@ public abstract class BaseEntity
     /// </summary>
     public Guid Id { get; set; }
 
-    /// <summary>
-    /// معرف المستأجر الذي ينتمي إليه الكيان.
-    /// </summary>
-    public Guid TenantId { get; set; }
-
-    /// <summary>
-    /// الكائن المرجعي للمستأجر.
-    /// </summary>
-    public Tenant? Tenant { get; set; }
+ 
 
     /// <summary>
     /// تاريخ إنشاء الكيان.

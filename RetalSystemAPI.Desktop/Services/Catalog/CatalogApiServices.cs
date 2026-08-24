@@ -96,6 +96,7 @@ public class UnitApiService : IUnitApiService
 
 public interface IProductApiService
 {
+    Task<ApiResponse<List<ProductDto>>> GetAllAsync(CancellationToken ct = default);
     Task<ApiResponse<PagedResult<ProductDto>>> GetPagedAsync(int pageNumber = 1, int pageSize = 10, Guid? categoryId = null, CancellationToken ct = default);
     Task<ApiResponse<List<ProductDto>>> SearchAsync(string query, CancellationToken ct = default);
     Task<ApiResponse<ProductDto>> GetByBarCodeAsync(string barCode, CancellationToken ct = default);
@@ -116,6 +117,9 @@ public class ProductApiService : IProductApiService
     {
         _apiClient = apiClient;
     }
+
+    public Task<ApiResponse<List<ProductDto>>> GetAllAsync(CancellationToken ct = default) =>
+        _apiClient.GetAsync<List<ProductDto>>("catalog/products", ct);
 
     public Task<ApiResponse<PagedResult<ProductDto>>> GetPagedAsync(int pageNumber = 1, int pageSize = 10, Guid? categoryId = null, CancellationToken ct = default)
     {

@@ -151,13 +151,53 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 
     public void Update(T entity)
     {
-        _dbSet.Update(entity);
+        var local = _dbSet.Local.FirstOrDefault(e => e.Id == entity.Id);
+        if (local != null)
+        {
+            if (!ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            }
+            else
+            {
+                _context.Entry(local).State = EntityState.Modified;
+            }
+        }
+        else
+        {
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                _dbSet.Attach(entity);
+            }
+            entry.State = EntityState.Modified;
+        }
     }
 
     public void SoftDelete(T entity)
     {
         entity.IsDeleted = true;
-        _dbSet.Update(entity);
+        var local = _dbSet.Local.FirstOrDefault(e => e.Id == entity.Id);
+        if (local != null)
+        {
+            if (!ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            }
+            else
+            {
+                _context.Entry(local).State = EntityState.Modified;
+            }
+        }
+        else
+        {
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                _dbSet.Attach(entity);
+            }
+            entry.State = EntityState.Modified;
+        }
     }
 
     public void HardDelete(T entity)

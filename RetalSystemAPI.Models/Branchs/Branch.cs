@@ -8,7 +8,7 @@ namespace RetalSystemAPI.Models.Branchs;
 /// <summary>
 /// يمثل الكيان الخاص بالفروع في النظام، ويحتوي على الخصائص المتعلقة بالفرع مثل الاسم، العنوان، رقم الهاتف، وحالة النشاط.
 /// </summary>
-public class Branch : BaseEntity
+public class Branch : TenantBaseEntity
 {
     /// <summary>
     /// اسم الفرع
@@ -26,7 +26,7 @@ public class Branch : BaseEntity
 
     public ICollection<BranchPhone> BranchPhones { get; set; } = new List<BranchPhone>();
 
-    public ICollection<ApplicationUser> ApplicationUser { get; set; }=new List<ApplicationUser>();
+    public ICollection<ApplicationUser> ApplicationUsers { get; set; } = new List<ApplicationUser>();
     public ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>(); 
 
     public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();

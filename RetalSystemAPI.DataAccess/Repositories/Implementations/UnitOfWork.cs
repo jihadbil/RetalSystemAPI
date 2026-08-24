@@ -7,7 +7,9 @@ using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Catalog;
+using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.Models.Purchase;
+using RetalSystemAPI.Models.Sales;
 using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.Models.Warehouses;
 
@@ -36,8 +38,20 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<Warehouse>? _warehouses;
     private IRepository<StorgeStock>? _storgeStocks;
     private IRepository<ShowroomStock>? _showroomStocks;
+    private IRepository<StockTransfer>? _stockTransfers;
+    private IRepository<StockTransferItem>? _stockTransferItems;
+    private IRepository<StockAdjustment>? _stockAdjustments;
+    private IRepository<StockAdjustmentItem>? _stockAdjustmentItems;
     private IRepository<PurchaseOrder>? _purchaseOrders;
     private IRepository<PurchaseOrderItem>? _purchaseOrderItems;
+    private IRepository<PurchaseInvoice>? _purchaseInvoices;
+    private IRepository<PurchaseInvoiceItem>? _purchaseInvoiceItems;
+    private IRepository<Customer>? _customers;
+    private IRepository<CustomerPhone>? _customerPhones;
+    private IRepository<SalesInvoice>? _salesInvoices;
+    private IRepository<SalesInvoiceItem>? _salesInvoiceItems;
+    private IRepository<SalesReturn>? _salesReturns;
+    private IRepository<SalesReturnItem>? _salesReturnItems;
 
     public UnitOfWork(AppDbContext context)
     {
@@ -58,8 +72,20 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Warehouse> Warehouses => _warehouses ??= new Repository<Warehouse>(_context);
     public IRepository<StorgeStock> StorgeStocks => _storgeStocks ??= new Repository<StorgeStock>(_context);
     public IRepository<ShowroomStock> ShowroomStocks => _showroomStocks ??= new Repository<ShowroomStock>(_context);
+    public IRepository<StockTransfer> StockTransfers => _stockTransfers ??= new Repository<StockTransfer>(_context);
+    public IRepository<StockTransferItem> StockTransferItems => _stockTransferItems ??= new Repository<StockTransferItem>(_context);
+    public IRepository<StockAdjustment> StockAdjustments => _stockAdjustments ??= new Repository<StockAdjustment>(_context);
+    public IRepository<StockAdjustmentItem> StockAdjustmentItems => _stockAdjustmentItems ??= new Repository<StockAdjustmentItem>(_context);
     public IRepository<PurchaseOrder> PurchaseOrders => _purchaseOrders ??= new Repository<PurchaseOrder>(_context);
     public IRepository<PurchaseOrderItem> PurchaseOrderItems => _purchaseOrderItems ??= new Repository<PurchaseOrderItem>(_context);
+    public IRepository<PurchaseInvoice> PurchaseInvoices => _purchaseInvoices ??= new Repository<PurchaseInvoice>(_context);
+    public IRepository<PurchaseInvoiceItem> PurchaseInvoiceItems => _purchaseInvoiceItems ??= new Repository<PurchaseInvoiceItem>(_context);
+    public IRepository<Customer> Customers => _customers ??= new Repository<Customer>(_context);
+    public IRepository<CustomerPhone> CustomerPhones => _customerPhones ??= new Repository<CustomerPhone>(_context);
+    public IRepository<SalesInvoice> SalesInvoices => _salesInvoices ??= new Repository<SalesInvoice>(_context);
+    public IRepository<SalesInvoiceItem> SalesInvoiceItems => _salesInvoiceItems ??= new Repository<SalesInvoiceItem>(_context);
+    public IRepository<SalesReturn> SalesReturns => _salesReturns ??= new Repository<SalesReturn>(_context);
+    public IRepository<SalesReturnItem> SalesReturnItems => _salesReturnItems ??= new Repository<SalesReturnItem>(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

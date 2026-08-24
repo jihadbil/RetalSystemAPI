@@ -9,7 +9,7 @@ namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
 /// يمتل الباركود الخاص بالمنتج بحيث يمكن ان يكون للمنتج اكثر من باركود لدعم تعدد الأكواد للصنف الواحد
 /// </summary>
-public class ProductBarCode:BaseEntity
+public class ProductBarCode : TenantBaseEntity
 {
     /// <summary>
     /// الباركود الخاص بالمنتج

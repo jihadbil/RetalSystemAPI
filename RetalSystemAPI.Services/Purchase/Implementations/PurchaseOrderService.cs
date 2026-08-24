@@ -175,8 +175,15 @@ public class PurchaseOrderService : IPurchaseOrderService
         }
 
         bool isNewlyReceived = (status == PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.Received);
-        order.Status = status;
-        _unitOfWork.PurchaseOrders.Update(order);
+
+        var orderToUpdate = await _unitOfWork.PurchaseOrders.GetByIdAsync(id, ct);
+        if (orderToUpdate is null)
+        {
+            return ServiceResult<PurchaseOrderResponseDto>.Failure("أمر الشراء/الطلبية غير موجودة", ErrorCodes.PurchaseOrderNotFound);
+        }
+
+        orderToUpdate.Status = status;
+        _unitOfWork.PurchaseOrders.Update(orderToUpdate);
 
         if (isNewlyReceived && order.WarehouseId.HasValue && order.Items != null && order.Items.Count > 0)
         {
@@ -189,12 +196,17 @@ public class PurchaseOrderService : IPurchaseOrderService
                     {
                         if (item.ProductBarCodeId == Guid.Empty) continue;
 
-                        var spec = new StorgeStockWithDetailsSpec(order.WarehouseId.Value, item.ProductBarCodeId);
-                        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(spec, ct);
+                        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
+                            s => s.WarehouseId == order.WarehouseId.Value && s.ProductBarcodeId == item.ProductBarCodeId, ct);
+
                         if (stock != null)
                         {
-                            stock.Quantity += (int)item.Quantity;
-                            _unitOfWork.StorgeStocks.Update(stock);
+                            var stockToUpdate = await _unitOfWork.StorgeStocks.GetByIdAsync(stock.Id, ct);
+                            if (stockToUpdate != null)
+                            {
+                                stockToUpdate.Quantity += (int)item.Quantity;
+                                _unitOfWork.StorgeStocks.Update(stockToUpdate);
+                            }
                         }
                         else
                         {
@@ -216,15 +228,26 @@ public class PurchaseOrderService : IPurchaseOrderService
                     {
                         if (item.ProductBarCodeId == Guid.Empty) continue;
 
-                        var bc = await _unitOfWork.ProductBarCodes.GetByIdAsync(item.ProductBarCodeId, ct);
-                        if (bc == null) continue;
+                        Guid productId = item.ProductBarCode?.ProductId ?? Guid.Empty;
+                        if (productId == Guid.Empty)
+                        {
+                            var bc = await _unitOfWork.ProductBarCodes.GetByIdAsync(item.ProductBarCodeId, ct);
+                            if (bc != null) productId = bc.ProductId;
+                        }
 
-                        var spec = new ShowroomStockWithDetailsSpec(order.WarehouseId.Value, bc.ProductId);
-                        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(spec, ct);
+                        if (productId == Guid.Empty) continue;
+
+                        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
+                            s => s.WarehouseId == order.WarehouseId.Value && s.ProductId == productId, ct);
+
                         if (stock != null)
                         {
-                            stock.Quantity += (int)item.Quantity;
-                            _unitOfWork.ShowroomStocks.Update(stock);
+                            var stockToUpdate = await _unitOfWork.ShowroomStocks.GetByIdAsync(stock.Id, ct);
+                            if (stockToUpdate != null)
+                            {
+                                stockToUpdate.Quantity += (int)item.Quantity;
+                                _unitOfWork.ShowroomStocks.Update(stockToUpdate);
+                            }
                         }
                         else
                         {
@@ -232,7 +255,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                             {
                                 TenantId = order.TenantId,
                                 WarehouseId = order.WarehouseId.Value,
-                                ProductId = bc.ProductId,
+                                ProductId = productId,
                                 Quantity = (int)item.Quantity,
                                 MinStockLevel = 0
                             };

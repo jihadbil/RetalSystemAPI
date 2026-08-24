@@ -7,7 +7,7 @@ namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
 /// يمتل الوحدات في النظام (صندوق-دستة-قطعة) للماسعدة على ادخال البضاعة و حساب تكلفة القطعة بدل تغيير العبوة في كل عملية حساب
 /// </summary>
-public class Unit: BaseEntity
+public class Unit : TenantBaseEntity
 {
 
     /// <summary>

@@ -9,7 +9,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
         builder.HasOne(u => u.Branch)
-            .WithMany(b => b.ApplicationUser)
+            .WithMany(b => b.ApplicationUsers)
             .HasForeignKey(u => u.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
 

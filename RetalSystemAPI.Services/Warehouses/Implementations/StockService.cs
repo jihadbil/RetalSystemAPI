@@ -118,8 +118,8 @@ public class StockService : IStockService
             return ServiceResult<StorgeStockResponseDto>.Failure("الباركود المحدد غير موجود", ErrorCodes.BarCodeNotFound);
         }
 
-        var spec = new StorgeStockWithDetailsSpec(dto.WarehouseId, dto.ProductBarcodeId);
-        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(spec, ct);
+        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
+            s => s.WarehouseId == dto.WarehouseId && s.ProductBarcodeId == dto.ProductBarcodeId, ct);
 
         if (stock is null)
         {
@@ -247,8 +247,8 @@ public class StockService : IStockService
             return ServiceResult<ShowroomStockResponseDto>.Failure("المنتج المحدد غير موجود", ErrorCodes.ProductNotFound);
         }
 
-        var spec = new ShowroomStockWithDetailsSpec(dto.WarehouseId, dto.ProductId);
-        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(spec, ct);
+        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
+            s => s.WarehouseId == dto.WarehouseId && s.ProductId == dto.ProductId, ct);
 
         if (stock is null)
         {

@@ -6,7 +6,7 @@ namespace RetalSystemAPI.Models.Warehouses;
 /// <summary>
 /// يمتل صالات العرض الخاصة بصاحب المحل تم فصلها عن المخزن لان التعامل مع الصنف في العرض يتم بمعرف الصنف و ليس بالكود لانه لا يهم اللون هنا لان سعر البيع و التكلفة هو نفسه
 /// </summary>
-public class ShowroomStock:BaseEntity
+public class ShowroomStock : TenantBaseEntity
 {
    /// <summary>
    /// معرف المخزن(الصالة) التي تحوي الصنف

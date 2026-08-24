@@ -9,7 +9,7 @@ namespace RetalSystemAPI.Models.Suppliers;
 /// <summary>
 /// يمتل ارقام الهواتف الخصة بالمورد و اسماء اصحابها
 /// </summary>
-public class SupplierPhone:BaseEntity
+public class SupplierPhone : TenantBaseEntity
 {
     /// <summary>
     /// معرف المورد

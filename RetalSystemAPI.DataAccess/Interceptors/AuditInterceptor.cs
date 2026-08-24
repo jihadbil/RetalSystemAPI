@@ -47,12 +47,15 @@ public class AuditInterceptor : SaveChangesInterceptor
                     entry.Entity.Id = Guid.NewGuid();
                 }
 
-                if (entry.Entity.TenantId == Guid.Empty && entry.Entity is not Tenant && currentTenantId != Guid.Empty)
+                if (entry.Entity is TenantBaseEntity tenantEntity && tenantEntity.TenantId == Guid.Empty && currentTenantId != Guid.Empty)
                 {
-                    entry.Entity.TenantId = currentTenantId;
+                    tenantEntity.TenantId = currentTenantId;
                 }
 
-                entry.Entity.CreatedAt = DateTime.UtcNow;
+                if (entry.Entity.CreatedAt == default)
+                {
+                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                }
                 entry.Entity.CreatedByUserId = userId;
             }
             else if (entry.State == EntityState.Modified)
@@ -63,7 +66,10 @@ public class AuditInterceptor : SaveChangesInterceptor
                 // منع التعديل على بيانات الإنشاء
                 entry.Property(x => x.CreatedAt).IsModified = false;
                 entry.Property(x => x.CreatedByUserId).IsModified = false;
-                entry.Property(x => x.TenantId).IsModified = false;
+                if (entry.Entity is TenantBaseEntity)
+                {
+                    entry.Property(nameof(TenantBaseEntity.TenantId)).IsModified = false;
+                }
             }
         }
 

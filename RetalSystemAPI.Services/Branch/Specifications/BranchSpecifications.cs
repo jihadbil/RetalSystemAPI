@@ -26,6 +26,6 @@ public class BranchWithPhonesAndUsersSpec : BaseSpecification<RetalSystemAPI.Mod
     public BranchWithPhonesAndUsersSpec(Guid id) : base(b => b.Id == id)
     {
         AddInclude(b => b.BranchPhones);
-        AddInclude(b => b.ApplicationUser);
+        AddInclude(b => b.ApplicationUsers);
     }
 }

@@ -6,7 +6,7 @@ namespace RetalSystemAPI.Models.Catalog;
 /// <summary>
 /// يمتل صور المنتج ايضا تم تصميمه بحيث يدعم صورة لكل نكهة على حدى او بشكل عام
 /// </summary>
-public class ProductImage:BaseEntity    
+public class ProductImage : TenantBaseEntity    
 {
     /// <summary>
     /// عنوان مسار الصورة على السيرفر او رابط خارجي للصورة  

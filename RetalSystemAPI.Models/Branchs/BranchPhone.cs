@@ -9,7 +9,7 @@ namespace RetalSystemAPI.Models.Branchs;
 /// <summary>
 /// يمثل الكيان الخاص بأرقام هواتف الفروع في النظام، ويحتوي على الخصائص المتعلقة برقم الهاتف مثل الاسم، رقم الهاتف، ومعرف الفرع المرتبط به.
 /// </summary>
-public class BranchPhone:BaseEntity    
+public class BranchPhone : TenantBaseEntity    
 {
    
     /// <summary>

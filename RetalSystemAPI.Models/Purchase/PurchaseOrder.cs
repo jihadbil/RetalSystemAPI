@@ -1,6 +1,7 @@
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Common;
 using RetalSystemAPI.Models.Enums;
+using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.Models.Warehouses;
 
 
@@ -8,12 +9,17 @@ namespace RetalSystemAPI.Models.Purchase;
 /// <summary>
 /// يمتل الطلبية الخاصة بصاحب المحل
 /// </summary>
-public class PurchaseOrder : BaseEntity
+public class PurchaseOrder : TenantBaseEntity
 {
     /// <summary>
     /// رقم الطلبية
     /// </summary>
     public string OrderNumber { get; set; } = null!;
+    /// <summary>
+    /// معرف المورد صاحب الطلبية
+    /// </summary>
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
    /// <summary>
    /// يمتل المخزن او الصالة التي تحتاج هده الطلبية
    /// </summary>

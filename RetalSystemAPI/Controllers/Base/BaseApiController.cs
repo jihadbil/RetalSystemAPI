@@ -43,7 +43,12 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.SupplierNotFound
         or ErrorCodes.WarehouseNotFound
         or ErrorCodes.StockNotFound
-        or ErrorCodes.PurchaseOrderNotFound => 404,
+        or ErrorCodes.PurchaseOrderNotFound
+        or ErrorCodes.CustomerNotFound
+        or ErrorCodes.SalesInvoiceNotFound
+        or ErrorCodes.SalesReturnNotFound
+        or ErrorCodes.StockTransferNotFound
+        or ErrorCodes.StockAdjustmentNotFound => 404,
 
         ErrorCodes.Unauthorized
         or ErrorCodes.InvalidCredentials => 401,
@@ -58,6 +63,11 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.SupplierNameExists
         or ErrorCodes.WarehouseNameExists
         or ErrorCodes.PurchaseOrderNumberExists
+        or ErrorCodes.CustomerCodeExists
+        or ErrorCodes.SalesInvoiceNumberExists
+        or ErrorCodes.SalesReturnNumberExists
+        or ErrorCodes.StockTransferNumberExists
+        or ErrorCodes.StockAdjustmentNumberExists
         or ErrorCodes.ConcurrencyError => 409,
 
         ErrorCodes.BranchHasUsers
@@ -70,7 +80,12 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.FileTooLarge
         or ErrorCodes.ValidationError
         or ErrorCodes.InsufficientStock
-        or ErrorCodes.PurchaseOrderInvalidStatus => 400,
+        or ErrorCodes.InsufficientShowroomStock
+        or ErrorCodes.CustomerCreditExceeded
+        or ErrorCodes.PurchaseOrderInvalidStatus
+        or ErrorCodes.SalesInvoiceInvalidStatus
+        or ErrorCodes.StockTransferInvalidStatus
+        or ErrorCodes.StockTransferSameWarehouse => 400,
 
         _ => 400
     };

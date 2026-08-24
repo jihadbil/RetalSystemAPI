@@ -30,6 +30,14 @@ public class ProductService : IProductService
         _mapper = mapper;
     }
 
+    public async Task<ServiceResult<IReadOnlyList<ProductSummaryDto>>> GetAllAsync(Guid? categoryId = null, CancellationToken ct = default)
+    {
+        var spec = new ProductSummarySpec(categoryId);
+        var products = await _unitOfWork.Products.FindAsync(spec, ct);
+        var result = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(products);
+        return ServiceResult<IReadOnlyList<ProductSummaryDto>>.Success(result);
+    }
+
     public async Task<ServiceResult<ProductResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var product = await _unitOfWork.Products.FirstOrDefaultAsync(new ProductWithDetailsSpec(id), ct);

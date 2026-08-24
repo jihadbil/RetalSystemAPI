@@ -55,6 +55,8 @@ public class ProductDto
     public Guid CategoryId { get; set; }
     public string? CategoryName { get; set; }
     public string? DefaultImageUrl { get; set; }
+    public string? DefaultImage { get; set; }
+    public string? DefaultBarCode { get; set; }
     public List<ProductUnitDto> Units { get; set; } = new();
     public List<ProductBarCodeDto> BarCodes { get; set; } = new();
     public List<ProductImageDto> Images { get; set; } = new();

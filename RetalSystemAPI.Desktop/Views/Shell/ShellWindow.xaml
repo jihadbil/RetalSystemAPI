@@ -27,19 +27,28 @@
                 </StackPanel>
 
                 <!-- Navigation Links -->
-                <StackPanel Grid.Row="1" Margin="12,12">
-                    <Button Content="الرئيسية" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToDashboardCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="الملف الشخصي" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToTenantsCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="الفروع" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToBranchesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="التصنيفات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToCategoriesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="وحدات القياس" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUnitsCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="المنتجات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToProductsCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="👥 الموردين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToSuppliersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="🏪 المخازن والصالات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToWarehousesCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="📦 إدارة المخزون" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="📝 الطلبيات والمشتريات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToPurchaseOrdersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                    <Button Content="👤 إدارة المستخدمين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUsersCommand}" HorizontalContentAlignment="Right" Margin="0,4" Padding="12,10" />
-                </StackPanel>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12,8">
+                        <Button Content="⚡ نقطة البيع (POS)" Command="{Binding NavigateToPosCommand}" HorizontalContentAlignment="Right" Margin="0,2,0,8" Padding="12,10" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+                        <Button Content="الرئيسية" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToDashboardCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="الملف الشخصي" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToTenantsCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🏢 الفروع" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToBranchesCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🗂️ التصنيفات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToCategoriesCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="📏 وحدات القياس" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUnitsCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="☕ المنتجات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToProductsCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="👥 العملاء والحسابات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToCustomersCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🧾 فواتير المبيعات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToSalesInvoicesCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🔄 مرتجعات المبيعات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToSalesReturnsCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🤝 الموردين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToSuppliersCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🏪 المخازن والصالات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToWarehousesCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="📦 إدارة المخزون" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="🚚 التحويلات المخزنية" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockTransfersCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="⚖️ التسويات الجردية" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToStockAdjustmentsCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="📝 طلبيات الشراء" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToPurchaseOrdersCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="📥 فواتير المشتريات" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToPurchaseInvoicesCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                        <Button Content="👤 إدارة المستخدمين" Style="{StaticResource GhostButtonStyle}" Command="{Binding NavigateToUsersCommand}" HorizontalContentAlignment="Right" Margin="0,3" Padding="12,8" />
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!-- Footer Logout -->
                 <Border Grid.Row="2" Padding="16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">

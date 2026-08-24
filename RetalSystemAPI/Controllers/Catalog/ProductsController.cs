@@ -27,6 +27,16 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
+    /// الحصول على جميع المنتجات (بدون ترقيم صفحي) لاستخدامها في نقاط البيع والقوائم.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? categoryId = null, CancellationToken ct = default)
+    {
+        var result = await _productService.GetAllAsync(categoryId, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
     /// الحصول على قائمة صفحية بالمنتجات مع تصفية اختارية حسب التصنيف.
     /// </summary>
     [HttpGet("paged")]

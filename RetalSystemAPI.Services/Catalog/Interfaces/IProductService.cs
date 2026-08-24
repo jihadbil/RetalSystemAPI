@@ -12,6 +12,7 @@ namespace RetalSystemAPI.Services.Catalog.Interfaces;
 /// </summary>
 public interface IProductService
 {
+    Task<ServiceResult<IReadOnlyList<ProductSummaryDto>>> GetAllAsync(Guid? categoryId = null, CancellationToken ct = default);
     Task<ServiceResult<ProductResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default);
     Task<ServiceResult<IReadOnlyList<ProductSummaryDto>>> SearchAsync(string query, CancellationToken ct = default);

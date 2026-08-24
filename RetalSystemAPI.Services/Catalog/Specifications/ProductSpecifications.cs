@@ -24,6 +24,8 @@ public class ProductSummarySpec : BaseSpecification<Product>
         : base(p => !categoryId.HasValue || p.CategoryId == categoryId.Value)
     {
         AddInclude(p => p.Category!);
+        AddInclude(p => p.ProductBarCodes);
+        AddInclude(p => p.ProductImages);
         ApplyOrderBy(p => p.Name);
     }
 }
