@@ -18,6 +18,7 @@ public partial class ModernConfirmDialog : Window
     public ModernConfirmDialog()
     {
         InitializeComponent();
+        Loaded += (_, _) => CancelButton.Focus();
     }
 
     public static bool ShowConfirm(Window owner, string title, string message, string confirmText = "تأكيد", string cancelText = "إلغاء", ConfirmDialogType dialogType = ConfirmDialogType.Danger)
@@ -34,19 +35,19 @@ public partial class ModernConfirmDialog : Window
 
         if (dialogType == ConfirmDialogType.Danger)
         {
-            dialog.IconBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#fee2e2"));
+            dialog.IconBadge.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "DangerLightBrush");
             dialog.IconText.Text = "🗑️";
             dialog.ConfirmButton.Style = (Style)dialog.FindResource("DangerButtonStyle");
         }
         else if (dialogType == ConfirmDialogType.Warning)
         {
-            dialog.IconBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#fef3c7"));
+            dialog.IconBadge.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "WarningLightBrush");
             dialog.IconText.Text = "⚠️";
             dialog.ConfirmButton.Style = (Style)dialog.FindResource("PrimaryButtonStyle");
         }
         else
         {
-            dialog.IconBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#e0f2fe"));
+            dialog.IconBadge.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "AccentLightBrush");
             dialog.IconText.Text = "ℹ️";
             dialog.ConfirmButton.Style = (Style)dialog.FindResource("PrimaryButtonStyle");
         }

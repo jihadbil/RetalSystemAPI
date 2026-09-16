@@ -4,7 +4,7 @@
         xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"
         Title="تسجيل مرتجع مبيعات" Height="680" Width="800"
         WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
-        Background="#FFFFFF" ResizeMode="NoResize">
+        Background="{DynamicResource SurfaceBrush}" ResizeMode="NoResize" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -15,10 +15,41 @@
 
         <!-- Header -->
         <TextBlock Text="🔄 تسجيل مرتجع مبيعات وإعادة البضاعة للمخزون" 
-                   FontSize="20" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
+                   FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,16"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,0,10,0">
+                <!-- Original Invoice Selection (create mode only) -->
+                <Border Background="{DynamicResource SurfaceActiveBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" Margin="0,0,0,12"
+                        Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🧾 الفاتورة الأصلية * — المرتجع يرتبط بفرع ومستودع الفاتورة ويعود إليها" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <CheckBox Grid.Column="1" Content="بدون فاتورة (يتطلب صلاحية)" IsChecked="{Binding IsInvoicelessMode}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                                      IsEnabled="{Binding CanReturnWithoutInvoice}"/>
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.2*"/>
+                                <ColumnDefinition Width="1.2*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="بحث برقم الفاتورة أو اسم العميل" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding InvoiceSearchTerm, UpdateSourceTrigger=PropertyChanged, Delay=300}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                <TextBlock Text="الفاتورة المحددة" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding Invoices}" SelectedItem="{Binding SelectedInvoice}" Height="34" VerticalContentAlignment="Center" DisplayMemberPath="InvoiceNumber"
+                                          IsEnabled="{Binding IsInvoicelessMode, Converter={StaticResource InverseBoolConverter}}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <!-- Master Info -->
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
@@ -28,17 +59,17 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="رقم المرتجع *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding ReturnNumber, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+                        <TextBlock Text="رقم المرتجع *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding ReturnNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" IsReadOnly="{Binding IsViewOnly}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="6,0,6,0">
-                        <TextBlock Text="الفرع *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="الفرع (من الفاتورة) *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Margin="6,0,0,0">
-                        <TextBlock Text="المستودع / الصالة المستلمة *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="المستودع / الصالة المستلمة (من الفاتورة) *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                     </StackPanel>
                 </Grid>
@@ -50,12 +81,12 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="العميل" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="العميل" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                        <TextBlock Text="سبب الإرجاع" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="سبب الإرجاع" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox SelectedValue="{Binding Reason}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}">
                             <ComboBoxItem Content="تراجع العميل" Tag="{x:Static sales:SalesReturnReason.CustomerChangedMind}" IsSelected="True"/>
                             <ComboBoxItem Content="تالف / مكسور" Tag="{x:Static sales:SalesReturnReason.Damaged}"/>
@@ -68,10 +99,10 @@
                 </Grid>
 
                 <!-- Add Items Section (visible only in create mode) -->
-                <Border Background="#F9FAFB" CornerRadius="8" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12"
+                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12"
                         Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Text="🛒 إضافة بنود الأصناف المرتجعة" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,8"/>
+                        <TextBlock Text="🛒 إضافة بنود الأصناف المرتجعة" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2.5*"/>
@@ -81,27 +112,29 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="الصنف" FontSize="11" Foreground="#6B7280"/>
+                                <TextBlock Text="بحث بالاسم أو الباركود" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding ProductSearchTerm, UpdateSourceTrigger=PropertyChanged, Delay=300}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
+                                <CheckBox Content="مطابقة الباركود تماماً" IsChecked="{Binding ExactBarcodeMatch}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" ToolTip="يقتصر البحث على التطابق التام مع رقم الباركود"/>
+                                <TextBlock Text="الصنف (اكتب للبحث)" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,6,0,4"/>
                                 <ComboBox ItemsSource="{Binding AvailableProducts}" SelectedItem="{Binding SelectedProductToAdd}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
                             </StackPanel>
-
                             <StackPanel Grid.Column="1" Margin="4,0,4,0">
-                                <TextBlock Text="الكمية" FontSize="11" Foreground="#6B7280"/>
-                                <TextBox Text="{Binding QuantityToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                                <TextBlock Text="الكمية" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding QuantityToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Margin="4,0,4,0">
-                                <TextBlock Text="سعر الوحدة" FontSize="11" Foreground="#6B7280"/>
-                                <TextBox Text="{Binding UnitPriceToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                                <TextBlock Text="سعر الوحدة" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding UnitPriceToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
                             </StackPanel>
 
-                            <Button Grid.Column="3" Content="+ إضافة بند" Command="{Binding AddItemCommand}" VerticalAlignment="Bottom" Height="34" Padding="14,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                            <Button Grid.Column="3" Content="+ إضافة بند" Command="{Binding AddItemCommand}" VerticalAlignment="Bottom" Height="34" Padding="14,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Items DataGrid -->
-                <Border Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12">
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
                     <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="140" MaxHeight="200" GridLinesVisibility="Horizontal" HeadersVisibility="Column" Background="Transparent" RowHeight="34">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="2.5*"/>
@@ -111,7 +144,7 @@
                             <DataGridTemplateColumn Header="حذف" Width="60">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
+                                        <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="{DynamicResource DangerBrush}" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -120,23 +153,23 @@
                 </Border>
 
                 <!-- Calculations Summary Card -->
-                <Border Background="#F3F4F6" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                <Border Background="{DynamicResource SurfaceActiveBrush}" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                     <DockPanel>
-                        <TextBlock Text="إجمالي قيمة المرتجع المستردة:" FontWeight="Bold" Foreground="#374151" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontSize="18" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Right"/>
+                        <TextBlock Text="إجمالي قيمة المرتجع المستردة:" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Right"/>
                     </DockPanel>
                 </Border>
 
-                <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+                <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="{DynamicResource SurfaceHoverBrush}" IsReadOnly="{Binding IsViewOnly}"/>
             </StackPanel>
         </ScrollViewer>
 
         <!-- Footer Actions -->
         <DockPanel Grid.Row="2" Margin="0,16,0,0">
-            <Button Content="تسجيل المرتجع" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+            <Button Content="تسجيل المرتجع" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
                     Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
         </DockPanel>
     </Grid>
 </Window>

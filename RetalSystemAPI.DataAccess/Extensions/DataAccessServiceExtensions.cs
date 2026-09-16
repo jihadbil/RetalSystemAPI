@@ -12,10 +12,16 @@ using RetalSystemAPI.DataAccess.Services;
 namespace RetalSystemAPI.DataAccess.Extensions;
 
 /// <summary>
-/// امتدادات تسجيل خدمات DataAccess في كاوية الإعتمادية (Dependency Injection Container).
+/// فئة امتدادات (Extension Methods) لتسجيل وتكوين كافة خدمات طبقة الوصول للبيانات (DataAccess) في حاوية حقن الاعتماديات (DI Container).
 /// </summary>
 public static class DataAccessServiceExtensions
 {
+    /// <summary>
+    /// تسجيل خدمات AppDbContext و SQL Server و Identity و AuditInterceptor و IRepository و IUnitOfWork.
+    /// </summary>
+    /// <param name="services">مجموعة خدمات التطبيق IServiceCollection</param>
+    /// <param name="configuration">إعدادات التكوين IConfiguration لجلب سلاسل الاتصال</param>
+    /// <returns>مجموعة الخدمات بعد التسجيل</returns>
     public static IServiceCollection AddDataAccess(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -37,7 +43,11 @@ public static class DataAccessServiceExtensions
             options
                 .UseSqlServer(
                     connectionString,
-                    sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
+                    sql =>
+                    {
+                        sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+                        sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                    }
                 )
                 .AddInterceptors(interceptor)
                 .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));

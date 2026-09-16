@@ -10,13 +10,22 @@ using RetalSystemAPI.Models.Common;
 namespace RetalSystemAPI.DataAccess.Interceptors;
 
 /// <summary>
-/// Interceptor للتعبئة التلقائية لبيانات التتبع والتدقيق (CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, TenantId, Id).
+/// معترض حفظ التغييرات (SaveChangesInterceptor) للتعبئة التلقائية لبيانات التدقيق والتتبع للمستأجرين:
+/// - تعيين المعرف التلقائي (Id = Guid.NewGuid())
+/// - تعيين معرف المستأجر (TenantId)
+/// - توثيق تاريخ ومستخدم الإنشاء (CreatedAt, CreatedByUserId)
+/// - توثيق تاريخ ومستخدم التعديل (UpdatedAt, UpdatedByUserId) مع حماية حقول الإنشاء من التغيير.
 /// </summary>
 public class AuditInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUserService _currentUser;
     private readonly ICurrentTenantService _tenantService;
 
+    /// <summary>
+    /// تهيئة المعترض مع حقن خدمات المستخدم والمستأجر الحاليين.
+    /// </summary>
+    /// <param name="currentUser">خدمة استخراج المستخدم الحالي</param>
+    /// <param name="tenantService">خدمة استخراج المستأجر الحالي</param>
     public AuditInterceptor(
         ICurrentUserService currentUser,
         ICurrentTenantService tenantService)
@@ -25,6 +34,9 @@ public class AuditInterceptor : SaveChangesInterceptor
         _tenantService = tenantService;
     }
 
+    /// <summary>
+    /// يتم استدعاؤها تلقائياً قبل تنفيذ SaveChangesAsync لفحص الكيانات المضافة والمعدلة وحقن بيانات التدقيق.
+    /// </summary>
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,

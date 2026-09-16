@@ -6,10 +6,11 @@ using RetalSystemAPI.Models.Warehouses;
 namespace RetalSystemAPI.Services.Warehouses.Specifications;
 
 /// <summary>
-/// تخصيصات استعلامات التسويات الجردية مع تفاصيل المستودع والبنود.
+/// مواصفات استعلامات التسويات الجردية مع تضمين المستودع وبنود التسوية والأصناف والباركودات.
 /// </summary>
 public class StockAdjustmentWithDetailsSpec : BaseSpecification<StockAdjustment>
 {
+    /// <summary>جلب كافة التسويات الجردية مرتبة تنازلياً بتاريخ التسوية</summary>
     public StockAdjustmentWithDetailsSpec()
     {
         AddInclude(s => s.Warehouse);
@@ -18,6 +19,8 @@ public class StockAdjustmentWithDetailsSpec : BaseSpecification<StockAdjustment>
         ApplyOrderByDescending(s => s.AdjustmentDate);
     }
 
+    /// <summary>جلب تسوية جردية محددة بالمعرف مع تفاصيلها</summary>
+    /// <param name="id">معرف التسوية الجردية</param>
     public StockAdjustmentWithDetailsSpec(Guid id) : base(s => s.Id == id)
     {
         AddInclude(s => s.Warehouse);
@@ -25,6 +28,8 @@ public class StockAdjustmentWithDetailsSpec : BaseSpecification<StockAdjustment>
         AddInclude("Items.ProductBarCode");
     }
 
+    /// <summary>جلب تسوية جردية بواسطة رقم التسوية</summary>
+    /// <param name="adjustmentNumber">رقم التسوية الجردية</param>
     public StockAdjustmentWithDetailsSpec(string adjustmentNumber) : base(s => s.AdjustmentNumber == adjustmentNumber)
     {
         AddInclude(s => s.Warehouse);
@@ -32,6 +37,7 @@ public class StockAdjustmentWithDetailsSpec : BaseSpecification<StockAdjustment>
         AddInclude("Items.ProductBarCode");
     }
 
+    /// <summary>فلترة التسويات الجردية حسب المستودع وسبب التسوية والنطاق الزمني والبحث برقم التسوية</summary>
     public StockAdjustmentWithDetailsSpec(
         Guid? warehouseId,
         StockAdjustmentReason? reason = null,

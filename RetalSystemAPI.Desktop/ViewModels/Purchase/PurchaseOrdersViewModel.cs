@@ -11,13 +11,17 @@ using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Purchase;
+using RetalSystemAPI.Desktop.Services.Suppliers;
 using RetalSystemAPI.Desktop.Services.Warehouses;
+using RetalSystemAPI.Desktop.Models.Suppliers;
 using RetalSystemAPI.Desktop.ViewModels.Base;
 
 namespace RetalSystemAPI.Desktop.ViewModels.Purchase;
 
 public partial class PurchaseOrdersViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly IPurchaseOrderApiService _purchaseOrderApiService;
     private readonly IBranchApiService _branchApiService;
     private readonly IWarehouseApiService _warehouseApiService;
@@ -52,6 +56,12 @@ public partial class PurchaseOrdersViewModel : BaseViewModel
     [ObservableProperty]
     private int _pageSize = 10;
 
+    partial void OnPageSizeChanged(int value)
+    {
+        CurrentPage = 1;
+        _ = LoadOrdersAsync();
+    }
+
     partial void OnSelectedBranchChanged(BranchDto? value)
     {
         CurrentPage = 1;
@@ -73,7 +83,8 @@ public partial class PurchaseOrdersViewModel : BaseViewModel
     partial void OnSearchQueryChanged(string? value)
     {
         CurrentPage = 1;
-        _ = LoadOrdersAsync();
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadOrdersAsync);
     }
 
     public Func<PurchaseOrderSummaryDto?, Task>? OpenDialogHandler { get; set; }
@@ -108,18 +119,26 @@ public partial class PurchaseOrdersViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadOrdersAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             Guid? bId = SelectedBranch?.Id;
             Guid? wId = SelectedWarehouse?.Id;
             var response = await _purchaseOrderApiService.GetPagedAsync(CurrentPage, PageSize, bId, wId, SelectedStatus, SearchQuery);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Orders = new ObservableCollection<PurchaseOrderSummaryDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadOrdersAsync();
+                    return;
+                }
             }
             else ErrorMessage = response.Message ?? "فشل تحميل الطلبيات والمشتريات";
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -158,14 +177,41 @@ public partial class PurchaseOrdersViewModel : BaseViewModel
     private async Task UpdateStatusAsync(object? parameter)
     {
         if (parameter is not PurchaseOrderSummaryDto order) return;
-        // تدوير الحالة
-        PurchaseOrderStatus nextStatus = order.Status switch
+
+        if (order.Status == PurchaseOrderStatus.Received)
         {
-            PurchaseOrderStatus.Draft => PurchaseOrderStatus.Submitted,
-            PurchaseOrderStatus.Submitted => PurchaseOrderStatus.Received,
-            PurchaseOrderStatus.Received => PurchaseOrderStatus.Canceled,
-            _ => PurchaseOrderStatus.Draft
-        };
+            ErrorMessage = "الطلبية مستلمة ومغلقة بالفعل؛ تم إيداع الأصناف في المخزون لمرة واحدة ولا يمكن تكرار الاستلام.";
+            return;
+        }
+
+        if (order.Status == PurchaseOrderStatus.Cancelled)
+        {
+            ErrorMessage = "الطلبية ملغاة ولا يمكن تغيير حالتها.";
+            return;
+        }
+
+        PurchaseOrderStatus nextStatus;
+        string confirmMsg;
+        if (order.Status == PurchaseOrderStatus.Draft)
+        {
+            nextStatus = PurchaseOrderStatus.Confirmed;
+            confirmMsg = $"هل تريد تأكيد واعتماد الطلبية '{order.OrderNumber}'؟";
+        }
+        else if (order.Status == PurchaseOrderStatus.Confirmed)
+        {
+            nextStatus = PurchaseOrderStatus.Received;
+            confirmMsg = $"هل تريد استلام بضاعة الطلبية '{order.OrderNumber}' وإيداعها في المخزون؟ (سيتم ترحيل الكميات لمرة واحدة فقط وإغلاق الطلبية نهائياً)";
+        }
+        else
+        {
+            return;
+        }
+
+        if (ConfirmDeleteHandler != null)
+        {
+            var confirmed = await ConfirmDeleteHandler("تأكيد تحديث حالة الطلبية", confirmMsg);
+            if (!confirmed) return;
+        }
 
         await ExecuteAsync(async () =>
         {
@@ -210,6 +256,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
     private readonly IBranchApiService _branchApiService;
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly IProductBarCodeApiService _barCodeApiService;
+    private readonly ISupplierApiService _supplierApiService;
 
     [ObservableProperty]
     private Guid? _orderId;
@@ -224,6 +271,12 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
     private BranchDto? _selectedBranch;
 
     [ObservableProperty]
+    private ObservableCollection<SupplierSummaryDto> _suppliers = new();
+
+    [ObservableProperty]
+    private SupplierSummaryDto? _selectedSupplier;
+
+    [ObservableProperty]
     private ObservableCollection<WarehouseSummaryDto> _warehouses = new();
 
     [ObservableProperty]
@@ -231,6 +284,10 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private string _itemSearchQuery = string.Empty;
+
+    /// <summary>مطابقة الباركود تماماً — يبحث بالتطابق التام مع رقم الباركود</summary>
+    [ObservableProperty]
+    private bool _exactBarcodeMatch = false;
 
     [ObservableProperty]
     private ObservableCollection<BarcodeOptionItem> _barcodeOptions = new();
@@ -262,9 +319,12 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
     [ObservableProperty]
     private bool _isEditMode;
 
+    private int _barcodeSearchVersion;
+
     partial void OnItemSearchQueryChanged(string value)
     {
-        FilterBarcodeOptions();
+        // بحث مؤجل (Debounce) في باركودات الخادم بدل تحميلها كاملة
+        _ = DebounceSearchAsync(SearchBarcodeOptionsAsync);
     }
 
     partial void OnSelectedBarcodeOptionChanged(BarcodeOptionItem? value)
@@ -276,23 +336,68 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
         }
     }
 
-    private void FilterBarcodeOptions()
+    /// <summary>بحث باركودات الأصناف من الخادم بالاسم أو الباركود — أو مطابقة تامة عند التفعيل</summary>
+    private async Task SearchBarcodeOptionsAsync()
     {
-        if (string.IsNullOrWhiteSpace(ItemSearchQuery))
+        var version = ++_barcodeSearchVersion;
+        var q = ItemSearchQuery?.Trim() ?? string.Empty;
+
+        if (q.Length == 0)
         {
-            FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(BarcodeOptions);
+            if (version != _barcodeSearchVersion) return;
+            FilteredBarcodeOptions.Clear();
+            SelectedBarcodeOption = null;
+            return;
+        }
+
+        // مطابقة تامة: استعلام مباشر بنقطة الباركود الدقيقة ثم جلب كل باركودات الصنف المطابق
+        List<BarcodeOptionItem> options;
+        if (ExactBarcodeMatch)
+        {
+            options = new List<BarcodeOptionItem>();
+            // البحث الشامل بالباركود يعيد باركودات المنتج الذي يحتوي القيمة؛ نصفّي للتطابق الحرفي التام
+            var res = await _barCodeApiService.GetAllAsync(q);
+            if (version != _barcodeSearchVersion) return;
+            if (res.Success && res.Data != null)
+            {
+                options = res.Data
+                    .Where(bc => string.Equals(bc.BarCode, q, StringComparison.OrdinalIgnoreCase))
+                    .Select(bc => new BarcodeOptionItem
+                    {
+                        BarCodeId = bc.Id,
+                        BarcodeValue = bc.BarCode,
+                        BarcodeTitle = bc.Title,
+                        ProductName = bc.ProductName,
+                        CostPrice = bc.CostPrice
+                    }).ToList();
+            }
         }
         else
         {
-            var q = ItemSearchQuery.Trim();
-            var filtered = BarcodeOptions.Where(b =>
-                b.ProductName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                b.BarcodeValue.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                b.BarcodeTitle.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(filtered);
+            var res = await _barCodeApiService.GetAllAsync(q);
+            if (version != _barcodeSearchVersion) return;
+            options = (res.Success && res.Data != null)
+                ? res.Data.Select(bc => new BarcodeOptionItem
+                {
+                    BarCodeId = bc.Id,
+                    BarcodeValue = bc.BarCode,
+                    BarcodeTitle = bc.Title,
+                    ProductName = bc.ProductName,
+                    CostPrice = bc.CostPrice
+                }).ToList()
+                : new List<BarcodeOptionItem>();
         }
 
+        if (version != _barcodeSearchVersion) return;
+        BarcodeOptions = new ObservableCollection<BarcodeOptionItem>(options);
+        FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(options);
+        SelectedBarcodeOption = FilteredBarcodeOptions.FirstOrDefault();
+    }
+
+    private void FilterBarcodeOptions()
+    {
+        // النسخة الكاملة تُدار الآن عبر البحث الخادمي — تبقى للتوافق مع الاستدعاءات القديمة
+        FilteredBarcodeOptions = new ObservableCollection<BarcodeOptionItem>(BarcodeOptions);
         if (FilteredBarcodeOptions.Count > 0)
         {
             SelectedBarcodeOption = FilteredBarcodeOptions[0];
@@ -309,12 +414,14 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
         IPurchaseOrderApiService purchaseOrderApiService,
         IBranchApiService branchApiService,
         IWarehouseApiService warehouseApiService,
-        IProductBarCodeApiService barCodeApiService)
+        IProductBarCodeApiService barCodeApiService,
+        ISupplierApiService supplierApiService)
     {
         _purchaseOrderApiService = purchaseOrderApiService;
         _branchApiService = branchApiService;
         _warehouseApiService = warehouseApiService;
         _barCodeApiService = barCodeApiService;
+        _supplierApiService = supplierApiService;
     }
 
     public async Task InitializeAsync(Guid? id)
@@ -322,24 +429,15 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
         var bRes = await _branchApiService.GetAllAsync();
         if (bRes.Success && bRes.Data != null) Branches = new ObservableCollection<BranchDto>(bRes.Data);
 
+        var sRes = await _supplierApiService.GetAllAsync();
+        if (sRes.Success && sRes.Data != null) Suppliers = new ObservableCollection<SupplierSummaryDto>(sRes.Data);
+
         var wRes = await _warehouseApiService.GetAllAsync();
         if (wRes.Success && wRes.Data != null) Warehouses = new ObservableCollection<WarehouseSummaryDto>(wRes.Data);
 
-        var bcRes = await _barCodeApiService.GetAllAsync();
-        if (bcRes.Success && bcRes.Data != null)
-        {
-            var options = bcRes.Data.Select(bc => new BarcodeOptionItem
-            {
-                BarCodeId = bc.Id,
-                BarcodeValue = bc.BarCode,
-                BarcodeTitle = bc.Title,
-                ProductName = bc.ProductName,
-                CostPrice = bc.CostPrice
-            }).ToList();
-
-            BarcodeOptions = new ObservableCollection<BarcodeOptionItem>(options);
-            FilterBarcodeOptions();
-        }
+        // الباركودات لا تُجلب كاملة؛ تُبحث تدريجياً بالاسم أو الباركود من الخادم
+        BarcodeOptions.Clear();
+        FilteredBarcodeOptions.Clear();
 
         if (id.HasValue)
         {
@@ -353,6 +451,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
             OrderId = null;
             OrderNumber = $"PO-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
             SelectedBranch = Branches.Count > 0 ? Branches[0] : null;
+            SelectedSupplier = Suppliers.Count > 0 ? Suppliers[0] : null;
             SelectedWarehouse = Warehouses.Count > 0 ? Warehouses[0] : null;
             OrderDate = DateTime.Now;
             ExpectedDate = DateTime.Now.AddDays(7);
@@ -370,6 +469,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
             {
                 OrderNumber = res.Data.OrderNumber;
                 SelectedBranch = Branches.FirstOrDefault(b => b.Id == res.Data.BranchId);
+                SelectedSupplier = Suppliers.FirstOrDefault(s => s.Id == res.Data.SupplierId);
                 SelectedWarehouse = Warehouses.FirstOrDefault(w => w.Id == res.Data.WarehouseId);
                 OrderDate = res.Data.OrderDate;
                 ExpectedDate = res.Data.ExpectedDate;
@@ -465,6 +565,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
             {
                 var req = new UpdatePurchaseOrderRequest
                 {
+                    SupplierId = SelectedSupplier?.Id,
                     WarehouseId = SelectedWarehouse?.Id,
                     ExpectedDate = ExpectedDate,
                     Items = itemRequests
@@ -478,6 +579,7 @@ public partial class PurchaseOrderFormViewModel : BaseViewModel
                 var req = new CreatePurchaseOrderRequest
                 {
                     OrderNumber = OrderNumber,
+                    SupplierId = SelectedSupplier?.Id,
                     BranchId = SelectedBranch.Id,
                     WarehouseId = SelectedWarehouse?.Id,
                     OrderDate = OrderDate,

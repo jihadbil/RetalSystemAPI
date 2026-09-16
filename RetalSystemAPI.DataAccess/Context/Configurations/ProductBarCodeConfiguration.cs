@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لباركودات ونكهات الأصناف (ProductBarCodes) وضمان فرادية الباركود لكل مستأجر.
+/// </summary>
 public class ProductBarCodeConfiguration : IEntityTypeConfiguration<ProductBarCode>
 {
     public void Configure(EntityTypeBuilder<ProductBarCode> builder)
@@ -36,7 +39,10 @@ public class ProductBarCodeConfiguration : IEntityTypeConfiguration<ProductBarCo
             .HasForeignKey(pb => pb.TenantId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // فهرس فريد مفلتر: يمنع تكرار الباركود بين الأصناف النشطة فقط،
+        // ويسمح بإعادة استخدام باركود أصناف حُذفت حذفاً منطقياً (Soft Delete)
         builder.HasIndex(pb => new { pb.TenantId, pb.BarCode })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
     }
 }

@@ -15,6 +15,8 @@ namespace RetalSystemAPI.Desktop.ViewModels.Stock;
 
 public partial class StockAdjustmentsViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly IStockAdjustmentApiService _stockAdjustmentApiService;
     private readonly IWarehouseApiService _warehouseApiService;
 
@@ -73,6 +75,7 @@ public partial class StockAdjustmentsViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadAdjustmentsAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             var res = await _stockAdjustmentApiService.GetPagedAsync(
@@ -81,17 +84,24 @@ public partial class StockAdjustmentsViewModel : BaseViewModel
                 warehouseId: SelectedWarehouse?.Id,
                 reason: SelectedReason,
                 search: SearchQuery);
+            if (version != _loadVersion) return;
 
             if (res.Success && res.Data != null)
             {
                 Adjustments = new ObservableCollection<StockAdjustmentSummaryDto>(res.Data.Items);
                 TotalPages = res.Data.TotalPages > 0 ? res.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadAdjustmentsAsync();
+                    return;
+                }
             }
             else
             {
                 ErrorMessage = res.Message ?? "فشل تحميل التسويات الجردية";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -150,6 +160,27 @@ public partial class StockAdjustmentsViewModel : BaseViewModel
             else ErrorMessage = res.Message;
         });
     }
+    partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
+    {
+        CurrentPage = 1;
+        _ = LoadAdjustmentsAsync();
+    }
+    partial void OnSelectedReasonChanged(StockAdjustmentReason? value)
+    {
+        CurrentPage = 1;
+        _ = LoadAdjustmentsAsync();
+    }
+    partial void OnSearchQueryChanged(string? value)
+    {
+        CurrentPage = 1;
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadAdjustmentsAsync);
+    }
+    partial void OnPageSizeChanged(int value)
+    {
+        CurrentPage = 1;
+        _ = LoadAdjustmentsAsync();
+    }
 }
 
 public partial class StockAdjustmentFormViewModel : BaseViewModel
@@ -157,6 +188,7 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
     private readonly IStockAdjustmentApiService _stockAdjustmentApiService;
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly IProductApiService _productApiService;
+    private readonly IStockApiService _stockApiService;
 
     [ObservableProperty]
     private Guid? _adjustmentId;
@@ -176,11 +208,114 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
     [ObservableProperty]
     private WarehouseSummaryDto? _selectedWarehouse;
 
+    partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
+    {
+        IsStorageWarehouse = (value?.Type == WarehouseType.Storge);
+        _ = UpdateSystemQuantityAsync();
+    }
+
+    [ObservableProperty]
+    private bool _isStorageWarehouse;
+
     [ObservableProperty]
     private ObservableCollection<ProductDto> _availableProducts = new();
 
+    // بحث تدريجي في الأصناف بدل تحميل الكتالوج كاملاً
+    [ObservableProperty]
+    private string _productSearchTerm = string.Empty;
+
+    /// <summary>مطابقة الباركود تماماً — يبحث بالتطابق التام مع رقم الباركود</summary>
+    [ObservableProperty]
+    private bool _exactBarcodeMatch = false;
+
     [ObservableProperty]
     private ProductDto? _selectedProductToAdd;
+
+    partial void OnProductSearchTermChanged(string value)
+    {
+        if (IsViewOnly) return;
+        // بحث مؤجل (Debounce) لتفادي إغراق الخادم بطلب لكل حرف
+        _ = DebounceSearchAsync(SearchProductsAsync);
+    }
+
+    /// <summary>بحث الأصناف من الخادم بالاسم أو الباركود — أو مطابقة تامة عند التفعيل</summary>
+    private async Task SearchProductsAsync()
+    {
+        if (IsViewOnly) return;
+
+        var term = ProductSearchTerm?.Trim() ?? string.Empty;
+        if (term.Length == 0)
+        {
+            AvailableProducts.Clear();
+            return;
+        }
+
+        // مطابقة تامة: استعلام مباشر بنقطة الباركود الدقيقة
+        if (ExactBarcodeMatch)
+        {
+            var exactRes = await _productApiService.GetByBarCodeAsync(term);
+            if (exactRes.Success && exactRes.Data != null)
+            {
+                AvailableProducts = new ObservableCollection<ProductDto> { exactRes.Data };
+                SelectedProductToAdd = exactRes.Data;
+            }
+            else
+            {
+                AvailableProducts.Clear();
+                ErrorMessage = $"لم يتم العثور على صنف بباركود مطابق تماماً: {term}";
+            }
+            return;
+        }
+
+        var res = await _productApiService.SearchAsync(term);
+        if (res.Success && res.Data != null)
+        {
+            AvailableProducts = new ObservableCollection<ProductDto>(res.Data);
+        }
+        else if (!res.Success)
+        {
+            ErrorMessage = res.Message;
+        }
+    }
+
+    partial void OnSelectedProductToAddChanged(ProductDto? value)
+    {
+        AvailableBarcodes.Clear();
+        if (value != null)
+        {
+            UnitCostToAdd = value.CostPrice;
+            if (value.BarCodes != null && value.BarCodes.Count > 0)
+            {
+                foreach (var bc in value.BarCodes)
+                {
+                    AvailableBarcodes.Add(bc);
+                }
+                SelectedBarcodeToAdd = AvailableBarcodes.FirstOrDefault();
+            }
+            else
+            {
+                SelectedBarcodeToAdd = null;
+            }
+        }
+        else
+        {
+            SelectedBarcodeToAdd = null;
+            UnitCostToAdd = 0;
+        }
+
+        _ = UpdateSystemQuantityAsync();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<ProductBarCodeDto> _availableBarcodes = new();
+
+    [ObservableProperty]
+    private ProductBarCodeDto? _selectedBarcodeToAdd;
+
+    partial void OnSelectedBarcodeToAddChanged(ProductBarCodeDto? value)
+    {
+        _ = UpdateSystemQuantityAsync();
+    }
 
     [ObservableProperty]
     private int _systemQuantityToAdd;
@@ -190,6 +325,9 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private decimal _unitCostToAdd;
+
+    [ObservableProperty]
+    private StockAdjustmentReason _reasonToAdd = StockAdjustmentReason.InventoryCount;
 
     [ObservableProperty]
     private ObservableCollection<CreateStockAdjustmentItemRequest> _items = new();
@@ -205,11 +343,47 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
     public StockAdjustmentFormViewModel(
         IStockAdjustmentApiService stockAdjustmentApiService,
         IWarehouseApiService warehouseApiService,
-        IProductApiService productApiService)
+        IProductApiService productApiService,
+        IStockApiService stockApiService)
     {
         _stockAdjustmentApiService = stockAdjustmentApiService;
         _warehouseApiService = warehouseApiService;
         _productApiService = productApiService;
+        _stockApiService = stockApiService;
+    }
+
+    private async Task UpdateSystemQuantityAsync()
+    {
+        if (SelectedWarehouse == null || SelectedProductToAdd == null)
+        {
+            SystemQuantityToAdd = 0;
+            return;
+        }
+
+        try
+        {
+            if (SelectedWarehouse.Type == WarehouseType.Storge)
+            {
+                if (SelectedBarcodeToAdd != null)
+                {
+                    var res = await _stockApiService.GetStorgeStockAsync(SelectedWarehouse.Id, SelectedBarcodeToAdd.Id);
+                    SystemQuantityToAdd = (res.Success && res.Data != null) ? (int)res.Data.Quantity : 0;
+                }
+                else
+                {
+                    SystemQuantityToAdd = 0;
+                }
+            }
+            else if (SelectedWarehouse.Type == WarehouseType.Show)
+            {
+                var res = await _stockApiService.GetShowroomStockAsync(SelectedWarehouse.Id, SelectedProductToAdd.Id);
+                SystemQuantityToAdd = (res.Success && res.Data != null) ? (int)res.Data.Quantity : 0;
+            }
+        }
+        catch
+        {
+            SystemQuantityToAdd = 0;
+        }
     }
 
     public async Task InitializeAsync(Guid? id)
@@ -241,13 +415,10 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
         {
             Warehouses = new ObservableCollection<WarehouseSummaryDto>(wRes.Data);
             if (SelectedWarehouse == null && Warehouses.Count > 0) SelectedWarehouse = Warehouses[0];
+            IsStorageWarehouse = (SelectedWarehouse?.Type == WarehouseType.Storge);
         }
 
-        var pRes = await _productApiService.GetAllAsync();
-        if (pRes.Success && pRes.Data != null)
-        {
-            AvailableProducts = new ObservableCollection<ProductDto>(pRes.Data);
-        }
+        // الأصناف لا تُجلب كاملة؛ تُبحث تدريجياً بالاسم أو الباركود من الخادم
     }
 
     private async Task LoadAdjustmentDetailsAsync(Guid id)
@@ -264,15 +435,20 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
                 Notes = adj.Notes;
 
                 SelectedWarehouse = Warehouses.FirstOrDefault(w => w.Id == adj.WarehouseId);
-
+                IsStorageWarehouse = (SelectedWarehouse?.Type == WarehouseType.Storge);
                 Items = new ObservableCollection<CreateStockAdjustmentItemRequest>(
                     adj.Items.Select(i => new CreateStockAdjustmentItemRequest
                     {
                         ProductId = i.ProductId,
                         ProductName = i.ProductName,
+                        ProductBarCodeId = i.ProductBarCodeId,
+                        BarcodeTitle = i.BarcodeTitle,
+                        BarcodeValue = i.BarcodeValue,
                         SystemQuantity = i.SystemQuantity,
                         ActualQuantity = i.ActualQuantity,
-                        UnitCost = i.UnitCost
+                        UnitCost = i.UnitCost,
+                        // سبب البند الفعلي المحفوظ لكل بند على حدة
+                        Reason = i.Reason
                     }));
             }
             else
@@ -291,21 +467,59 @@ public partial class StockAdjustmentFormViewModel : BaseViewModel
             return;
         }
 
+        Guid? barcodeId = null;
+        string? barcodeTitle = null;
+        string? barcodeVal = null;
+        string displayName = SelectedProductToAdd.Name;
+
+        if (IsStorageWarehouse)
+        {
+            if (SelectedBarcodeToAdd == null && AvailableBarcodes.Count > 0)
+            {
+                ErrorMessage = "يرجى اختيار النكهة / الباركود المراد جرده";
+                return;
+            }
+
+            if (SelectedBarcodeToAdd != null)
+            {
+                barcodeId = SelectedBarcodeToAdd.Id;
+                barcodeTitle = !string.IsNullOrWhiteSpace(SelectedBarcodeToAdd.Title) ? SelectedBarcodeToAdd.Title : SelectedBarcodeToAdd.Description;
+                barcodeVal = SelectedBarcodeToAdd.BarCode;
+                displayName = !string.IsNullOrWhiteSpace(barcodeTitle)
+                    ? $"{SelectedProductToAdd.Name} - {barcodeTitle}"
+                    : $"{SelectedProductToAdd.Name} ({barcodeVal})";
+            }
+        }
+
         var item = new CreateStockAdjustmentItemRequest
         {
             ProductId = SelectedProductToAdd.Id,
-            ProductName = SelectedProductToAdd.Name,
+            ProductName = displayName,
+            ProductBarCodeId = barcodeId,
+            BarcodeTitle = barcodeTitle,
+            BarcodeValue = barcodeVal,
             SystemQuantity = SystemQuantityToAdd,
             ActualQuantity = ActualQuantityToAdd,
-            UnitCost = UnitCostToAdd
+            UnitCost = UnitCostToAdd,
+            Reason = ReasonToAdd
         };
 
         Items.Add(item);
+
+        // مزامنة سبب التسوية العام مع سبب البند إن كان لا يزال على الافتراضي (جرد دوري)،
+        // حتى لا تُعرض التسوية في القوائم بسبب عام لا يعكس ما أدخله المستخدم
+        if (Reason == StockAdjustmentReason.InventoryCount && ReasonToAdd != StockAdjustmentReason.InventoryCount)
+        {
+            Reason = ReasonToAdd;
+        }
+
+        ErrorMessage = string.Empty;
         SelectedProductToAdd = null;
+        SelectedBarcodeToAdd = null;
         SystemQuantityToAdd = 0;
         ActualQuantityToAdd = 1;
         UnitCostToAdd = 0;
-        ErrorMessage = null;
+        ReasonToAdd = StockAdjustmentReason.InventoryCount;
     }
 
     [RelayCommand]

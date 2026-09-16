@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -36,10 +37,13 @@ public partial class CustomersViewModel : BaseViewModel
     [ObservableProperty]
     private int _pageSize = 10;
 
+    private int _loadVersion;
+
     partial void OnSearchQueryChanged(string? value)
     {
         CurrentPage = 1;
-        _ = LoadCustomersAsync();
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadCustomersAsync);
     }
 
     partial void OnSelectedTypeChanged(CustomerType? value)
@@ -54,6 +58,8 @@ public partial class CustomersViewModel : BaseViewModel
         _ = LoadCustomersAsync();
     }
 
+    partial void OnPageSizeChanged(int value) { CurrentPage = 1; _ = LoadCustomersAsync(); }
+
     public Func<CustomerSummaryDto?, Task>? OpenDialogHandler { get; set; }
     public Func<string, string, Task<bool>>? ConfirmDeleteHandler { get; set; }
 
@@ -66,19 +72,26 @@ public partial class CustomersViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadCustomersAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             var response = await _customerApiService.GetPagedAsync(CurrentPage, PageSize, SelectedType, SelectedActiveStatus, SearchQuery);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Customers = new ObservableCollection<CustomerSummaryDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadCustomersAsync();
+                }
             }
             else
             {
                 ErrorMessage = response.Message ?? "فشل تحميل قائمة العملاء";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -166,13 +179,15 @@ public partial class CustomerFormViewModel : BaseViewModel
     [ObservableProperty]
     private Guid? _customerId;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم العميل مطلوب")]
     private string _name = string.Empty;
 
     [ObservableProperty]
     private string? _code;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [RetalSystemAPI.Desktop.Helpers.OptionalEmail]
     private string? _email;
 
     [ObservableProperty]
@@ -181,7 +196,8 @@ public partial class CustomerFormViewModel : BaseViewModel
     [ObservableProperty]
     private CustomerType _type = CustomerType.Regular;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Range(typeof(decimal), "0", "79228162514264337593543950335", ErrorMessage = "حد الائتمان لا يمكن أن يكون سالبًا.")]
     private decimal _creditLimit;
 
     [ObservableProperty]
@@ -246,7 +262,7 @@ public partial class CustomerFormViewModel : BaseViewModel
                 Type = res.Data.Type;
                 CreditLimit = res.Data.CreditLimit;
                 IsActive = res.Data.IsActive;
-                Phones = new ObservableCollection<CustomerPhoneDto>(res.Data.CustomerPhones);
+                Phones = new ObservableCollection<CustomerPhoneDto>(res.Data.Phones ?? new());
             }
             else
             {
@@ -277,7 +293,7 @@ public partial class CustomerFormViewModel : BaseViewModel
                 var res = await _customerApiService.AddPhoneAsync(CustomerId.Value, req);
                 if (res.Success && res.Data != null)
                 {
-                    Phones = new ObservableCollection<CustomerPhoneDto>(res.Data.CustomerPhones);
+                    Phones = new ObservableCollection<CustomerPhoneDto>(res.Data.Phones ?? new());
                     NewPhoneNumber = string.Empty;
                     NewContactName = string.Empty;
                     NewPhoneIsDefault = false;
@@ -325,6 +341,7 @@ public partial class CustomerFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name))
         {
             ErrorMessage = "اسم العميل مطلوب";

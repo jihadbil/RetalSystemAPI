@@ -6,6 +6,8 @@ namespace RetalSystemAPI.Models.DTOs.Purchase;
 public class PurchaseOrderResponseDto : BaseDto
 {
     public string OrderNumber { get; set; } = null!;
+    public Guid? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public Guid BranchId { get; set; }
     public string BranchName { get; set; } = null!;
     public Guid? WarehouseId { get; set; }

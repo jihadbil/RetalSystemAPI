@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Branchs;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لهواتف الفروع (BranchPhones) مع ضبط الحذف المتتالي والفهارس الفريدة.
+/// </summary>
 public class BranchPhoneConfiguration : IEntityTypeConfiguration<BranchPhone>
 {
     public void Configure(EntityTypeBuilder<BranchPhone> builder)

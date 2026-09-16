@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Warehouses;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Responses;
@@ -29,6 +31,7 @@ public class WarehousesController : BaseApiController
     /// الحصول على جميع المخازن وصالات العرض (مع إمكانية الفلترة بالفرع أو نوع المخزن).
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Warehouses.View)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? branchId = null,
         [FromQuery] WarehouseType? type = null,
@@ -42,6 +45,7 @@ public class WarehousesController : BaseApiController
     /// الحصول على قائمة صفحية للمخازن وصالات العرض.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.Warehouses.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -57,6 +61,7 @@ public class WarehousesController : BaseApiController
     /// الحصول على تفاصيل مخزن أو صالة عرض بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.Warehouses.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _warehouseService.GetByIdAsync(id, ct);
@@ -67,6 +72,7 @@ public class WarehousesController : BaseApiController
     /// إنشاء مخزن أو صالة عرض جديدة.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Warehouses.Create)]
     public async Task<IActionResult> Create([FromBody] CreateWarehouseDto dto, CancellationToken ct)
     {
         var result = await _warehouseService.CreateAsync(dto, ct);
@@ -82,6 +88,7 @@ public class WarehousesController : BaseApiController
     /// تعديل بيانات مخزن أو صالة عرض.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.Warehouses.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateWarehouseDto dto, CancellationToken ct)
     {
         var result = await _warehouseService.UpdateAsync(id, dto, ct);
@@ -92,6 +99,7 @@ public class WarehousesController : BaseApiController
     /// حذف مخزن أو صالة عرض (يشترط عدم وجود رصيد مخزوني به).
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.Warehouses.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _warehouseService.DeleteAsync(id, ct);
@@ -102,6 +110,7 @@ public class WarehousesController : BaseApiController
     /// تبديل حالة النشاط للمخزن أو صالة العرض (تفعيل / تعطيل).
     /// </summary>
     [HttpPatch("{id:guid}/toggle-active")]
+    [HasPermission(Permissions.Warehouses.Edit)]
     public async Task<IActionResult> ToggleActiveStatus([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _warehouseService.ToggleActiveStatusAsync(id, ct);

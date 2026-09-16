@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبنود تسوية الجرد المخزني (StockAdjustmentItems) وفروقات الجرد.
+/// </summary>
 public class StockAdjustmentItemConfiguration : IEntityTypeConfiguration<StockAdjustmentItem>
 {
     public void Configure(EntityTypeBuilder<StockAdjustmentItem> builder)
@@ -23,6 +26,11 @@ public class StockAdjustmentItemConfiguration : IEntityTypeConfiguration<StockAd
         builder.Property(sai => sai.UnitCost)
             .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
+
+        // سبب البند يبدأ من 1 (جرد دوري) — الـ Enum لا يحتوي قيمة 0.
+        // القيمة الافتراضية تُضبط في سكربت الـ Migration فقط (EF لا يحوّل int افتراضي إلى Enum)
+        builder.Property(sai => sai.Reason)
+            .HasConversion<int>();
 
         builder.Property(sai => sai.RowVersion)
             .IsRowVersion()

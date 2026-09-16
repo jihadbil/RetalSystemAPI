@@ -3,11 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"
         mc:Ignorable="d" 
-        Title="فاتورة مشتريات بضاعة" Height="680" Width="920" 
-        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" Background="#F9FAFB">
+        Title="فاتورة مشتريات بضاعة" Height="800" Width="1160" MinWidth="1050" MinHeight="720"
+        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" 
+        Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
 
-    <Grid Margin="24">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -17,11 +19,27 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- ════════ HEADER ════════ -->
-        <TextBlock Grid.Row="0" Text="📥 تسجيل فاتورة مشتريات جديدة" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,16"/>
+        <!-- ════════ 1. HEADER ════════ -->
+        <Border Grid.Row="0" Margin="0,0,0,12">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconPurchases}" Fill="{DynamicResource PrimaryBrush}" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="فاتورة مشتريات بضاعة" Style="{StaticResource H1TextBlockStyle}" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusDisplayName}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                    </Border>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="رقم الفاتورة: " FontSize="14" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding InvoiceNumber}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
-        <!-- ════════ INVOICE MAIN FIELDS ════════ -->
-        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="10" Padding="16" Margin="0,0,0,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+        <!-- ════════ 2. INVOICE MAIN FIELDS ════════ -->
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="14" Margin="0,0,0,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" IsEnabled="{Binding CanEdit}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -35,112 +53,312 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Invoice Number -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,10">
-                    <TextBlock Text="رقم الفاتورة *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding InvoiceNumber, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,8">
+                    <TextBlock Text="رقم الفاتورة *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <TextBox Text="{Binding InvoiceNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0"/>
                 </StackPanel>
 
                 <!-- Branch -->
-                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,10">
-                    <TextBlock Text="الفرع المستلم *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,8">
+                    <TextBlock Text="الفرع المستلم *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Height="32" VerticalContentAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Supplier -->
-                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,10,10">
-                    <TextBlock Text="المورد *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,10,8">
+                    <TextBlock Text="المورد *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Height="32" VerticalContentAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Warehouse -->
-                <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,10">
-                    <TextBlock Text="المستودع/الصالة المستلمة *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,8">
+                    <TextBlock Text="المستودع / الصالة المستلمة *" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Height="32" VerticalContentAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Payment Method -->
                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,0">
-                    <TextBlock Text="طريقة الدفع" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <ComboBox SelectedValue="{Binding PaymentMethod}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
-                        <ComboBoxItem Content="💵 نقداً" Tag="{x:Static sales:PaymentMethod.Cash}" IsSelected="True" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
-                        <ComboBoxItem Content="💳 بطاقة" Tag="{x:Static sales:PaymentMethod.Card}" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
-                        <ComboBoxItem Content="📑 آجل / دين" Tag="{x:Static sales:PaymentMethod.Credit}" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <!-- Status -->
-                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,10,0">
-                    <TextBlock Text="حالة الفاتورة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <ComboBox SelectedValue="{Binding Status}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
-                        <ComboBoxItem Content="✅ مدفوعة بالكامل" Tag="{x:Static sales:InvoiceStatus.Paid}" IsSelected="True" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
-                        <ComboBoxItem Content="⏳ مسددة جزئياً" Tag="{x:Static sales:InvoiceStatus.PartiallyPaid}" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
-                        <ComboBoxItem Content="📑 صادرة (آجل)" Tag="{x:Static sales:InvoiceStatus.Issued}" xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"/>
+                    <TextBlock Text="طريقة الدفع" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <ComboBox SelectedValue="{Binding PaymentMethod}" SelectedValuePath="Tag" Style="{StaticResource DefaultComboBoxStyle}" Height="32" VerticalContentAlignment="Center">
+                        <ComboBoxItem Content="💵 نقداً" Tag="{x:Static sales:PaymentMethod.Cash}" IsSelected="True"/>
+                        <ComboBoxItem Content="💳 بطاقة مصرفية" Tag="{x:Static sales:PaymentMethod.Card}"/>
+                        <ComboBoxItem Content="📑 آجل / دين" Tag="{x:Static sales:PaymentMethod.Credit}"/>
                     </ComboBox>
                 </StackPanel>
 
                 <!-- Date -->
-                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,10,0">
-                    <TextBlock Text="تاريخ الفاتورة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <DatePicker SelectedDate="{Binding InvoiceDate}" Height="34"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,10,0">
+                    <TextBlock Text="تاريخ الفاتورة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <DatePicker SelectedDate="{Binding InvoiceDate}" Height="32"/>
                 </StackPanel>
 
                 <!-- Notes -->
-                <StackPanel Grid.Row="1" Grid.Column="3">
-                    <TextBlock Text="ملاحظات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
+                <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2">
+                    <TextBlock Text="ملاحظات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ════════ ADD ITEM ROW ════════ -->
-        <Border Grid.Row="2" Background="#ECFDF5" CornerRadius="10" Padding="14" Margin="0,0,0,12" BorderBrush="#38E07B" BorderThickness="1">
+        <!-- ════════ 3. SMART ITEM ENTRY & PROFIT ANALYTICS PANEL ════════ -->
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="14" Margin="0,0,0,12" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1.5" IsEnabled="{Binding CanEdit}">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2.5*"/>
-                    <ColumnDefinition Width="1*"/>
-                    <ColumnDefinition Width="1.2*"/>
-                    <ColumnDefinition Width="1*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                    <TextBlock Text="اختر الصنف *" FontWeight="SemiBold" Foreground="#065F46" Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding AvailableProducts}" SelectedItem="{Binding SelectedProductToAdd}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
-                </StackPanel>
+                <!-- ── Row A: Barcode Search & Quick Product Creation & Loaded Product Card ── -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.7*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                    <TextBlock Text="الكمية *" FontWeight="SemiBold" Foreground="#065F46" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding QuantityToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
-                </StackPanel>
+                    <!-- Barcode Search Input -->
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="أدخل الباركود (Enter للبحث)" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <Grid>
+                            <TextBox Text="{Binding SearchBarcode, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="8,0" FontSize="14" FontWeight="SemiBold" Background="{DynamicResource SurfaceBrush}">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding LookupBarcodeCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Content="بحث" Command="{Binding LookupBarcodeCommand}" HorizontalAlignment="Left" Width="48" Height="28" Margin="3" Style="{StaticResource GhostButtonStyle}" FontSize="12" FontWeight="Bold" Padding="0"/>
+                        </Grid>
+                    </StackPanel>
 
-                <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                    <TextBlock Text="سعر التكلفة (د.ل) *" FontWeight="SemiBold" Foreground="#065F46" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding UnitPriceToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
-                </StackPanel>
+                    <!-- Quick Add Product Button -->
+                    <Button Grid.Column="1" Command="{Binding QuickCreateProductCommand}" Style="{StaticResource GhostButtonStyle}" Height="34" Padding="10,0" Margin="0,0,8,0" VerticalAlignment="Bottom" ToolTip="تعريف صنف جديد فوراً بالباركود الممسوح">
+                        <DockPanel>
+                            <Path Data="{StaticResource IconAdd}" Fill="{DynamicResource PrimaryDarkBrush}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="صنف جديد" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Button>
 
-                <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                    <TextBlock Text="الخصم (د.ل)" FontWeight="SemiBold" Foreground="#065F46" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding ItemDiscountToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
-                </StackPanel>
+                    <!-- Loaded Product Card (Read-Only) -->
+                    <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                        <TextBlock Text="الصنف المحدد" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Height="34" Padding="10,0" VerticalAlignment="Center">
+                            <DockPanel VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconProducts}" Fill="{DynamicResource PrimaryBrush}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedProductToAdd.Name, TargetNullValue='(امسح الباركود أو اضغط صنف جديد...)'}" 
+                                           FontWeight="Bold" FontSize="13" 
+                                           Foreground="{DynamicResource TextPrimaryBrush}" 
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
 
-                <Button Grid.Column="4" Content="+ إضافة للبند" Command="{Binding AddItemCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="34" Padding="16,0" VerticalAlignment="Bottom" FontWeight="Bold"/>
+                    <!-- Reference Badges (Previous Cost, Average Cost, Current Sale) -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom" Height="34">
+                        <Border Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="سعر الشراء السابق" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding PreviousCostPrice, StringFormat={}{0:N2} د.ل}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource AccentLightBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="متوسط سعر الشراء" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding ProductAverageCost, StringFormat={}{0:N2} د.ل}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource WarningLightBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                            <StackPanel>
+                                <TextBlock Text="سعر البيع الحالي" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding CurrentSalePrice, StringFormat={}{0:N2} د.ل}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ── Row B: Packaging Unit Selection & Quick Unit Button & Cost Division ── -->
+                <Grid Grid.Row="1" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="0.9*"/>
+                        <ColumnDefinition Width="0.9*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Packaging Unit Option -->
+                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                        <TextBlock Text="طريقة التنزيل / الوحدة" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <ComboBox ItemsSource="{Binding PackagingOptions}" SelectedItem="{Binding SelectedPackagingOption}" DisplayMemberPath="DisplayText" Height="32" VerticalContentAlignment="Center" Style="{StaticResource DefaultComboBoxStyle}"/>
+                    </StackPanel>
+
+                    <!-- Quick Add Unit Button -->
+                    <Button Grid.Column="1" Command="{Binding QuickCreateUnitCommand}" Style="{StaticResource GhostButtonStyle}" Width="32" Height="32" Padding="0" Margin="0,0,8,0" VerticalAlignment="Bottom" ToolTip="إضافة وحدة قياس جديدة فوراً">
+                        <Path Data="{StaticResource IconAdd}" Fill="{DynamicResource PrimaryBrush}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+
+                    <!-- Units Per Package (Conversion Factor) -->
+                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                        <TextBlock Text="القطع بالعبوة" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding UnitsPerPackage, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0" TextAlignment="Center" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <!-- Package Quantity -->
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock Text="الكمية المشتراة" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding PackageQuantity, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0" TextAlignment="Center" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <!-- Invoice Entered Price (for package) -->
+                    <StackPanel Grid.Column="4" Margin="0,0,8,0">
+                        <TextBlock Text="سعر العبوة بالفاتورة (د.ل)" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryDarkBrush}" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding InvoiceEnteredPrice, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <!-- Calculated Piece Cost Output -->
+                    <Border Grid.Column="5" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1.5" CornerRadius="6" Padding="8,4" VerticalAlignment="Bottom" Height="32">
+                        <DockPanel VerticalAlignment="Center">
+                            <TextBlock Text="سعر القطعة الناتج:" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding CalculatedPieceCost, StringFormat={}{0:N2} د.ل}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ── Row C: Flavor & Barcode Distribution Matrix (Appears when product has multiple flavors) ── -->
+                <Border Grid.Row="2" Visibility="{Binding HasMultipleFlavors, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource PrimaryBrush}" 
+                        BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconStock}" Fill="{DynamicResource PrimaryBrush}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="توزيع كميات النكهات والباركودات المستلمة للمستودع:" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding PackageQuantity, StringFormat=إجمالي العبوات الموزعة: {0:N0} عبوة}" 
+                                       FontWeight="Bold" FontSize="11" Foreground="{DynamicResource PrimaryDarkBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </DockPanel>
+
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="0,2">
+                            <ItemsControl ItemsSource="{Binding CurrentFlavorBreakdowns}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,8,6" MinWidth="170">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding BarCode}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,1,0,5"/>
+                                                <DockPanel>
+                                                    <TextBlock Text="الكمية:" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,4,0"/>
+                                                    <TextBox Text="{Binding PackageQuantity, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" 
+                                                             Style="{StaticResource DefaultTextBoxStyle}" Width="55" Height="26" 
+                                                             TextAlignment="Center" FontWeight="Bold" VerticalContentAlignment="Center" Padding="2,0"/>
+                                                    <TextBlock Text="{Binding TotalPieces, StringFormat=({0:N0} حبة)}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Row D: Sale Price Setting, Profit Analytics & Add Button ── -->
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="0.9*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Target / New Sale Price Input -->
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="سعر البيع المحدد (د.ل) *" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding TargetSalePrice, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="34" VerticalContentAlignment="Center" Padding="6,0" FontSize="14" FontWeight="Bold">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding AddItemCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </StackPanel>
+
+                    <!-- Profit from Current Cost Indicator -->
+                    <Border Grid.Column="1" Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0" VerticalAlignment="Bottom" Height="34">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="الربح من التكلفة الحالية" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding ProfitFromCurrentCost, StringFormat={}+{0:N2} د.ل}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                <TextBlock Text="{Binding ProfitMarginCurrentPercentage, StringFormat= ({0:N1}%)}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Profit from Average Cost Indicator -->
+                    <Border Grid.Column="2" Background="{DynamicResource AccentLightBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0" VerticalAlignment="Bottom" Height="34">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="الربح مقارنة بالمتوسط" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding ProfitFromAverageCost, StringFormat={}+{0:N2} د.ل}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="{Binding ProfitMarginAveragePercentage, StringFormat= ({0:N1}%)}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Discount on Item -->
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock Text="خصم البند" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding ItemDiscountToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="34" VerticalContentAlignment="Center" Padding="6,0"/>
+                    </StackPanel>
+
+                    <!-- Add Item Button -->
+                    <Button Grid.Column="4" Command="{Binding AddItemCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="34" Padding="20,0" VerticalAlignment="Bottom" FontWeight="Bold" FontSize="13" Cursor="Hand">
+                        <DockPanel>
+                            <Path Data="{StaticResource IconAdd}" Fill="{DynamicResource PrimaryOnBrush}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="إضافة للبند" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Button>
+                </Grid>
             </Grid>
         </Border>
 
-        <!-- ════════ ITEMS DATA GRID ════════ -->
-        <Border Grid.Row="3" Background="#FFFFFF" CornerRadius="10" Padding="8" Margin="0,0,0,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-            <DataGrid ItemsSource="{Binding Items}" CanUserAddRows="False" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F3F4F6" RowHeight="38">
+        <!-- ════════ 4. ITEMS DATA GRID ════════ -->
+        <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="8" Margin="0,0,0,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Items}" Style="{StaticResource DefaultDataGridStyle}" RowHeight="36">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="2*" FontWeight="Bold"/>
-                    <DataGridTextColumn Header="الباركود" Binding="{Binding BarCode}" Width="1.2*"/>
-                    <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity}" Width="1*"/>
-                    <DataGridTextColumn Header="سعر الشراء" Binding="{Binding UnitPrice, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
-                    <DataGridTextColumn Header="الخصم" Binding="{Binding DiscountAmount, StringFormat={}{0:N2} د.ل}" Width="1*"/>
-                    <DataGridTextColumn Header="إجمالي البند" Binding="{Binding LineTotal, StringFormat={}{0:N2} د.ل}" Width="1.3*" FontWeight="Bold" Foreground="#059669"/>
-                    <DataGridTemplateColumn Width="0.8*">
+                    <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="1.8*" FontWeight="Bold"/>
+                    <DataGridTextColumn Header="تفصيل النكهات" Binding="{Binding FlavorsSummaryText}" Width="1.6*" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                    <DataGridTextColumn Header="طريقة التنزيل" Binding="{Binding PackagingSummary}" Width="1.3*"/>
+                    <DataGridTextColumn Header="إجمالي القطع" Binding="{Binding Quantity}" Width="0.8*"/>
+                    <DataGridTextColumn Header="سعر شراء القطعة" Binding="{Binding UnitPrice, StringFormat={}{0:N2} د.ل}" Width="1.1*"/>
+                    <DataGridTextColumn Header="سعر البيع" Binding="{Binding SalePrice, StringFormat={}{0:N2} د.ل}" Width="1*" Foreground="{DynamicResource AccentBrush}"/>
+                    <DataGridTextColumn Header="الخصم" Binding="{Binding DiscountAmount, StringFormat={}{0:N2} د.ل}" Width="0.7*"/>
+                    <DataGridTextColumn Header="إجمالي البند" Binding="{Binding LineTotal, StringFormat={}{0:N2} د.ل}" Width="1.1*" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                    <DataGridTextColumn Header="نسبة الربح" Binding="{Binding ProfitMarginPercentage, StringFormat={}{0:N1}%}" Width="0.8*" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                    <!-- إجراء البند: حذف قبل الإغلاق، وبعد الإغلاق النهائي يتحول إلى مرتجع للمورد -->
+                    <DataGridTemplateColumn Width="0.7*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Foreground="#DC2626" Background="Transparent" BorderThickness="0" FontWeight="Bold" Cursor="Hand"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}" 
+                                            Style="{StaticResource DangerButtonStyle}" Padding="6,2" ToolTip="حذف هذا البند"
+                                            Visibility="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Path Data="{StaticResource IconDelete}" Fill="White" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
+                                    <Button Command="{Binding DataContext.CreateReturnFromItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource PrimaryButtonStyle}" Padding="10,2" ToolTip="إرجاع هذا البند للمورد — البديل بعد الإغلاق النهائي"
+                                            Visibility="{Binding DataContext.IsClosed, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="↩ مرتجع" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                    </Button>
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -148,8 +366,8 @@
             </DataGrid>
         </Border>
 
-        <!-- ════════ TOTALS & FINANCIAL SUMMARY ════════ -->
-        <Border Grid.Row="4" Background="#F3F4F6" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+        <!-- ════════ 5. TOTALS & FINANCIAL SUMMARY ════════ -->
+        <Border Grid.Row="4" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="10" Padding="14" Margin="0,0,0,14" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" IsEnabled="{Binding CanEdit}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -161,37 +379,42 @@
 
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="المجموع الفرعي" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBlock Text="{Binding SubTotal, StringFormat={}{0:N2} د.ل}" FontSize="15" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock Text="{Binding SubTotal, StringFormat={}{0:N2} د.ل}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="الخصم الإجمالي" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBox Text="{Binding DiscountAmount, UpdateSourceTrigger=PropertyChanged}" Width="100" Height="28" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="4,0" Background="#FFFFFF"/>
+                    <TextBox Text="{Binding DiscountAmount, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Width="100" Height="28" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="4,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="الصافي المطلوب" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontSize="18" FontWeight="Bold" Foreground="#059669"/>
+                    <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="3">
                     <TextBlock Text="المدفوع" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBox Text="{Binding PaidAmount, UpdateSourceTrigger=PropertyChanged}" Width="100" Height="28" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="4,0" Background="#FFFFFF" FontWeight="Bold"/>
+                    <TextBox Text="{Binding PaidAmount, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Width="100" Height="28" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="4,0" FontWeight="Bold"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="4">
                     <TextBlock Text="المتبقي (الدين)" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBlock Text="{Binding RemainingAmount, StringFormat={}{0:N2} د.ل}" FontSize="16" FontWeight="Bold" Foreground="#DC2626"/>
+                    <TextBlock Text="{Binding RemainingAmount, StringFormat={}{0:N2} د.ل}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ════════ ACTIONS & ERROR ════════ -->
+        <!-- ════════ 6. ACTIONS & ERROR ════════ -->
         <DockPanel Grid.Row="5">
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Left"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="إلغاء" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryButtonStyle}" Height="38" Padding="20,0" Margin="0,0,8,0"/>
-                <Button Content="💾 حفظ فاتورة المشتريات وزيادة المخزون" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="38" Padding="24,0" FontWeight="Bold"/>
+                <Button Content="إغلاق النافذة" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryButtonStyle}" Height="38" Padding="20,0" Margin="0,0,8,0"/>
+                <Button Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="38" Padding="24,0" IsEnabled="{Binding CanEdit}">
+                    <DockPanel>
+                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource PrimaryOnBrush}" Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="إغلاق وترحيل الفاتورة للمخازن" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Button>
             </StackPanel>
         </DockPanel>
     </Grid>

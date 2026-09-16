@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -104,9 +105,11 @@ public interface IProductApiService
     Task<ApiResponse<ProductDto>> CreateAsync(CreateProductRequest request, CancellationToken ct = default);
     Task<ApiResponse<ProductDto>> UpdateAsync(Guid id, UpdateProductRequest request, CancellationToken ct = default);
     Task<ApiResponse> DeleteAsync(Guid id, CancellationToken ct = default);
-    Task<byte[]?> ExportExcelAsync(CancellationToken ct = default);
-    Task<byte[]?> DownloadTemplateAsync(CancellationToken ct = default);
-    Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(string filePath, CancellationToken ct = default);
+    Task<byte[]?> ExportExcelAsync(bool singleSheet = true, CancellationToken ct = default);
+    Task<byte[]?> DownloadTemplateAsync(bool singleSheet = true, CancellationToken ct = default);
+    Task<ApiResponse<ProductExcelValidationResultDto>> ValidateExcelAsync(string filePath, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default);
+    Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(string filePath, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default);
+    Task<byte[]?> ExportRejectedExcelAsync(List<FailedRowDetailsDto> failedRows, CancellationToken ct = default);
 }
 
 public class ProductApiService : IProductApiService
@@ -146,14 +149,36 @@ public class ProductApiService : IProductApiService
     public Task<ApiResponse> DeleteAsync(Guid id, CancellationToken ct = default) =>
         _apiClient.DeleteAsync($"catalog/products/{id}", ct);
 
-    public Task<byte[]?> ExportExcelAsync(CancellationToken ct = default) =>
-        _apiClient.DownloadFileAsync("catalog/products/export-excel", ct);
+    public Task<byte[]?> ExportExcelAsync(bool singleSheet = true, CancellationToken ct = default) =>
+        _apiClient.DownloadFileAsync($"catalog/products/export-excel?singleSheet={singleSheet}", ct);
 
-    public Task<byte[]?> DownloadTemplateAsync(CancellationToken ct = default) =>
-        _apiClient.DownloadFileAsync("catalog/products/excel-template", ct);
+    public Task<byte[]?> DownloadTemplateAsync(bool singleSheet = true, CancellationToken ct = default) =>
+        _apiClient.DownloadFileAsync($"catalog/products/excel-template?singleSheet={singleSheet}", ct);
 
-    public Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(string filePath, CancellationToken ct = default) =>
-        _apiClient.PostFileAsync<ProductImportResultDto>("catalog/products/import-excel", filePath, ct);
+    public Task<ApiResponse<ProductExcelValidationResultDto>> ValidateExcelAsync(string filePath, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default)
+    {
+        options ??= new ProductExcelImportOptionsDto();
+        string url = $"catalog/products/validate-excel?importMode={(int)options.ImportMode}&autoCreateCategories={options.AutoCreateCategories}&autoCreateUnits={options.AutoCreateUnits}&autoGenerateMissingBarcodes={options.AutoGenerateMissingBarcodes}";
+        if (options.DefaultShowroomWarehouseId.HasValue) url += $"&defaultShowroomWarehouseId={options.DefaultShowroomWarehouseId.Value}";
+        if (options.DefaultStorageWarehouseId.HasValue) url += $"&defaultStorageWarehouseId={options.DefaultStorageWarehouseId.Value}";
+        return _apiClient.PostFileAsync<ProductExcelValidationResultDto>(url, filePath, ct);
+    }
+
+    public Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(string filePath, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default)
+    {
+        options ??= new ProductExcelImportOptionsDto();
+        string url = $"catalog/products/import-excel?importMode={(int)options.ImportMode}&autoCreateCategories={options.AutoCreateCategories}&autoCreateUnits={options.AutoCreateUnits}&autoGenerateMissingBarcodes={options.AutoGenerateMissingBarcodes}";
+        if (options.DefaultShowroomWarehouseId.HasValue) url += $"&defaultShowroomWarehouseId={options.DefaultShowroomWarehouseId.Value}";
+        if (options.DefaultStorageWarehouseId.HasValue) url += $"&defaultStorageWarehouseId={options.DefaultStorageWarehouseId.Value}";
+        return _apiClient.PostFileAsync<ProductImportResultDto>(url, filePath, ct);
+    }
+
+    public async Task<byte[]?> ExportRejectedExcelAsync(List<FailedRowDetailsDto> failedRows, CancellationToken ct = default)
+    {
+        var res = await _apiClient.PostAsync<object>("catalog/products/export-rejected-excel", failedRows, ct);
+        // Note: For binary downloads, we can download from server or directly save bytes if returned
+        return null;
+    }
 }
 
 public interface IProductUnitApiService
@@ -228,8 +253,69 @@ public interface IProductImageApiService
 {
     Task<ApiResponse<List<ProductImageDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default);
     Task<ApiResponse<ProductImageDto>> UploadAsync(Guid productId, string filePath, bool isDefault = false, Guid? barcodeId = null, CancellationToken ct = default);
+    Task<ApiResponse<ProductImageDto>> UploadAsync(Guid productId, string filePath, bool isDefault, Guid? barcodeId, IProgress<int>? progress, CancellationToken ct = default);
     Task<ApiResponse> RemoveAsync(Guid productId, Guid imageId, CancellationToken ct = default);
     Task<ApiResponse<ProductImageDto>> SetDefaultAsync(Guid productId, Guid imageId, CancellationToken ct = default);
+}
+
+/// <summary>
+/// محتوى بايتات يُبلّغ عن تقدم الإرسال (البايتات المرسلة من الإجمالي) أثناء رفع الملف للخادم.
+/// </summary>
+public class ProgressableStreamContent : HttpContent
+{
+    private readonly Stream _stream;
+    private readonly IProgress<int>? _progress;
+    private readonly int _bufferSize = 81920;
+
+    public ProgressableStreamContent(Stream stream, IProgress<int>? progress)
+    {
+        _stream = stream;
+        _progress = progress;
+    }
+
+    protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+    {
+        long total = _stream.CanSeek ? _stream.Length : -1;
+        var buffer = new byte[_bufferSize];
+        long sent = 0;
+        int read;
+        int lastReported = -1;
+        while ((read = await _stream.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
+        {
+            await stream.WriteAsync(buffer.AsMemory(0, read));
+            sent += read;
+            if (total > 0 && _progress != null)
+            {
+                int percent = (int)(sent * 100 / total);
+                if (percent > lastReported)
+                {
+                    lastReported = percent;
+                    _progress.Report(percent);
+                }
+            }
+        }
+        _progress?.Report(100);
+    }
+
+    protected override bool TryComputeLength(out long length)
+    {
+        if (_stream.CanSeek)
+        {
+            length = _stream.Length;
+            return true;
+        }
+        length = 0;
+        return false;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _stream.Dispose();
+        }
+        base.Dispose(disposing);
+    }
 }
 
 public class ProductImageApiService : IProductImageApiService
@@ -244,11 +330,14 @@ public class ProductImageApiService : IProductImageApiService
     public Task<ApiResponse<List<ProductImageDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default) =>
         _apiClient.GetAsync<List<ProductImageDto>>($"catalog/products/{productId}/images", ct);
 
-    public async Task<ApiResponse<ProductImageDto>> UploadAsync(Guid productId, string filePath, bool isDefault = false, Guid? barcodeId = null, CancellationToken ct = default)
+    public Task<ApiResponse<ProductImageDto>> UploadAsync(Guid productId, string filePath, bool isDefault = false, Guid? barcodeId = null, CancellationToken ct = default) =>
+        UploadAsync(productId, filePath, isDefault, barcodeId, null, ct);
+
+    public async Task<ApiResponse<ProductImageDto>> UploadAsync(Guid productId, string filePath, bool isDefault, Guid? barcodeId, IProgress<int>? progress, CancellationToken ct = default)
     {
         using var content = new MultipartFormDataContent();
         var fileStream = File.OpenRead(filePath);
-        var streamContent = new StreamContent(fileStream);
+        var streamContent = new ProgressableStreamContent(fileStream, progress);
         content.Add(streamContent, "file", Path.GetFileName(filePath));
         content.Add(new StringContent(isDefault.ToString()), "isDefault");
         if (barcodeId.HasValue)

@@ -8,6 +8,7 @@ public static class ErrorCodes
     // ── عامة ──────────────────────────────────────────────
     public const string NotFound = "NOT_FOUND";
     public const string Unauthorized = "UNAUTHORIZED";
+    public const string Forbidden = "FORBIDDEN";
     public const string ValidationError = "VALIDATION_ERROR";
     public const string ConcurrencyError = "CONCURRENCY_ERROR";
 
@@ -32,6 +33,7 @@ public static class ErrorCodes
     public const string CategoryNameExists = "CATEGORY_NAME_EXISTS";
 
     public const string ProductNotFound = "PRODUCT_NOT_FOUND";
+    public const string ProductInUse = "PRODUCT_IN_USE";
 
     public const string UnitNotFound = "UNIT_NOT_FOUND";
     public const string UnitNameExists = "UNIT_NAME_EXISTS";
@@ -42,6 +44,7 @@ public static class ErrorCodes
 
     public const string BarCodeNotFound = "BARCODE_NOT_FOUND";
     public const string BarCodeDuplicate = "BARCODE_DUPLICATE";
+    public const string BarCodeInUse = "BARCODE_IN_USE";
 
     public const string ImageNotFound = "IMAGE_NOT_FOUND";
 
@@ -82,6 +85,13 @@ public static class ErrorCodes
     // ── Sales Returns ──────────────────────────────────────
     public const string SalesReturnNotFound = "SALES_RETURN_NOT_FOUND";
     public const string SalesReturnNumberExists = "SALES_RETURN_NUMBER_EXISTS";
+    public const string SalesReturnExceedsSold = "SALES_RETURN_EXCEEDS_SOLD";
+
+    // ── Purchase Returns ───────────────────────────────────
+    public const string PurchaseReturnNotFound = "PURCHASE_RETURN_NOT_FOUND";
+    public const string PurchaseReturnNumberExists = "PURCHASE_RETURN_NUMBER_EXISTS";
+    public const string PurchaseReturnInvalidWarehouse = "PURCHASE_RETURN_INVALID_WAREHOUSE";
+    public const string PurchaseReturnInvalidQuantity = "PURCHASE_RETURN_INVALID_QUANTITY";
 
     // ── Stock Transfers ────────────────────────────────────
     public const string StockTransferNotFound = "STOCK_TRANSFER_NOT_FOUND";

@@ -10,6 +10,8 @@ public partial class CartItemModel : ObservableObject
     public string? Code { get; set; }
     public Guid? ProductBarCodeId { get; set; }
     public string? BarCode { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? UnitName { get; set; } = "قطعة";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LineTotal))]
@@ -32,3 +34,15 @@ public class CategoryFilterItem
     public string Name { get; set; } = string.Empty;
     public bool IsSelected { get; set; }
 }
+
+public class QuickProductItem
+{
+    public Guid ProductId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? CategoryName { get; set; }
+    public string? BarCode { get; set; }
+}
+

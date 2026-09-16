@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Branchs;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لكيان الفروع (Branches) وإعداد الأطوال والفهارس والربط مع المستأجر.
+/// </summary>
 public class BranchConfiguration : IEntityTypeConfiguration<Branch>
 {
     public void Configure(EntityTypeBuilder<Branch> builder)

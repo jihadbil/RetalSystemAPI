@@ -12,8 +12,12 @@ using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
 
+/// <summary>
+/// مواصفة جلب كافة وحدات القياس المرتبطة بمنتج محدد مع تضمين بيانات الوحدة الأساسية.
+/// </summary>
 public class ProductUnitsByProductSpec : BaseSpecification<ProductUnit>
 {
+    /// <summary>تهيئة مواصفة وحدات المنتج بالمعرف</summary>
     public ProductUnitsByProductSpec(Guid productId) : base(pu => pu.ProductId == productId)
     {
         AddInclude(pu => pu.Unit!);
@@ -21,19 +25,21 @@ public class ProductUnitsByProductSpec : BaseSpecification<ProductUnit>
 }
 
 /// <summary>
-/// تنفيذ خدمة وحدات المنتجات ومعاملات التحويل.
+/// تنفيذ خدمة وحدات المنتجات ومعاملات التحويل والوحدات الافتراضية.
 /// </summary>
 public class ProductUnitService : IProductUnitService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>تهيئة خدمة وحدات المنتجات مع حقن وحدة العمل والمحول</summary>
     public ProductUnitService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ProductUnitResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         var spec = new ProductUnitsByProductSpec(productId);
@@ -43,6 +49,7 @@ public class ProductUnitService : IProductUnitService
         return ServiceResult<IReadOnlyList<ProductUnitResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductUnitResponseDto>> AddUnitToProductAsync(
         Guid productId,
         CreateProductUnitDto dto,
@@ -87,6 +94,7 @@ public class ProductUnitService : IProductUnitService
         return ServiceResult<ProductUnitResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> RemoveUnitFromProductAsync(Guid productUnitId, CancellationToken ct = default)
     {
         var productUnit = await _unitOfWork.ProductUnits.GetByIdAsync(productUnitId, ct);
@@ -101,6 +109,7 @@ public class ProductUnitService : IProductUnitService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> SetDefaultUnitAsync(Guid productUnitId, CancellationToken ct = default)
     {
         var targetUnit = await _unitOfWork.ProductUnits.GetByIdAsync(productUnitId, ct);

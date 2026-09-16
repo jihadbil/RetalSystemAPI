@@ -16,7 +16,39 @@ public partial class UsersView : UserControl
 
         viewModel.OpenFormDialogHandler = OpenFormDialogAsync;
         viewModel.OpenResetPasswordDialogHandler = OpenResetPasswordDialogAsync;
+        viewModel.OpenRolePermissionsDialogHandler = OpenRolePermissionsDialogAsync;
+        viewModel.OpenUserPermissionsDialogHandler = OpenUserPermissionsDialogAsync;
         viewModel.ConfirmDeleteHandler = ConfirmDeleteAsync;
+    }
+
+    private async Task OpenUserPermissionsDialogAsync(UserSummaryDto user)
+    {
+        var app = (App)Application.Current;
+        var userPermVM = app.Services.GetRequiredService<UserPermissionsViewModel>();
+        await userPermVM.InitializeAsync(user.Id);
+
+        var window = new UserPermissionsWindow(userPermVM)
+        {
+            Owner = Window.GetWindow(this) ?? Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        window.ShowDialog();
+    }
+
+    private async Task OpenRolePermissionsDialogAsync()
+    {
+        var app = (App)Application.Current;
+        var rolePermVM = app.Services.GetRequiredService<RolePermissionsViewModel>();
+        await rolePermVM.InitializeAsync();
+
+        var window = new RolePermissionsWindow(rolePermVM)
+        {
+            Owner = Window.GetWindow(this) ?? Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        window.ShowDialog();
     }
 
     private async Task OpenFormDialogAsync(UserSummaryDto? user)
@@ -54,7 +86,8 @@ public partial class UsersView : UserControl
 
     private Task<bool> ConfirmDeleteAsync(string title, string message)
     {
-        var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        return Task.FromResult(result == MessageBoxResult.Yes);
+        return Task.FromResult(RetalSystemAPI.Desktop.Controls.ModernConfirmDialog.ShowConfirm(
+            Window.GetWindow(this) ?? Application.Current.MainWindow, title, message,
+            "تأكيد", "تراجع", RetalSystemAPI.Desktop.Controls.ConfirmDialogType.Danger));
     }
 }

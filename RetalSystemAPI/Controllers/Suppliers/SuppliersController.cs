@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Suppliers;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Suppliers.Interfaces;
@@ -28,6 +30,7 @@ public class SuppliersController : BaseApiController
     /// الحصول على قائمة بكل الموردين ملخصين.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Suppliers.View)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var result = await _supplierService.GetAllAsync(ct);
@@ -38,6 +41,7 @@ public class SuppliersController : BaseApiController
     /// الحصول على قائمة صفحية للموردين مع دعم البحث بالاسم أو الهواتف.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.Suppliers.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -52,6 +56,7 @@ public class SuppliersController : BaseApiController
     /// الحصول على تفاصيل المورد وهواتفه بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.Suppliers.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _supplierService.GetByIdAsync(id, ct);
@@ -62,6 +67,7 @@ public class SuppliersController : BaseApiController
     /// إضافة مورد جديد.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Suppliers.Create)]
     public async Task<IActionResult> Create([FromBody] CreateSupplierDto dto, CancellationToken ct)
     {
         var result = await _supplierService.CreateAsync(dto, ct);
@@ -77,6 +83,7 @@ public class SuppliersController : BaseApiController
     /// تعديل بيانات مورد موجود.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.Suppliers.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSupplierDto dto, CancellationToken ct)
     {
         var result = await _supplierService.UpdateAsync(id, dto, ct);
@@ -87,6 +94,7 @@ public class SuppliersController : BaseApiController
     /// حذف مورد.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.Suppliers.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _supplierService.DeleteAsync(id, ct);
@@ -97,6 +105,7 @@ public class SuppliersController : BaseApiController
     /// إضافة رقم هاتف جديد للمورد.
     /// </summary>
     [HttpPost("{supplierId:guid}/phones")]
+    [HasPermission(Permissions.Suppliers.Edit)]
     public async Task<IActionResult> AddPhone([FromRoute] Guid supplierId, [FromBody] SupplierPhoneDto dto, CancellationToken ct)
     {
         var result = await _supplierService.AddPhoneAsync(supplierId, dto, ct);
@@ -107,6 +116,7 @@ public class SuppliersController : BaseApiController
     /// حذف رقم هاتف للمورد.
     /// </summary>
     [HttpDelete("{supplierId:guid}/phones/{phoneId:guid}")]
+    [HasPermission(Permissions.Suppliers.Edit)]
     public async Task<IActionResult> DeletePhone([FromRoute] Guid supplierId, [FromRoute] Guid phoneId, CancellationToken ct)
     {
         var result = await _supplierService.DeletePhoneAsync(supplierId, phoneId, ct);

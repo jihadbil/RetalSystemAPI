@@ -14,27 +14,36 @@ using RetalSystemAPI.Models.DTOs.Auth;
 using RetalSystemAPI.Services.Auth.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
+using RetalSystemAPI.Models.Constants;
+
 namespace RetalSystemAPI.Services.Auth.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة المصادقة وتوليد رميز التوثيق JWT.
+/// تنفيذ خدمة المصادقة وتوليد رموز التوثيق JWT والتحقق من حسابات المستخدمين والمستأجرين.
 /// </summary>
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _configuration;
     private readonly IUnitOfWork _unitOfWork;
 
+    /// <summary>
+    /// تهيئة خدمة المصادقة مع حقن مدير المستخدمين ومدير الأدوار وإعدادات التكوين ووحدة العمل.
+    /// </summary>
     public AuthService(
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         IConfiguration configuration,
         IUnitOfWork unitOfWork)
     {
         _userManager = userManager;
+        _roleManager = roleManager;
         _configuration = configuration;
         _unitOfWork = unitOfWork;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<AuthResponseDto>> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
         // 1. التحقق من وجود المستأجر
@@ -74,10 +83,11 @@ public class AuthService : IAuthService
         }
 
         // 4. توليد الرمز والرد
-        var authResponse = GenerateJwtToken(user);
+        var authResponse = await GenerateJwtTokenAsync(user);
         return ServiceResult<AuthResponseDto>.Success(authResponse);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<AuthResponseDto>> LoginAsync(LoginDto dto, CancellationToken ct = default)
     {
         var user = await _userManager.FindByNameAsync(dto.UserName)
@@ -94,16 +104,22 @@ public class AuthService : IAuthService
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
         }
 
-        var authResponse = GenerateJwtToken(user);
+        var authResponse = await GenerateJwtTokenAsync(user);
         return ServiceResult<AuthResponseDto>.Success(authResponse);
     }
 
+    /// <inheritdoc />
     public Task<ServiceResult> LogoutAsync(string userId, CancellationToken ct = default)
     {
         return Task.FromResult(ServiceResult.Success());
     }
 
-    private AuthResponseDto GenerateJwtToken(ApplicationUser user)
+    /// <summary>
+    /// توليد توكن مصادقة JWT مشفر وموقع يحمل بيانات ومعرفات المستخدم والمستأجر والفرع والأدوار.
+    /// </summary>
+    /// <param name="user">كائن المستخدم</param>
+    /// <returns>استجابة المصادقة متضمنة التوكن وتاريخ انتهاء الصلاحية</returns>
+    private async Task<AuthResponseDto> GenerateJwtTokenAsync(ApplicationUser user)
     {
         var secretKey = _configuration["JwtSettings:Secret"] ?? "DefaultSuperSecretKeyForRetalSystemAPI123456789!";
         var issuer = _configuration["JwtSettings:Issuer"] ?? "RetalSystemAPI";
@@ -115,6 +131,8 @@ public class AuthService : IAuthService
 
         var expiresAt = DateTime.UtcNow.AddHours(expiryHours);
 
+        var roles = await _userManager.GetRolesAsync(user);
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -123,9 +141,77 @@ public class AuthService : IAuthService
             new("BranchId", user.BranchId.ToString())
         };
 
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
         if (!string.IsNullOrEmpty(user.Email))
         {
             claims.Add(new Claim(ClaimTypes.Email, user.Email));
+        }
+
+        // استخراج وتجميع كافة الصلاحيات الممنوحة للمستخدم
+        var permissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        
+        if (isAdmin)
+        {
+            // المسؤول يمتلك كافة صلاحيات النظام بدون قيد
+            foreach (var perm in AppPermissions.GetAllPermissionCodes())
+            {
+                permissions.Add(perm);
+            }
+        }
+        else
+        {
+            var userClaims = await _userManager.GetClaimsAsync(user);
+            bool isCustomized = userClaims.Any(c => c.Type == "Permissions.Customized" && c.Value == "true");
+
+            if (isCustomized)
+            {
+                // إذا تم تخصيص صلاحيات مستقلة للمستخدم، تُعتمد صلاحياته المباشرة المخصصة له فقط دون فرض باقي صلاحيات الدور
+                foreach (var c in userClaims.Where(uc => uc.Type == Permissions.ClaimType))
+                {
+                    if (!string.IsNullOrWhiteSpace(c.Value))
+                    {
+                        permissions.Add(c.Value);
+                    }
+                }
+            }
+            else
+            {
+                // إذا لم يتم التخصيص، يرث المستخدم صلاحيات أدواره المسندة تلقائياً
+                foreach (var roleName in roles)
+                {
+                    var role = await _roleManager.FindByNameAsync(roleName);
+                    if (role != null)
+                    {
+                        var roleClaims = await _roleManager.GetClaimsAsync(role);
+                        foreach (var c in roleClaims.Where(rc => rc.Type == Permissions.ClaimType))
+                        {
+                            if (!string.IsNullOrWhiteSpace(c.Value))
+                            {
+                                permissions.Add(c.Value);
+                            }
+                        }
+                    }
+                }
+
+                // إضافة أي صلاحيات إضافية مباشرة إن وجدت
+                foreach (var c in userClaims.Where(uc => uc.Type == Permissions.ClaimType))
+                {
+                    if (!string.IsNullOrWhiteSpace(c.Value))
+                    {
+                        permissions.Add(c.Value);
+                    }
+                }
+            }
+        }
+
+        foreach (var perm in permissions)
+        {
+            claims.Add(new Claim(Permissions.ClaimType, perm));
         }
 
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -149,7 +235,9 @@ public class AuthService : IAuthService
             UserId = user.Id,
             UserName = user.UserName ?? string.Empty,
             TenantId = user.TenantId,
-            BranchId = user.BranchId
+            BranchId = user.BranchId,
+            Roles = roles.ToList(),
+            Permissions = permissions.OrderBy(p => p).ToList()
         };
     }
 }

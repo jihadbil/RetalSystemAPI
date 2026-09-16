@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace RetalSystemAPI.Desktop.Models.Customers;
 
@@ -30,7 +31,16 @@ public class CustomerDto
     public decimal CreditLimit { get; set; }
     public decimal CurrentBalance { get; set; }
     public bool IsActive { get; set; }
-    public List<CustomerPhoneDto> CustomerPhones { get; set; } = new();
+
+    [JsonPropertyName("phones")]
+    public List<CustomerPhoneDto> Phones { get; set; } = new();
+
+    [JsonIgnore]
+    public List<CustomerPhoneDto> CustomerPhones
+    {
+        get => Phones;
+        set => Phones = value;
+    }
 }
 
 public class CustomerSummaryDto

@@ -69,7 +69,10 @@ public class CatalogMappingProfile : Profile
                 opt => opt.MapFrom(src =>
                     src.ProductBarCodes.FirstOrDefault() != null
                         ? src.ProductBarCodes.First().BarCode
-                        : null));
+                        : null))
+            .ForMember(dest => dest.BarCodes, opt => opt.MapFrom(src => src.ProductBarCodes))
+            .ForMember(dest => dest.Units, opt => opt.MapFrom(src => src.ProductUnits))
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ProductImages));
 
         CreateMap<CreateProductDto, Product>();
         CreateMap<UpdateProductDto, Product>()

@@ -6,10 +6,15 @@ using Microsoft.Extensions.Configuration;
 namespace RetalSystemAPI.DataAccess.Context;
 
 /// <summary>
-/// مصنع للـ DbContext يُستخدم فقط في وقت التصميم (Design-Time) لإجراء Migrations عبر أدوات EF Core CLI.
+/// مصنع للـ DbContext يُستخدم فقط في وقت التصميم (Design-Time) لتوليد الهجرات (Migrations) عبر أدوات EF Core CLI.
 /// </summary>
 public class DesignDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
+    /// <summary>
+    /// إنشاء كائن AppDbContext باستخدام سلسلة الاتصال المحددة في وقت التصميم.
+    /// </summary>
+    /// <param name="args">وسائط سطر الأوامر</param>
+    /// <returns>نسخة مهيأة من AppDbContext</returns>
     public AppDbContext CreateDbContext(string[] args)
     {
         var basePath = Directory.GetCurrentDirectory();

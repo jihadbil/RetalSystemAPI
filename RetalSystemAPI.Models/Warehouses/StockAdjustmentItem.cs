@@ -1,6 +1,7 @@
 using System;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.Common;
+using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.Models.Warehouses;
 
@@ -37,4 +38,9 @@ public class StockAdjustmentItem : TenantBaseEntity
     /// تكلفة الوحدة لحساب الأثر المالي للتسوية.
     /// </summary>
     public decimal UnitCost { get; set; }
+
+    /// <summary>
+    /// سبب تسوية هذا البند تحديداً (تالف / منتهي / رصيد افتتاحي ...) — مستقل عن سبب التسوية العام.
+    /// </summary>
+    public StockAdjustmentReason Reason { get; set; } = StockAdjustmentReason.InventoryCount;
 }

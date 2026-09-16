@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -30,10 +31,13 @@ public partial class SuppliersViewModel : BaseViewModel
     [ObservableProperty]
     private int _pageSize = 10;
 
+    private int _loadVersion;
+
     partial void OnSearchQueryChanged(string? value)
     {
         CurrentPage = 1;
-        _ = LoadSuppliersAsync();
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadSuppliersAsync);
     }
 
     partial void OnPageSizeChanged(int value)
@@ -54,19 +58,26 @@ public partial class SuppliersViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadSuppliersAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             var response = await _supplierApiService.GetPagedAsync(CurrentPage, PageSize, SearchQuery);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Suppliers = new ObservableCollection<SupplierSummaryDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadSuppliersAsync();
+                }
             }
             else
             {
                 ErrorMessage = response.Message ?? "فشل تحميل الموردين";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -135,7 +146,8 @@ public partial class SupplierFormViewModel : BaseViewModel
     [ObservableProperty]
     private Guid? _supplierId;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم المورد مطلوب")]
     private string _name = string.Empty;
 
     [ObservableProperty]
@@ -258,6 +270,7 @@ public partial class SupplierFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name))
         {
             ErrorMessage = "اسم المورد مطلوب";
@@ -267,12 +280,19 @@ public partial class SupplierFormViewModel : BaseViewModel
         // إذا أدخل المستخدم رقم هاتف في الحقل ولم يضغط على زر "+ إضافة"
         if (!string.IsNullOrWhiteSpace(NewPhoneNumber))
         {
-            if (!Phones.Any(p => p.PhoneNumber == NewPhoneNumber))
+            if (IsEditMode)
             {
-                Phones.Add(new SupplierPhoneDto { Id = Guid.NewGuid(), PhoneNumber = NewPhoneNumber, Name = NewPhoneName });
+                // Existing suppliers persist phone numbers through their dedicated endpoint.
+                await AddPhoneAsync();
+                if (!string.IsNullOrWhiteSpace(NewPhoneNumber)) return;
             }
-            NewPhoneNumber = string.Empty;
-            NewPhoneName = string.Empty;
+            else
+            {
+                if (!Phones.Any(p => p.PhoneNumber == NewPhoneNumber))
+                    Phones.Add(new SupplierPhoneDto { Id = Guid.NewGuid(), PhoneNumber = NewPhoneNumber, Name = NewPhoneName });
+                NewPhoneNumber = string.Empty;
+                NewPhoneName = string.Empty;
+            }
         }
 
         await ExecuteAsync(async () =>

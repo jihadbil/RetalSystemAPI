@@ -52,7 +52,14 @@ public partial class LoginViewModel : BaseViewModel
             var response = await _authApiService.LoginAsync(request);
             if (response.Success && response.Data != null)
             {
-                _authStateService.SetToken(response.Data.Token, response.Data.UserId, response.Data.TenantId, RememberMe);
+                _authStateService.SetToken(
+                    response.Data.Token, 
+                    response.Data.UserId, 
+                    response.Data.TenantId, 
+                    RememberMe,
+                    response.Data.Roles,
+                    response.Data.UserName,
+                    response.Data.Permissions);
                 OnLoginSuccess?.Invoke();
             }
             else

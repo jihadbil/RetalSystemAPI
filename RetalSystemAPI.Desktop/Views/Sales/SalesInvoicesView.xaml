@@ -4,8 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:sales="clr-namespace:RetalSystemAPI.Desktop.Models.Sales"
+             xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="950" FlowDirection="RightToLeft" Background="#F6F8F7">
+             d:DesignHeight="600" d:DesignWidth="950" 
+             FlowDirection="RightToLeft" 
+             Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -17,12 +20,17 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,15">
-            <Button Content="+ إصدار فاتورة مبيعات جديدة" Command="{Binding CreateInvoiceCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="🧾 فواتير وحركات المبيعات" FontSize="22" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding CreateInvoiceCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0">
+                <DockPanel>
+                    <Path Data="{StaticResource IconAdd}" Fill="{DynamicResource PrimaryOnBrush}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="إصدار فاتورة مبيعات جديدة" VerticalAlignment="Center"/>
+                </DockPanel>
+            </Button>
+            <TextBlock Text="فواتير وحركات المبيعات" Style="{StaticResource H1TextBlockStyle}" VerticalAlignment="Center"/>
         </DockPanel>
 
         <!-- Filter Bar Card -->
-        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -36,17 +44,17 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="34" VerticalContentAlignment="Center" Padding="8,0"/>
 
-                <TextBlock Grid.Column="2" Text="الفرع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <ComboBox Grid.Column="3" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="الفرع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="3" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Height="34" VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Column="4" Text="المستودع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <ComboBox Grid.Column="5" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+                <TextBlock Grid.Column="4" Text="المستودع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="5" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Style="{StaticResource DefaultComboBoxStyle}" Height="34" VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Column="6" Text="الحالة:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <ComboBox Grid.Column="7" SelectedValue="{Binding SelectedStatus}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
+                <TextBlock Grid.Column="6" Text="الحالة:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="7" SelectedValue="{Binding SelectedStatus}" SelectedValuePath="Tag" Style="{StaticResource DefaultComboBoxStyle}" Height="34" VerticalContentAlignment="Center">
                     <ComboBoxItem Content="الكل" Tag="{x:Null}" IsSelected="True"/>
                     <ComboBoxItem Content="مسودة" Tag="{x:Static sales:InvoiceStatus.Draft}"/>
                     <ComboBoxItem Content="مصدرة" Tag="{x:Static sales:InvoiceStatus.Issued}"/>
@@ -55,47 +63,79 @@
                     <ComboBoxItem Content="ملغية" Tag="{x:Static sales:InvoiceStatus.Cancelled}"/>
                 </ComboBox>
 
-                <Button Grid.Column="8" Content="تحديث" Command="{Binding LoadInvoicesCommand}" Margin="10,0,0,0" Padding="15,0" Height="34" Background="#111827" Foreground="#FFFFFF" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                <Button Grid.Column="8" Command="{Binding LoadInvoicesCommand}" Style="{StaticResource GhostButtonStyle}" Margin="10,0,0,0" Padding="14,0" Height="34">
+                    <DockPanel>
+                        <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource TextPrimaryBrush}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="تحديث" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Button>
             </Grid>
         </Border>
 
-        <!-- DataGrid Card -->
-        <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1">
-            <DataGrid ItemsSource="{Binding Invoices}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" Background="Transparent" RowHeight="42">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="1.5*"/>
-                    <DataGridTextColumn Header="الفرع" Binding="{Binding BranchName}" Width="1.2*"/>
-                    <DataGridTextColumn Header="صالة العرض / المخزن" Binding="{Binding WarehouseName}" Width="1.4*"/>
-                    <DataGridTextColumn Header="العميل" Binding="{Binding CustomerName, TargetNullValue='عميل نقدي / عام'}" Width="1.5*"/>
-                    <DataGridTextColumn Header="التاريخ" Binding="{Binding InvoiceDate, StringFormat={}{0:yyyy-MM-dd}}" Width="1.1*"/>
-                    <DataGridTextColumn Header="الحالة" Binding="{Binding StatusName}" Width="1.1*"/>
-                    <DataGridTextColumn Header="الإجمالي" Binding="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
-                    <DataGridTextColumn Header="المدفوع" Binding="{Binding PaidAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
-                    <DataGridTextColumn Header="المتبقي" Binding="{Binding RemainingAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
-                    <DataGridTemplateColumn Header="الإجراءات" Width="210">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Button Content="تعديل/عرض" Command="{Binding DataContext.EditInvoiceCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-                                    <Button Content="حذف" Command="{Binding DataContext.DeleteInvoiceCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <!-- DataGrid & Empty State Container -->
+        <Grid Grid.Row="2">
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <DataGrid ItemsSource="{Binding Invoices}" Style="{StaticResource DefaultDataGridStyle}" RowHeight="42">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="1.5*"/>
+                        <DataGridTextColumn Header="الفرع" Binding="{Binding BranchName}" Width="1.2*"/>
+                        <DataGridTextColumn Header="صالة العرض / المخزن" Binding="{Binding WarehouseName}" Width="1.4*"/>
+                        <DataGridTextColumn Header="العميل" Binding="{Binding CustomerName, TargetNullValue='عميل نقدي / عام'}" Width="1.5*"/>
+                        <DataGridTextColumn Header="التاريخ" Binding="{Binding InvoiceDate, StringFormat={}{0:yyyy-MM-dd}}" Width="1.1*"/>
+                        <DataGridTextColumn Header="الحالة" Binding="{Binding StatusName}" Width="1.1*"/>
+                        <DataGridTextColumn Header="الإجمالي" Binding="{Binding TotalAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
+                        <DataGridTextColumn Header="المدفوع" Binding="{Binding PaidAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
+                        <DataGridTextColumn Header="المتبقي" Binding="{Binding RemainingAmount, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
+                        <DataGridTemplateColumn Header="الإجراءات" Width="210">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Button Command="{Binding DataContext.EditInvoiceCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Style="{StaticResource GhostButtonStyle}" Margin="2,0" Padding="8,4">
+                                            <DockPanel>
+                                                <Path Data="{StaticResource IconEdit}" Fill="{DynamicResource WarningBrush}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <TextBlock Text="تعديل/عرض" FontSize="11" VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                        </Button>
+                                        <Button Command="{Binding DataContext.DeleteInvoiceCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Style="{StaticResource DangerButtonStyle}" Margin="2,0" Padding="8,4">
+                                            <DockPanel>
+                                                <Path Data="{StaticResource IconDelete}" Fill="White" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <TextBlock Text="حذف" FontSize="11" VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- Empty State -->
+            <controls:EmptyStateControl Title="لا توجد فواتير مبيعات مسجلة" 
+                                        Description="لم يتم العثور على أي فواتير مطابقة للبحث. يمكنك إصدار فاتورة جديدة بالضغط أدناه."
+                                        ActionText="+ إصدار فاتورة جديدة"
+                                        ActionCommand="{Binding CreateInvoiceCommand}"
+                                        IconData="{StaticResource IconInvoices}">
+                <controls:EmptyStateControl.Style>
+                    <Style TargetType="controls:EmptyStateControl">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Invoices.Count}" Value="0" />
+                                    <Condition Binding="{Binding IsLoading}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </controls:EmptyStateControl.Style>
+            </controls:EmptyStateControl>
+        </Grid>
 
         <!-- Pagination -->
-        <DockPanel Grid.Row="3" Margin="0,15,0,0">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="السابق" Command="{Binding PrevPageCommand}" Height="32" Padding="14,0" Margin="0,0,5,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-                <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#38E07B" Margin="5,0"/>
-                <TextBlock Text="من" VerticalAlignment="Center" Foreground="#6B7280" Margin="2,0"/>
-                <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#111827" Margin="5,0"/>
-                <Button Content="التالي" Command="{Binding NextPageCommand}" Height="32" Padding="14,0" Margin="5,0,0,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-            </StackPanel>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-        </DockPanel>
+        <controls:PaginationControl Grid.Row="3" Margin="0,12,0,0" CurrentPage="{Binding CurrentPage}" TotalPages="{Binding TotalPages}" PageSize="{Binding PageSize, Mode=TwoWay}" IsLoading="{Binding IsLoading}" NextPageCommand="{Binding NextPageCommand}" PrevPageCommand="{Binding PrevPageCommand}" />
+        <controls:ListFeedback Grid.Row="2" ItemsCount="{Binding Invoices.Count}" IsLoading="{Binding IsLoading}" Message="{Binding ErrorMessage}" RetryCommand="{Binding LoadInvoicesCommand}" />
+        <controls:LoadingOverlay Grid.RowSpan="4" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
 </UserControl>

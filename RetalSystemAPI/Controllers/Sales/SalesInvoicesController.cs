@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Sales;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Responses;
@@ -29,6 +31,7 @@ public class SalesInvoicesController : BaseApiController
     /// الحصول على جميع فواتير المبيعات مع دعم الفلترة متعددة المعايير وتصفية التواريخ.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.SalesInvoices.View)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? branchId = null,
         [FromQuery] Guid? warehouseId = null,
@@ -48,6 +51,7 @@ public class SalesInvoicesController : BaseApiController
     /// الحصول على قائمة صفحية لفواتير المبيعات مع دعم الفلترة والبحث.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.SalesInvoices.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -69,6 +73,7 @@ public class SalesInvoicesController : BaseApiController
     /// الحصول على تفاصيل فاتورة مبيعات بالمعرف متضمنة البنود والأصناف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.SalesInvoices.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _salesInvoiceService.GetByIdAsync(id, ct);
@@ -79,6 +84,7 @@ public class SalesInvoicesController : BaseApiController
     /// البحث عن فاتورة مبيعات برقم الفاتورة.
     /// </summary>
     [HttpGet("number/{invoiceNumber}")]
+    [HasPermission(Permissions.SalesInvoices.View)]
     public async Task<IActionResult> GetByInvoiceNumber([FromRoute] string invoiceNumber, CancellationToken ct)
     {
         var result = await _salesInvoiceService.GetByInvoiceNumberAsync(invoiceNumber, ct);
@@ -89,6 +95,7 @@ public class SalesInvoicesController : BaseApiController
     /// إنشاء وإصدار فاتورة مبيعات جديدة وخصم الكميات من المخزون تلقائياً.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.SalesInvoices.Create)]
     public async Task<IActionResult> Create([FromBody] CreateSalesInvoiceDto dto, CancellationToken ct)
     {
         var result = await _salesInvoiceService.CreateAsync(dto, ct);
@@ -104,6 +111,7 @@ public class SalesInvoicesController : BaseApiController
     /// تعديل بيانات فاتورة مبيعات (طريقة الدفع، المبلغ المدفوع، الملاحظات).
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.SalesInvoices.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSalesInvoiceDto dto, CancellationToken ct)
     {
         var result = await _salesInvoiceService.UpdateAsync(id, dto, ct);
@@ -114,6 +122,7 @@ public class SalesInvoicesController : BaseApiController
     /// تحديث حالة الفاتورة (وفي حال الإلغاء أو الإبطال يتم استعادة المخزون تلقائياً).
     /// </summary>
     [HttpPatch("{id:guid}/status")]
+    [HasPermission(Permissions.SalesInvoices.Edit)]
     public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] InvoiceStatus status, CancellationToken ct)
     {
         var result = await _salesInvoiceService.UpdateStatusAsync(id, status, ct);
@@ -124,6 +133,7 @@ public class SalesInvoicesController : BaseApiController
     /// حذف/أرشفة فاتورة مبيعات.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.SalesInvoices.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _salesInvoiceService.DeleteAsync(id, ct);

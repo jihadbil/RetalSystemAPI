@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API للمخازن والمستودعات والصالات (Warehouses) وأنواعها وربطها بالفروع.
+/// </summary>
 public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
 {
     public void Configure(EntityTypeBuilder<Warehouse> builder)

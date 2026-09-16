@@ -6,15 +6,18 @@ namespace RetalSystemAPI.Desktop.Models.Purchase;
 public enum PurchaseOrderStatus
 {
     Draft = 1,
-    Submitted = 2,
-    Received = 3,
-    Canceled = 4
+    Confirmed = 2,
+    PartiallyReceived = 3,
+    Received = 4,
+    Cancelled = 5
 }
 
 public class PurchaseOrderDto
 {
     public Guid Id { get; set; }
     public string OrderNumber { get; set; } = null!;
+    public Guid? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public Guid BranchId { get; set; }
     public string BranchName { get; set; } = null!;
     public Guid? WarehouseId { get; set; }
@@ -31,6 +34,8 @@ public class PurchaseOrderSummaryDto
 {
     public Guid Id { get; set; }
     public string OrderNumber { get; set; } = null!;
+    public Guid? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public Guid BranchId { get; set; }
     public string BranchName { get; set; } = null!;
     public Guid? WarehouseId { get; set; }
@@ -58,6 +63,7 @@ public class PurchaseOrderItemDto
 public class CreatePurchaseOrderRequest
 {
     public string OrderNumber { get; set; } = null!;
+    public Guid? SupplierId { get; set; }
     public Guid BranchId { get; set; }
     public Guid? WarehouseId { get; set; }
     public DateTime OrderDate { get; set; }
@@ -74,6 +80,7 @@ public class CreatePurchaseOrderItemRequest
 
 public class UpdatePurchaseOrderRequest
 {
+    public Guid? SupplierId { get; set; }
     public Guid? WarehouseId { get; set; }
     public DateTime? ExpectedDate { get; set; }
     public List<CreatePurchaseOrderItemRequest>? Items { get; set; }

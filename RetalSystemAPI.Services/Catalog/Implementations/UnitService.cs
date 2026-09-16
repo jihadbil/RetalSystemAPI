@@ -12,19 +12,23 @@ using RetalSystemAPI.Services.Common.Models;
 namespace RetalSystemAPI.Services.Catalog.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة وحدات القياس.
+/// تنفيذ خدمة وحدات القياس والتحقق من عدم تكرار الأسماء والتحقق من عدم وجود ارتباطات سابقة عند الحذف.
 /// </summary>
 public class UnitService : IUnitService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة وحدات القياس مع حقن وحدة العمل وAutoMapper.
+    /// </summary>
     public UnitService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<UnitResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);
@@ -37,6 +41,7 @@ public class UnitService : IUnitService
         return ServiceResult<UnitResponseDto>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<UnitResponseDto>>> GetAllAsync(CancellationToken ct = default)
     {
         var units = await _unitOfWork.Units.GetAllAsync(ct);
@@ -44,6 +49,7 @@ public class UnitService : IUnitService
         return ServiceResult<IReadOnlyList<UnitResponseDto>>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<UnitResponseDto>> CreateAsync(CreateUnitDto dto, CancellationToken ct = default)
     {
         bool nameExists = await _unitOfWork.Units.ExistsAsync(u => u.Name == dto.Name, ct);
@@ -60,6 +66,7 @@ public class UnitService : IUnitService
         return ServiceResult<UnitResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<UnitResponseDto>> UpdateAsync(Guid id, UpdateUnitDto dto, CancellationToken ct = default)
     {
         var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);
@@ -84,6 +91,7 @@ public class UnitService : IUnitService
         return ServiceResult<UnitResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);

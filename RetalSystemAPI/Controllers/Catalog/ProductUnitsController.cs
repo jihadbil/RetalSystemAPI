@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -28,6 +30,7 @@ public class ProductUnitsController : BaseApiController
     /// الحصول على وحدات قياس منتج محدد.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetByProduct([FromRoute] Guid productId, CancellationToken ct)
     {
         var result = await _productUnitService.GetByProductAsync(productId, ct);
@@ -38,6 +41,7 @@ public class ProductUnitsController : BaseApiController
     /// ربط وحدة قياس جديدة بالمنتج مع معامل التحويل والسعر.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> AddUnitToProduct(
         [FromRoute] Guid productId,
         [FromBody] CreateProductUnitDto dto,
@@ -56,6 +60,7 @@ public class ProductUnitsController : BaseApiController
     /// إزالة وحدة قياس من المنتج.
     /// </summary>
     [HttpDelete("{productUnitId:guid}")]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> RemoveUnitFromProduct([FromRoute] Guid productUnitId, CancellationToken ct)
     {
         var result = await _productUnitService.RemoveUnitFromProductAsync(productUnitId, ct);
@@ -66,6 +71,7 @@ public class ProductUnitsController : BaseApiController
     /// تعيين وحدة القياس المحددة كوحدة افتراضية للمنتج.
     /// </summary>
     [HttpPatch("{productUnitId:guid}/set-default")]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> SetDefaultUnit([FromRoute] Guid productUnitId, CancellationToken ct)
     {
         var result = await _productUnitService.SetDefaultUnitAsync(productUnitId, ct);

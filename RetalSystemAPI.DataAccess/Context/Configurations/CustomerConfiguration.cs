@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Customers;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبيانات الزبائن والعملاء (Customers) والحدود الائتمانية والأرصدة الافتتاحية.
+/// </summary>
 public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)

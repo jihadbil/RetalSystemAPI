@@ -1,10 +1,11 @@
 <UserControl x:Class="RetalSystemAPI.Desktop.Views.Purchase.PurchaseOrdersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft" Background="#F6F8F7">
+             d:DesignHeight="600" d:DesignWidth="900" FlowDirection="RightToLeft" Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -16,12 +17,12 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,15">
-            <Button Content="+ إضافة طلبية شراء جديدة" Command="{Binding CreateOrderCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="📝 إدارة الطلبيات والمشتريات" FontSize="22" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+            <Button Content="+ إضافة طلبية شراء جديدة" Command="{Binding CreateOrderCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="📝 إدارة الطلبيات والمشتريات" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
         </DockPanel>
 
         <!-- Filter Bar Card -->
-        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -33,24 +34,25 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
 
-                <TextBlock Grid.Column="2" Text="الفرع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <TextBlock Grid.Column="2" Text="الفرع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <ComboBox Grid.Column="3" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Column="4" Text="المخزن:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <TextBlock Grid.Column="4" Text="المخزن:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <ComboBox Grid.Column="5" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
 
-                <Button Grid.Column="6" Content="تحديث" Command="{Binding LoadOrdersCommand}" Margin="10,0,0,0" Padding="15,0" Height="34" Background="#111827" Foreground="#FFFFFF" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                <Button Grid.Column="6" Content="تحديث" Command="{Binding LoadOrdersCommand}" Margin="10,0,0,0" Padding="15,0" Height="34" Background="{DynamicResource TextPrimaryBrush}" Foreground="{DynamicResource SurfaceBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
             </Grid>
         </Border>
 
         <!-- DataGrid Card -->
-        <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1">
-            <DataGrid ItemsSource="{Binding Orders}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" Background="Transparent" RowHeight="42">
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Orders}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}" Background="Transparent" RowHeight="42">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="رقم الطلبية" Binding="{Binding OrderNumber}" Width="1.5*"/>
+                    <DataGridTextColumn Header="المورد" Binding="{Binding SupplierName}" Width="1.5*"/>
                     <DataGridTextColumn Header="الفرع" Binding="{Binding BranchName}" Width="1.5*"/>
                     <DataGridTextColumn Header="المخزن/الصالة" Binding="{Binding WarehouseName}" Width="1.5*"/>
                     <DataGridTextColumn Header="التاريخ" Binding="{Binding OrderDate, StringFormat={}{0:yyyy-MM-dd}}" Width="1.2*"/>
@@ -61,9 +63,9 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Button Content="🔄 تقدم/استلام" Command="{Binding DataContext.UpdateStatusCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" ToolTip="التقدم بالحالة واستلام المخزون آلياً"/>
-                                    <Button Content="تعديل" Command="{Binding DataContext.EditOrderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-                                    <Button Content="حذف" Command="{Binding DataContext.DeleteOrderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Content="🔄 تقدم/استلام" Command="{Binding DataContext.UpdateStatusCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand" ToolTip="التقدم بالحالة واستلام المخزون آلياً"/>
+                                    <Button Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource TextPrimaryBrush}" Content="تعديل" Command="{Binding DataContext.EditOrderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource TextButtonStyle}" Foreground="{DynamicResource DangerBrush}" Content="حذف" Command="{Binding DataContext.DeleteOrderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -73,15 +75,8 @@
         </Border>
 
         <!-- Pagination -->
-        <DockPanel Grid.Row="3" Margin="0,15,0,0">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="السابق" Command="{Binding PrevPageCommand}" Height="32" Padding="14,0" Margin="0,0,5,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-                <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#38E07B" Margin="5,0"/>
-                <TextBlock Text="من" VerticalAlignment="Center" Foreground="#6B7280" Margin="2,0"/>
-                <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#111827" Margin="5,0"/>
-                <Button Content="التالي" Command="{Binding NextPageCommand}" Height="32" Padding="14,0" Margin="5,0,0,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-            </StackPanel>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-        </DockPanel>
+        <controls:PaginationControl Grid.Row="3" Margin="0,12,0,0" CurrentPage="{Binding CurrentPage}" TotalPages="{Binding TotalPages}" PageSize="{Binding PageSize, Mode=TwoWay}" IsLoading="{Binding IsLoading}" NextPageCommand="{Binding NextPageCommand}" PrevPageCommand="{Binding PrevPageCommand}" />
+        <controls:ListFeedback Grid.Row="2" ItemsCount="{Binding Orders.Count}" IsLoading="{Binding IsLoading}" Message="{Binding ErrorMessage}" RetryCommand="{Binding LoadOrdersCommand}" />
+        <controls:LoadingOverlay Grid.RowSpan="4" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
 </UserControl>

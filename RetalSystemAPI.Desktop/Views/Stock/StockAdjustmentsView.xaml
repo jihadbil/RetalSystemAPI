@@ -1,11 +1,12 @@
 <UserControl x:Class="RetalSystemAPI.Desktop.Views.Stock.StockAdjustmentsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:warehouses="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="950" FlowDirection="RightToLeft" Background="#F6F8F7">
+             d:DesignHeight="600" d:DesignWidth="950" FlowDirection="RightToLeft" Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -17,12 +18,12 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,15">
-            <Button Content="+ تسجيل تسوية جردية جديدة" Command="{Binding CreateAdjustmentCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="⚖️ التسويات وفوارق الجرد المخزني" FontSize="22" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+            <Button Content="+ تسجيل تسوية جردية جديدة" Command="{Binding CreateAdjustmentCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="⚖️ التسويات وفوارق الجرد المخزني" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
         </DockPanel>
 
         <!-- Filter Bar Card -->
-        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="#E5E7EB" BorderThickness="1">
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -34,29 +35,29 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
-                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                <TextBlock Text="بحث:" VerticalAlignment="Center" Margin="5,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
 
-                <TextBlock Grid.Column="2" Text="المستودع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <TextBlock Grid.Column="2" Text="المستودع:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <ComboBox Grid.Column="3" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Column="4" Text="سبب التسوية:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="#111827"/>
+                <TextBlock Grid.Column="4" Text="سبب التسوية:" VerticalAlignment="Center" Margin="10,0,5,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <ComboBox Grid.Column="5" SelectedValue="{Binding SelectedReason}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
                     <ComboBoxItem Content="الكل" Tag="{x:Null}" IsSelected="True"/>
                     <ComboBoxItem Content="جرد دوري" Tag="{x:Static warehouses:StockAdjustmentReason.InventoryCount}"/>
-                    <ComboBoxItem Content="بضاعة تالفة" Tag="{x:Static warehouses:StockAdjustmentReason.DamagedGoods}"/>
-                    <ComboBoxItem Content="منتهي الصلاحية" Tag="{x:Static warehouses:StockAdjustmentReason.ExpiredGoods}"/>
-                    <ComboBoxItem Content="فقدان / سرقة" Tag="{x:Static warehouses:StockAdjustmentReason.TheftOrLoss}"/>
-                    <ComboBoxItem Content="فائض معثور عليه" Tag="{x:Static warehouses:StockAdjustmentReason.FoundStock}"/>
+                    <ComboBoxItem Content="بضاعة تالفة" Tag="{x:Static warehouses:StockAdjustmentReason.Damaged}"/>
+                    <ComboBoxItem Content="منتهي الصلاحية" Tag="{x:Static warehouses:StockAdjustmentReason.Expired}"/>
+                    <ComboBoxItem Content="رصيد افتتاحي" Tag="{x:Static warehouses:StockAdjustmentReason.InitialSetup}"/>
+                    <ComboBoxItem Content="أخرى" Tag="{x:Static warehouses:StockAdjustmentReason.Other}"/>
                 </ComboBox>
 
-                <Button Grid.Column="6" Content="تحديث" Command="{Binding LoadAdjustmentsCommand}" Margin="10,0,0,0" Padding="15,0" Height="34" Background="#111827" Foreground="#FFFFFF" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                <Button Grid.Column="6" Content="تحديث" Command="{Binding LoadAdjustmentsCommand}" Margin="10,0,0,0" Padding="15,0" Height="34" Background="{DynamicResource TextPrimaryBrush}" Foreground="{DynamicResource SurfaceBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
             </Grid>
         </Border>
 
         <!-- DataGrid Card -->
-        <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1">
-            <DataGrid ItemsSource="{Binding Adjustments}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="#F3F4F6" Background="Transparent" RowHeight="42">
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Adjustments}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}" Background="Transparent" RowHeight="42">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="رقم التسوية الجردية" Binding="{Binding AdjustmentNumber}" Width="1.5*"/>
                     <DataGridTextColumn Header="المستودع / الصالة" Binding="{Binding WarehouseName}" Width="1.5*"/>
@@ -67,8 +68,8 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Button Content="عرض التفاصيل" Command="{Binding DataContext.ViewAdjustmentDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#3B82F6" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-                                    <Button Content="حذف" Command="{Binding DataContext.DeleteAdjustmentCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Content="عرض التفاصيل" Command="{Binding DataContext.ViewAdjustmentDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" Background="{DynamicResource AccentBrush}" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource TextButtonStyle}" Foreground="{DynamicResource DangerBrush}" Content="حذف" Command="{Binding DataContext.DeleteAdjustmentCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -78,15 +79,8 @@
         </Border>
 
         <!-- Pagination -->
-        <DockPanel Grid.Row="3" Margin="0,15,0,0">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="السابق" Command="{Binding PrevPageCommand}" Height="32" Padding="14,0" Margin="0,0,5,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-                <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#38E07B" Margin="5,0"/>
-                <TextBlock Text="من" VerticalAlignment="Center" Foreground="#6B7280" Margin="2,0"/>
-                <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#111827" Margin="5,0"/>
-                <Button Content="التالي" Command="{Binding NextPageCommand}" Height="32" Padding="14,0" Margin="5,0,0,0" Background="#FFFFFF" Foreground="#111827" FontWeight="Bold" BorderBrush="#E5E7EB" BorderThickness="1" Cursor="Hand"/>
-            </StackPanel>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-        </DockPanel>
+        <controls:PaginationControl Grid.Row="3" Margin="0,12,0,0" CurrentPage="{Binding CurrentPage}" TotalPages="{Binding TotalPages}" PageSize="{Binding PageSize, Mode=TwoWay}" IsLoading="{Binding IsLoading}" NextPageCommand="{Binding NextPageCommand}" PrevPageCommand="{Binding PrevPageCommand}" />
+        <controls:ListFeedback Grid.Row="2" ItemsCount="{Binding Adjustments.Count}" IsLoading="{Binding IsLoading}" Message="{Binding ErrorMessage}" RetryCommand="{Binding LoadAdjustmentsCommand}" />
+        <controls:LoadingOverlay Grid.RowSpan="4" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
 </UserControl>

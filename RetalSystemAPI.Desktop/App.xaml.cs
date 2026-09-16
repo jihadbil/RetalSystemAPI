@@ -49,6 +49,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        Helpers.WorkspaceWindowBehavior.Register();
 
         // منع إغلاق التطبيق تلقائياً عند إغلاق أو انتقال النوافذ
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -94,6 +95,9 @@ public partial class App : Application
         services.AddSingleton<CredentialStoreService>();
         services.AddSingleton<AuthStateService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IToastService, ToastService>();
+        services.AddSingleton<IPosSessionService, PosSessionService>();
 
         // API Services
         services.AddTransient<IAuthApiService, AuthApiService>();
@@ -117,6 +121,8 @@ public partial class App : Application
         services.AddTransient<IStockAdjustmentApiService, StockAdjustmentApiService>();
         services.AddTransient<IPurchaseOrderApiService, PurchaseOrderApiService>();
         services.AddTransient<IPurchaseInvoiceApiService, PurchaseInvoiceApiService>();
+        services.AddTransient<IPurchaseReturnApiService, PurchaseReturnApiService>();
+        services.AddTransient<IDashboardApiService, DashboardApiService>();
         services.AddTransient<RetalSystemAPI.Desktop.Services.Users.IUserApiService, RetalSystemAPI.Desktop.Services.Users.UserApiService>();
 
         // ViewModels
@@ -133,6 +139,7 @@ public partial class App : Application
         services.AddTransient<UnitFormViewModel>();
         services.AddTransient<ProductsViewModel>();
         services.AddTransient<ProductFormViewModel>();
+        services.AddTransient<ProductImportWizardViewModel>();
 
         services.AddTransient<CustomersViewModel>();
         services.AddTransient<CustomerFormViewModel>();
@@ -155,9 +162,13 @@ public partial class App : Application
         services.AddTransient<PurchaseOrderFormViewModel>();
         services.AddTransient<PurchaseInvoicesViewModel>();
         services.AddTransient<PurchaseInvoiceFormViewModel>();
+        services.AddTransient<PurchaseReturnsViewModel>();
+        services.AddTransient<PurchaseReturnFormViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UsersViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UserFormViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.ResetPasswordViewModel>();
+        services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.RolePermissionsViewModel>();
+        services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UserPermissionsViewModel>();
 
         // Views
         services.AddTransient<LoginView>();
@@ -181,11 +192,15 @@ public partial class App : Application
         services.AddTransient<StockAdjustmentsView>();
         services.AddTransient<PurchaseOrdersView>();
         services.AddTransient<PurchaseInvoicesView>();
+        services.AddTransient<PurchaseReturnsView>();
         services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UsersView>();
+        services.AddTransient<RetalSystemAPI.Desktop.Views.Users.RolePermissionsWindow>();
+        services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UserPermissionsWindow>();
     }
 
     public void ShowLoginWindow()
     {
+        Services.GetRequiredService<INavigationService>().ResetSession();
         var oldWindow = _currentWindow;
 
         var loginView = Services.GetRequiredService<LoginView>();
@@ -211,6 +226,7 @@ public partial class App : Application
         };
 
         _currentWindow = loginWindow;
+        MainWindow = loginWindow;
         loginWindow.Show();
         oldWindow?.Close();
     }
@@ -221,9 +237,11 @@ public partial class App : Application
 
         var shellWindow = Services.GetRequiredService<ShellWindow>();
         _currentWindow = shellWindow;
+        MainWindow = shellWindow;
 
         shellWindow.Closed += (s, e) =>
         {
+            ((ShellViewModel)shellWindow.DataContext).ReleaseNavigation();
             if (_currentWindow == shellWindow)
             {
                 Shutdown();

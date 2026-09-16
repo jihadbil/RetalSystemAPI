@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,6 +15,8 @@ namespace RetalSystemAPI.Desktop.ViewModels.Warehouses;
 
 public partial class WarehousesViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly IBranchApiService _branchApiService;
 
@@ -84,20 +87,28 @@ public partial class WarehousesViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadWarehousesAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             Guid? branchId = SelectedBranch?.Id;
             var response = await _warehouseApiService.GetPagedAsync(CurrentPage, PageSize, branchId, SelectedType);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Warehouses = new ObservableCollection<WarehouseSummaryDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadWarehousesAsync();
+                    return;
+                }
             }
             else
             {
                 ErrorMessage = response.Message ?? "فشل تحميل المخازن وصالات العرض";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -185,7 +196,8 @@ public partial class WarehouseFormViewModel : BaseViewModel
     [ObservableProperty]
     private BranchDto? _selectedBranch;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم المخزن أو الصالة مطلوب")]
     private string _name = string.Empty;
 
     [ObservableProperty]
@@ -231,6 +243,7 @@ public partial class WarehouseFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name))
         {
             ErrorMessage = "اسم المخزن أو الصالة مطلوب";

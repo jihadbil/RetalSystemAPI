@@ -10,6 +10,7 @@ public class StorgeStockResponseDto : BaseDto
     public string BarcodeTitle { get; set; } = null!;
     public string BarcodeValue { get; set; } = null!;
     public string ProductName { get; set; } = null!;
+    public string? ImageUrl { get; set; }
     public decimal Quantity { get; set; }
     public int MinStockLevel { get; set; }
     public bool IsBelowMinLevel { get; set; }

@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لأرصدة صالات العرض (ShowroomStocks) لكل صنف ومخزن.
+/// </summary>
 public class ShowroomStockConfiguration : IEntityTypeConfiguration<ShowroomStock>
 {
     public void Configure(EntityTypeBuilder<ShowroomStock> builder)

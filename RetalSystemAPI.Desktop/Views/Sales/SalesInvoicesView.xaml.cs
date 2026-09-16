@@ -33,13 +33,41 @@ public partial class SalesInvoicesView : UserControl
             Owner = Application.Current.MainWindow
         };
 
-        formVm.CloseWindowHandler = () => window.Close();
+        formVm.CloseWindowHandler = () => window.DialogResult = true;
+        formVm.OpenReturnDialogHandler = (invoiceId, item) => OpenReturnFromInvoiceItemAsync(window, invoiceId, item);
         window.ShowDialog();
+    }
+
+    /// <summary>فتح نموذج مرتجع مبيعات مربوط بالفاتورة وبدءه ببند البند المحدد من الفاتورة</summary>
+    private async Task OpenReturnFromInvoiceItemAsync(Window owner, Guid invoiceId, CreateSalesInvoiceItemRequest item)
+    {
+        var app = (App)Application.Current;
+        var returnVm = app.Services.GetRequiredService<SalesReturnFormViewModel>();
+
+        var prefilled = new CreateSalesReturnItemRequest
+        {
+            ProductId = item.ProductId,
+            ProductName = item.ProductName,
+            ProductBarCodeId = item.ProductBarCodeId,
+            Quantity = 1,
+            UnitPrice = item.UnitPrice
+        };
+        await returnVm.InitializeForInvoiceAsync(invoiceId, prefilled);
+
+        var returnWindow = new SalesReturnFormWindow
+        {
+            DataContext = returnVm,
+            Owner = owner
+        };
+
+        returnVm.CloseWindowHandler = () => returnWindow.DialogResult = true;
+        returnWindow.ShowDialog();
     }
 
     private Task<bool> ConfirmDeleteAsync(string title, string message)
     {
-        var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        return Task.FromResult(result == MessageBoxResult.Yes);
+        return Task.FromResult(RetalSystemAPI.Desktop.Controls.ModernConfirmDialog.ShowConfirm(
+            Window.GetWindow(this) ?? Application.Current.MainWindow, title, message,
+            "تأكيد", "تراجع", RetalSystemAPI.Desktop.Controls.ConfirmDialogType.Danger));
     }
 }

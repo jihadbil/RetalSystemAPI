@@ -14,19 +14,23 @@ using RetalSystemAPI.Services.Common.Models;
 namespace RetalSystemAPI.Services.Catalog.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة التصنيفات والهيكل الهرمي.
+/// تنفيذ خدمة إدارة التصنيفات والهيكل الشجري الهرمي للأصناف والمنتجات.
 /// </summary>
 public class CategoryService : ICategoryService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة التصنيفات مع حقن وحدة العمل وAutoMapper.
+    /// </summary>
     public CategoryService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CategoryResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var category = await _unitOfWork.Categories.FirstOrDefaultAsync(new CategoryWithDetailsSpec(id), ct);
@@ -39,6 +43,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<CategoryResponseDto>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<CategoryResponseDto>>> GetAllAsync(CancellationToken ct = default)
     {
         var categories = await _unitOfWork.Categories.FindAsync(new CategoryWithDetailsSpec(), ct);
@@ -46,6 +51,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<IReadOnlyList<CategoryResponseDto>>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<CategoryResponseDto>>> GetRootCategoriesAsync(CancellationToken ct = default)
     {
         var categories = await _unitOfWork.Categories.FindAsync(new RootCategoriesSpec(), ct);
@@ -53,6 +59,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<IReadOnlyList<CategoryResponseDto>>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<CategoryResponseDto>>> GetSubCategoriesAsync(Guid parentId, CancellationToken ct = default)
     {
         var categories = await _unitOfWork.Categories.FindAsync(new SubCategoriesSpec(parentId), ct);
@@ -60,6 +67,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<IReadOnlyList<CategoryResponseDto>>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<CategoryResponseDto>>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var spec = new CategoryWithDetailsSpec();
@@ -71,6 +79,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<PagedResult<CategoryResponseDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CategoryResponseDto>> CreateAsync(CreateCategoryDto dto, CancellationToken ct = default)
     {
         bool nameExists = await _unitOfWork.Categories.ExistsAsync(c => c.Name == dto.Name, ct);
@@ -98,9 +107,10 @@ public class CategoryService : ICategoryService
         return ServiceResult<CategoryResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CategoryResponseDto>> UpdateAsync(Guid id, UpdateCategoryDto dto, CancellationToken ct = default)
     {
-        var category = await _unitOfWork.Categories.FirstOrDefaultAsync(new CategoryWithDetailsSpec(id), ct);
+        var category = await _unitOfWork.Categories.GetByIdAsync(id, ct);
         if (category is null)
         {
             return ServiceResult<CategoryResponseDto>.Failure("التصنيف غير موجود", ErrorCodes.CategoryNotFound);
@@ -126,10 +136,11 @@ public class CategoryService : ICategoryService
             }
         }
 
-        _mapper.Map(dto, category);
-        category.Id = id;
+        category.Name = dto.Name;
+        category.ParentCategoryId = dto.ParentCategoryId;
+        category.IsActive = dto.IsActive;
+        category.SortOrder = dto.SortOrder;
 
-        _unitOfWork.Categories.Update(category);
         await _unitOfWork.SaveChangesAsync(ct);
 
         var updatedCategory = await _unitOfWork.Categories.FirstOrDefaultAsync(new CategoryWithDetailsSpec(id), ct) ?? category;
@@ -138,6 +149,7 @@ public class CategoryService : ICategoryService
         return ServiceResult<CategoryResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var category = await _unitOfWork.Categories.FirstOrDefaultAsync(new CategoryWithDetailsSpec(id), ct);
@@ -157,6 +169,7 @@ public class CategoryService : ICategoryService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default)
     {
         var category = await _unitOfWork.Categories.GetByIdAsync(id, ct);
@@ -172,6 +185,9 @@ public class CategoryService : ICategoryService
         return ServiceResult.Success();
     }
 
+    /// <summary>
+    /// فحص ومنع تشكيل مراجع دائرية في الشجرة الهرمية للتصنيفات.
+    /// </summary>
     private async Task<bool> IsCircularReferenceAsync(Guid categoryId, Guid targetParentId, CancellationToken ct)
     {
         Guid? currentParentId = targetParentId;

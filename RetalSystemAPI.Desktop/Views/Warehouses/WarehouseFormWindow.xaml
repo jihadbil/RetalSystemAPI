@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         mc:Ignorable="d" 
-        Title="بيانات المخزن / صالة العرض" Height="360" Width="450" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" Background="#F6F8F7">
+        Title="بيانات المخزن / صالة العرض" Height="360" Width="450" WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft" Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -13,27 +13,27 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="🏪 بيانات المخزن أو صالة العرض" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="#111827"/>
+        <TextBlock Grid.Row="0" Text="🏪 بيانات المخزن أو صالة العرض" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" Foreground="{DynamicResource TextPrimaryBrush}"/>
 
         <StackPanel Grid.Row="1">
-            <TextBlock Text="اسم المخزن / الصالة *" FontWeight="SemiBold" Margin="0,5,0,5" Foreground="#111827"/>
-            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="#FFFFFF"/>
+            <TextBlock Text="اسم المخزن / الصالة *" FontWeight="SemiBold" Margin="0,5,0,5" Foreground="{DynamicResource TextPrimaryBrush}"/>
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" Padding="8,0" VerticalContentAlignment="Center" Background="{DynamicResource SurfaceBrush}"/>
 
-            <TextBlock Text="الفرع *" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="#111827"/>
+            <TextBlock Text="الفرع *" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="{DynamicResource TextPrimaryBrush}"/>
             <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
 
-            <TextBlock Text="نوع الموقع *" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="#111827"/>
+            <TextBlock Text="نوع الموقع *" FontWeight="SemiBold" Margin="0,10,0,5" Foreground="{DynamicResource TextPrimaryBrush}"/>
             <ComboBox SelectedValue="{Binding Type}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
                 <ComboBoxItem Content="مخزن تخزين (Storge)" Tag="{x:Static sys:WarehouseType.Storge}" xmlns:sys="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"/>
                 <ComboBoxItem Content="صالة عرض (Showroom)" Tag="{x:Static sys:WarehouseType.Show}" xmlns:sys="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"/>
             </ComboBox>
 
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" Margin="0,10,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
-            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
-            <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="#9CA3AF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" Height="36" Padding="20,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+            <Button Content="إلغاء" IsCancel="True" Height="36" Padding="20,0" Background="{DynamicResource TextMutedBrush}" Foreground="White" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
     </Grid>
 </Window>

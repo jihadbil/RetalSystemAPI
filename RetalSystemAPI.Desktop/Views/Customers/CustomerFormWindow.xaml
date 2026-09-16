@@ -4,7 +4,7 @@
         xmlns:customers="clr-namespace:RetalSystemAPI.Desktop.Models.Customers"
         Title="بيانات العميل" Height="580" Width="600"
         WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
-        Background="#FFFFFF" ResizeMode="NoResize">
+        Background="{DynamicResource SurfaceBrush}" ResizeMode="NoResize" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -15,12 +15,12 @@
 
         <!-- Header -->
         <TextBlock Text="{Binding IsEditMode, Converter={StaticResource StatusTextConverter}, FallbackValue='إضافة عميل جديد'}" 
-                   FontSize="20" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
+                   FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,16"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,0,10,0">
-                <TextBlock Text="اسم العميل *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB" Margin="0,0,0,12"/>
+                <TextBlock Text="اسم العميل *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,0,12"/>
 
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
@@ -28,11 +28,11 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="كود العميل" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                        <TextBlock Text="كود العميل" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                        <TextBlock Text="نوع العميل" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="نوع العميل" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox SelectedValue="{Binding Type}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center">
                             <ComboBoxItem Content="عادي" Tag="{x:Static customers:CustomerType.Regular}" IsSelected="True"/>
                             <ComboBoxItem Content="مميز (VIP)" Tag="{x:Static customers:CustomerType.Vip}"/>
@@ -48,24 +48,24 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="البريد الإلكتروني" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                        <TextBlock Text="البريد الإلكتروني" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                        <TextBlock Text="سقف الائتمان (الحد الأقصى للدين)" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding CreditLimit, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB"/>
+                        <TextBlock Text="سقف الائتمان (الحد الأقصى للدين)" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding CreditLimit, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Text="العنوان" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB" Margin="0,0,0,12"/>
+                <TextBlock Text="العنوان" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,0,12"/>
 
-                <CheckBox Content="حساب العميل نشط" IsChecked="{Binding IsActive}" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,16"/>
+                <CheckBox Content="حساب العميل نشط" IsChecked="{Binding IsActive}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,16"/>
 
                 <!-- Phones Management Section -->
-                <Border Background="#F9FAFB" CornerRadius="8" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12">
+                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="📞 أرقام هواتف العميل" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,8"/>
+                        <TextBlock Text="📞 أرقام هواتف العميل" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1.5*"/>
@@ -73,10 +73,10 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" Text="{Binding NewPhoneNumber, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF" Tag="رقم الهاتف" Margin="0,0,4,0"/>
-                            <TextBox Grid.Column="1" Text="{Binding NewContactName, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF" Tag="اسم جهة الاتصال" Margin="4,0,4,0"/>
+                            <TextBox Grid.Column="0" Text="{Binding NewPhoneNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="32" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}" Tag="رقم الهاتف" Margin="0,0,4,0"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewContactName, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="32" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}" Tag="اسم جهة الاتصال" Margin="4,0,4,0"/>
                             <CheckBox Grid.Column="2" Content="افتراضي" IsChecked="{Binding NewPhoneIsDefault}" VerticalAlignment="Center" Margin="4,0,4,0"/>
-                            <Button Grid.Column="3" Content="+ إضافة" Command="{Binding AddPhoneCommand}" Height="32" Padding="12,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                            <Button Grid.Column="3" Content="+ إضافة" Command="{Binding AddPhoneCommand}" Height="32" Padding="12,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
 
                         <DataGrid ItemsSource="{Binding Phones}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="120" GridLinesVisibility="Horizontal" HeadersVisibility="Column" Background="Transparent" RowHeight="32">
@@ -87,7 +87,7 @@
                                 <DataGridTemplateColumn Header="حذف" Width="60">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="✕" Command="{Binding DataContext.DeletePhoneCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
+                                            <Button Content="✕" Command="{Binding DataContext.DeletePhoneCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="{DynamicResource DangerBrush}" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -100,8 +100,8 @@
 
         <!-- Footer Actions -->
         <DockPanel Grid.Row="2" Margin="0,16,0,0">
-            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <Button Content="حفظ البيانات" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
         </DockPanel>
     </Grid>
 </Window>

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -11,6 +12,8 @@ namespace RetalSystemAPI.Desktop.ViewModels.Branches;
 
 public partial class BranchesViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly IBranchApiService _branchApiService;
 
     [ObservableProperty]
@@ -43,16 +46,24 @@ public partial class BranchesViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadBranchesAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             var response = await _branchApiService.GetPagedAsync(CurrentPage, PageSize);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Branches = new ObservableCollection<BranchDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadBranchesAsync();
+                    return;
+                }
             }
             else ErrorMessage = response.Message ?? "فشل تحميل الفروع";
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -116,7 +127,8 @@ public partial class BranchFormViewModel : BaseViewModel
     [ObservableProperty]
     private Guid? _branchId;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم الفرع مطلوب")]
     private string _name = string.Empty;
 
     [ObservableProperty]
@@ -143,7 +155,7 @@ public partial class BranchFormViewModel : BaseViewModel
             BranchId = branch.Id;
             Name = branch.Name;
             Address = branch.Address;
-            PhoneNumber = branch.PhoneNumbers.Count > 0 ? branch.PhoneNumbers[0] : string.Empty;
+            PhoneNumber = branch.PrimaryPhone ?? (branch.PhoneNumbers.Count > 0 ? branch.PhoneNumbers[0] : string.Empty);
         }
         else
         {
@@ -158,6 +170,7 @@ public partial class BranchFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name))
         {
             ErrorMessage = "اسم الفرع مطلوب";
@@ -166,17 +179,23 @@ public partial class BranchFormViewModel : BaseViewModel
 
         await ExecuteAsync(async () =>
         {
-            var phones = string.IsNullOrWhiteSpace(PhoneNumber) ? new System.Collections.Generic.List<string>() : new System.Collections.Generic.List<string> { PhoneNumber };
+            var phoneDtos = string.IsNullOrWhiteSpace(PhoneNumber)
+                ? new System.Collections.Generic.List<BranchPhoneDto>()
+                : new System.Collections.Generic.List<BranchPhoneDto> { new() { PhoneNumber = PhoneNumber, Name = "الرئيسي", IsDefault = true } };
+            var phoneStrings = string.IsNullOrWhiteSpace(PhoneNumber)
+                ? new System.Collections.Generic.List<string>()
+                : new System.Collections.Generic.List<string> { PhoneNumber };
+
             if (IsEditMode && BranchId.HasValue)
             {
-                var req = new UpdateBranchRequest { Name = Name, Address = Address, PhoneNumbers = phones };
+                var req = new UpdateBranchRequest { Name = Name, Address = Address, Phones = phoneDtos, PhoneNumbers = phoneStrings };
                 var res = await _branchApiService.UpdateAsync(BranchId.Value, req);
                 if (res.Success) CloseWindowHandler?.Invoke();
                 else ErrorMessage = res.Message;
             }
             else
             {
-                var req = new CreateBranchRequest { Name = Name, Address = Address, PhoneNumbers = phones };
+                var req = new CreateBranchRequest { Name = Name, Address = Address, Phones = phoneDtos, PhoneNumbers = phoneStrings };
                 var res = await _branchApiService.CreateAsync(req);
                 if (res.Success) CloseWindowHandler?.Invoke();
                 else ErrorMessage = res.Message;

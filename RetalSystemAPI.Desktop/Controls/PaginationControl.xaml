@@ -1,24 +1,24 @@
 <UserControl x:Class="RetalSystemAPI.Desktop.Controls.PaginationControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="0,12">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Foreground="{DynamicResource TextPrimaryBrush}">
+    <WrapPanel Margin="0,10" HorizontalAlignment="Center">
         <!-- Center Page Navigation -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
             <Button Content="السابق" Style="{StaticResource GhostButtonStyle}" Click="Prev_Click" IsEnabled="{Binding CanGoPrev, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="4,0" />
             <TextBlock Text="{Binding PageInfoText, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                       FontFamily="{StaticResource AppFontFamily}" FontSize="13" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="12,0" />
+                       FontFamily="{StaticResource AppFontFamily}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="12,0" />
             <Button Content="التالي" Style="{StaticResource GhostButtonStyle}" Click="Next_Click" IsEnabled="{Binding CanGoNext, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="4,0" />
         </StackPanel>
 
         <!-- Left Page Size Selector -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,6,0,6">
             <TextBlock Text="عناصر الصفحة:"
-                       FontFamily="{StaticResource AppFontFamily}" FontSize="13" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                       FontFamily="{StaticResource AppFontFamily}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
             <ComboBox ItemsSource="{Binding PageSizeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       SelectedItem="{Binding PageSize, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
                       IsEnabled="{Binding CanChangePageSize, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       Style="{StaticResource DefaultComboBoxStyle}"
                       Width="70" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
         </StackPanel>
-    </Grid>
+    </WrapPanel>
 </UserControl>

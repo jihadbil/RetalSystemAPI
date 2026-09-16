@@ -13,7 +13,7 @@ using RetalSystemAPI.Services.FileUpload.Interfaces;
 namespace RetalSystemAPI.Services.Catalog.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة صور المنتجات.
+/// تنفيذ خدمة صور المنتجات والتحكم بالصور الافتراضية وحذف الملفات المرفوعة من الخادم.
 /// </summary>
 public class ProductImageService : IProductImageService
 {
@@ -21,6 +21,9 @@ public class ProductImageService : IProductImageService
     private readonly IMapper _mapper;
     private readonly IFileUploadService _fileUploadService;
 
+    /// <summary>
+    /// تهيئة خدمة صور المنتجات مع حقن وحدة العمل، والمحول، وخدمة رفع الملفات.
+    /// </summary>
     public ProductImageService(
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -31,6 +34,7 @@ public class ProductImageService : IProductImageService
         _fileUploadService = fileUploadService;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ProductImageResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         var images = await _unitOfWork.ProductImages.FindAsync(i => i.ProductId == productId, ct);
@@ -39,6 +43,7 @@ public class ProductImageService : IProductImageService
         return ServiceResult<IReadOnlyList<ProductImageResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductImageResponseDto>> AddImageAsync(
         Guid productId,
         CreateProductImageDto dto,
@@ -72,6 +77,7 @@ public class ProductImageService : IProductImageService
         return ServiceResult<ProductImageResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> RemoveImageAsync(Guid imageId, CancellationToken ct = default)
     {
         var imageEntity = await _unitOfWork.ProductImages.GetByIdAsync(imageId, ct);
@@ -89,6 +95,7 @@ public class ProductImageService : IProductImageService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> SetDefaultImageAsync(Guid imageId, CancellationToken ct = default)
     {
         var targetImage = await _unitOfWork.ProductImages.GetByIdAsync(imageId, ct);

@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Sales;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Responses;
@@ -29,6 +31,7 @@ public class SalesReturnsController : BaseApiController
     /// الحصول على جميع مرتجعات المبيعات مع إمكانية الفلترة بالفرع أو المستودع أو العميل أو سبب الإرجاع والتواريخ.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.SalesReturns.View)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? branchId = null,
         [FromQuery] Guid? warehouseId = null,
@@ -47,6 +50,7 @@ public class SalesReturnsController : BaseApiController
     /// الحصول على قائمة صفحية لمرتجعات المبيعات مع دعم الفلترة والبحث.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.SalesReturns.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -67,6 +71,7 @@ public class SalesReturnsController : BaseApiController
     /// الحصول على تفاصيل مرتجع مبيعات محدد بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.SalesReturns.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _salesReturnService.GetByIdAsync(id, ct);
@@ -77,6 +82,7 @@ public class SalesReturnsController : BaseApiController
     /// البحث عن مرتجع مبيعات برقم المرتجع.
     /// </summary>
     [HttpGet("number/{returnNumber}")]
+    [HasPermission(Permissions.SalesReturns.View)]
     public async Task<IActionResult> GetByReturnNumber([FromRoute] string returnNumber, CancellationToken ct)
     {
         var result = await _salesReturnService.GetByReturnNumberAsync(returnNumber, ct);
@@ -87,6 +93,7 @@ public class SalesReturnsController : BaseApiController
     /// إنشاء وإصدار مرتجع مبيعات جديد وإعادة البضاعة إلى المخزون تلقائياً.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.SalesReturns.Create)]
     public async Task<IActionResult> Create([FromBody] CreateSalesReturnDto dto, CancellationToken ct)
     {
         var result = await _salesReturnService.CreateAsync(dto, ct);
@@ -102,6 +109,7 @@ public class SalesReturnsController : BaseApiController
     /// حذف/أرشفة مرتجع مبيعات.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.SalesReturns.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _salesReturnService.DeleteAsync(id, ct);

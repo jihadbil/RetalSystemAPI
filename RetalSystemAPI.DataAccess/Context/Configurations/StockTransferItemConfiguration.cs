@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبنود أوامر التحويل المخزني (StockTransferItems).
+/// </summary>
 public class StockTransferItemConfiguration : IEntityTypeConfiguration<StockTransferItem>
 {
     public void Configure(EntityTypeBuilder<StockTransferItem> builder)

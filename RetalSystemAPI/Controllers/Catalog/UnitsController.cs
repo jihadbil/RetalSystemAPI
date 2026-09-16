@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Catalog.Unit;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -28,6 +30,7 @@ public class UnitsController : BaseApiController
     /// الحصول على جميع وحدات القياس.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Units.View)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var result = await _unitService.GetAllAsync(ct);
@@ -38,6 +41,7 @@ public class UnitsController : BaseApiController
     /// الحصول على تفاصيل وحدة قياس محددة بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.Units.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _unitService.GetByIdAsync(id, ct);
@@ -48,6 +52,7 @@ public class UnitsController : BaseApiController
     /// إنشاء وحدة قياس جديدة.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Units.Create)]
     public async Task<IActionResult> Create([FromBody] CreateUnitDto dto, CancellationToken ct)
     {
         var result = await _unitService.CreateAsync(dto, ct);
@@ -63,6 +68,7 @@ public class UnitsController : BaseApiController
     /// تعديل بيانات وحدة قياس موجودة.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.Units.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateUnitDto dto, CancellationToken ct)
     {
         var result = await _unitService.UpdateAsync(id, dto, ct);
@@ -73,6 +79,7 @@ public class UnitsController : BaseApiController
     /// حذف وحدة قياس.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.Units.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _unitService.DeleteAsync(id, ct);

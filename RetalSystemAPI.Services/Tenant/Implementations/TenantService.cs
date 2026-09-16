@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.DTOs.Tenant;
 using RetalSystemAPI.Services.Common.Models;
@@ -12,19 +14,25 @@ using TenantEntity = RetalSystemAPI.Models.Tenant;
 namespace RetalSystemAPI.Services.Tenant.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة المستأجرين لإدارة بيانات المستأجرين على مستوى النظام.
+/// تنفيذ خدمة إدارة المستأجرين على مستوى المنظومة وتدقيق الأسماء وحالات النشاط وإحصائيات المنشأة.
 /// </summary>
 public class TenantService : ITenantService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly AppDbContext _dbContext;
     private readonly IMapper _mapper;
 
-    public TenantService(IUnitOfWork unitOfWork, IMapper mapper)
+    /// <summary>
+    /// تهيئة خدمة المستأجرين مع حقن وحدة العمل وسياق البيانات والمحول.
+    /// </summary>
+    public TenantService(IUnitOfWork unitOfWork, AppDbContext dbContext, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<TenantResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var tenant = await _unitOfWork.Tenants.GetByIdAsync(id, ct);
@@ -34,9 +42,12 @@ public class TenantService : ITenantService
         }
 
         var result = _mapper.Map<TenantResponseDto>(tenant);
+        await PopulateTenantStatsAsync(result, id, ct);
+
         return ServiceResult<TenantResponseDto>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<TenantResponseDto>>> GetAllAsync(CancellationToken ct = default)
     {
         var tenants = await _unitOfWork.Tenants.GetAllAsync(ct);
@@ -44,6 +55,7 @@ public class TenantService : ITenantService
         return ServiceResult<IReadOnlyList<TenantResponseDto>>.Success(result);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<TenantResponseDto>>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken ct = default)
     {
         var (items, totalCount) = await _unitOfWork.Tenants.GetPagedAsync(
@@ -59,6 +71,7 @@ public class TenantService : ITenantService
         return ServiceResult<PagedResult<TenantResponseDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<TenantResponseDto>> CreateAsync(CreateTenantDto dto, CancellationToken ct = default)
     {
         bool nameExists = await _unitOfWork.Tenants.ExistsAsync(t => t.Name == dto.Name, ct);
@@ -75,6 +88,7 @@ public class TenantService : ITenantService
         return ServiceResult<TenantResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<TenantResponseDto>> UpdateAsync(Guid id, UpdateTenantDto dto, CancellationToken ct = default)
     {
         var tenant = await _unitOfWork.Tenants.GetByIdAsync(id, ct);
@@ -96,9 +110,31 @@ public class TenantService : ITenantService
         await _unitOfWork.SaveChangesAsync(ct);
 
         var responseDto = _mapper.Map<TenantResponseDto>(tenant);
+        await PopulateTenantStatsAsync(responseDto, id, ct);
+
         return ServiceResult<TenantResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
+    public async Task<ServiceResult<TenantResponseDto>> UpdateLogoAsync(Guid id, string logoUrl, CancellationToken ct = default)
+    {
+        var tenant = await _unitOfWork.Tenants.GetByIdAsync(id, ct);
+        if (tenant is null)
+        {
+            return ServiceResult<TenantResponseDto>.Failure("المستأجر غير موجود", ErrorCodes.TenantNotFound);
+        }
+
+        tenant.LogoUrl = logoUrl;
+        _unitOfWork.Tenants.Update(tenant);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        var responseDto = _mapper.Map<TenantResponseDto>(tenant);
+        await PopulateTenantStatsAsync(responseDto, id, ct);
+
+        return ServiceResult<TenantResponseDto>.Success(responseDto);
+    }
+
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var tenant = await _unitOfWork.Tenants.GetByIdAsync(id, ct);
@@ -113,6 +149,7 @@ public class TenantService : ITenantService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default)
     {
         var tenant = await _unitOfWork.Tenants.GetByIdAsync(id, ct);
@@ -126,5 +163,12 @@ public class TenantService : ITenantService
         await _unitOfWork.SaveChangesAsync(ct);
 
         return ServiceResult.Success();
+    }
+
+    private async Task PopulateTenantStatsAsync(TenantResponseDto dto, Guid tenantId, CancellationToken ct)
+    {
+        dto.BranchesCount = await _dbContext.Branches.IgnoreQueryFilters().CountAsync(b => b.TenantId == tenantId && !b.IsDeleted, ct);
+        dto.WarehousesCount = await _dbContext.Warehouses.IgnoreQueryFilters().CountAsync(w => w.TenantId == tenantId && !w.IsDeleted, ct);
+        dto.UsersCount = await _dbContext.Users.IgnoreQueryFilters().CountAsync(u => u.TenantId == tenantId, ct);
     }
 }

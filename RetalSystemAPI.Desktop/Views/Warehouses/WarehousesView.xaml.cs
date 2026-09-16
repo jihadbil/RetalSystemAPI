@@ -36,7 +36,8 @@ public partial class WarehousesView : UserControl
 
     private Task<bool> ConfirmDeleteAsync(string title, string message)
     {
-        var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        return Task.FromResult(result == MessageBoxResult.Yes);
+        return Task.FromResult(RetalSystemAPI.Desktop.Controls.ModernConfirmDialog.ShowConfirm(
+            Window.GetWindow(this) ?? Application.Current.MainWindow, title, message,
+            "تأكيد", "تراجع", RetalSystemAPI.Desktop.Controls.ConfirmDialogType.Danger));
     }
 }

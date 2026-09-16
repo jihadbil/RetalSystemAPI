@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Catalog.Product;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -30,6 +33,7 @@ public class ProductsController : BaseApiController
     /// الحصول على جميع المنتجات (بدون ترقيم صفحي) لاستخدامها في نقاط البيع والقوائم.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetAll([FromQuery] Guid? categoryId = null, CancellationToken ct = default)
     {
         var result = await _productService.GetAllAsync(categoryId, ct);
@@ -40,6 +44,7 @@ public class ProductsController : BaseApiController
     /// الحصول على قائمة صفحية بالمنتجات مع تصفية اختارية حسب التصنيف.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -54,6 +59,7 @@ public class ProductsController : BaseApiController
     /// البحث عن منتجات باستخدام استعلام نصي (الاسم/الكود).
     /// </summary>
     [HttpGet("search")]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> Search([FromQuery] string q, CancellationToken ct)
     {
         var result = await _productService.SearchAsync(q, ct);
@@ -64,6 +70,7 @@ public class ProductsController : BaseApiController
     /// البحث عن منتج بواسطة الباركود الخاص به.
     /// </summary>
     [HttpGet("by-barcode/{barCode}")]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetByBarCode([FromRoute] string barCode, CancellationToken ct)
     {
         var result = await _productService.GetByBarCodeAsync(barCode, ct);
@@ -74,6 +81,7 @@ public class ProductsController : BaseApiController
     /// الحصول على تفاصيل المنتج كاملة بالمعرف (تتضمن الوحدات والباركوادت والصور).
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _productService.GetByIdAsync(id, ct);
@@ -84,6 +92,7 @@ public class ProductsController : BaseApiController
     /// إنشاء منتج جديد.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Products.Create)]
     public async Task<IActionResult> Create([FromBody] CreateProductDto dto, CancellationToken ct)
     {
         var result = await _productService.CreateAsync(dto, ct);
@@ -99,6 +108,7 @@ public class ProductsController : BaseApiController
     /// تعديل بيانات منتج موجود.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateProductDto dto, CancellationToken ct)
     {
         var result = await _productService.UpdateAsync(id, dto, ct);
@@ -109,6 +119,7 @@ public class ProductsController : BaseApiController
     /// حذف منتج (حذف منطقي).
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.Products.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _productService.DeleteAsync(id, ct);
@@ -116,12 +127,13 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
-    /// تصدير كافة بيانات الأصناف والباركودات والتصنيفات في ملف Excel يحوي 3 اوراق عمل.
+    /// تصدير كافة بيانات الأصناف والباركودات والتصنيفات والوحدات والمخزون في ملف Excel.
     /// </summary>
     [HttpGet("export-excel")]
-    public async Task<IActionResult> ExportExcel(CancellationToken ct)
+    [HasPermission(Permissions.Products.ExportImport)]
+    public async Task<IActionResult> ExportExcel([FromQuery] bool singleSheet = true, CancellationToken ct = default)
     {
-        var fileBytes = await _productExcelService.ExportProductsToExcelAsync(ct);
+        var fileBytes = await _productExcelService.ExportProductsToExcelAsync(singleSheet, ct);
         return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Products_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
     }
 
@@ -129,17 +141,37 @@ public class ProductsController : BaseApiController
     /// تنزيل قالب Excel فارغ ومصمم بالأعمدة المطلوبة ومزود ببيانات توضيحية.
     /// </summary>
     [HttpGet("excel-template")]
-    public async Task<IActionResult> DownloadTemplate(CancellationToken ct)
+    [HasPermission(Permissions.Products.ExportImport)]
+    public async Task<IActionResult> DownloadTemplate([FromQuery] bool singleSheet = true, CancellationToken ct = default)
     {
-        var fileBytes = await _productExcelService.DownloadTemplateAsync(ct);
-        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Products_Import_Template.xlsx");
+        var fileBytes = await _productExcelService.DownloadTemplateAsync(singleSheet, ct);
+        string filename = singleSheet ? "Products_Import_Template_SingleSheet.xlsx" : "Products_Import_Template_MultiSheet.xlsx";
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
     }
 
     /// <summary>
-    /// استيراد الأصناف والباركودات والتصنيفات من ملف Excel بحسب هيكلية 3 اوراق عمل.
+    /// فحص ومعاينة ملف Excel قبل الاستيراد الفعلي (Dry-Run Preview) للتأكد من سلامة البيانات وعرض الأخطاء والتنبيهات.
+    /// </summary>
+    [HttpPost("validate-excel")]
+    [HasPermission(Permissions.Products.ExportImport)]
+    public async Task<IActionResult> ValidateExcel(Microsoft.AspNetCore.Http.IFormFile file, [FromQuery] ProductExcelImportOptionsDto? options, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.Fail("يرجى تزويد ملف Excel مناسب للفحص", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
+        }
+
+        using var stream = file.OpenReadStream();
+        var result = await _productExcelService.ValidateExcelAsync(stream, options, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// استيراد الأصناف والباركودات والتصنيفات والوحدات والمخزون من ملف Excel.
     /// </summary>
     [HttpPost("import-excel")]
-    public async Task<IActionResult> ImportExcel(Microsoft.AspNetCore.Http.IFormFile file, CancellationToken ct)
+    [HasPermission(Permissions.Products.ExportImport)]
+    public async Task<IActionResult> ImportExcel(Microsoft.AspNetCore.Http.IFormFile file, [FromQuery] ProductExcelImportOptionsDto? options, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
         {
@@ -147,7 +179,23 @@ public class ProductsController : BaseApiController
         }
 
         using var stream = file.OpenReadStream();
-        var result = await _productExcelService.ImportProductsFromExcelAsync(stream, ct);
+        var result = await _productExcelService.ImportProductsFromExcelAsync(stream, options, ct);
         return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// توليد وتحميل ملف Excel يحتوي على الأسطر المرفوضة فقط مع أسباب الخطأ.
+    /// </summary>
+    [HttpPost("export-rejected-excel")]
+    [HasPermission(Permissions.Products.ExportImport)]
+    public async Task<IActionResult> ExportRejectedExcel([FromBody] List<FailedRowDetailsDto> failedRows, CancellationToken ct)
+    {
+        if (failedRows == null || failedRows.Count == 0)
+        {
+            return BadRequest(ApiResponse<object>.Fail("لا توجد أسطر مرفوضة لتصديرها", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
+        }
+
+        var fileBytes = await _productExcelService.GenerateFailedRowsExcelAsync(failedRows, ct);
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Rejected_Products_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
     }
 }

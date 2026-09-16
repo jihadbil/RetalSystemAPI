@@ -1,4 +1,5 @@
 using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.Models.DTOs.Warehouses.StockAdjustment;
 
@@ -13,4 +14,6 @@ public class StockAdjustmentItemResponseDto : BaseDto
     public int ActualQuantity { get; set; }
     public int DifferenceQuantity { get; set; }
     public decimal UnitCost { get; set; }
+    public StockAdjustmentReason Reason { get; set; }
+    public string ReasonName { get; set; } = string.Empty;
 }

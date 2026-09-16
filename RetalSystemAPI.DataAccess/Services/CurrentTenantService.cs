@@ -5,17 +5,24 @@ using Microsoft.AspNetCore.Http;
 namespace RetalSystemAPI.DataAccess.Services;
 
 /// <summary>
-/// خدمة لاستخراج TenantId الخاص بالمستأجر الحالي من المطالبات (Claims) في HTTP Context.
+/// خدمة استخراج TenantId الخاص بالمستأجر الحالي من المطالبات (Claims) في HTTP Context.
 /// </summary>
 public class CurrentTenantService : ICurrentTenantService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <summary>
+    /// تهيئة الخدمة مع حقن IHttpContextAccessor للوصول إلى معلومات جلسة الطلب.
+    /// </summary>
+    /// <param name="httpContextAccessor">مزود الوصول إلى سياق الـ HTTP</param>
     public CurrentTenantService(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <summary>
+    /// جلب معرف المستأجر الحالي المفكك من الـ Claims في التوكن (JWT).
+    /// </summary>
     public Guid TenantId
     {
         get

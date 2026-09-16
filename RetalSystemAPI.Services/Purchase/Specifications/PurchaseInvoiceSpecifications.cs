@@ -5,8 +5,13 @@ using RetalSystemAPI.Models.Purchase;
 
 namespace RetalSystemAPI.Services.Purchase.Specifications;
 
+/// <summary>
+/// مواصفة جلب تفاصيل فاتورة مشتريات محددة مع المورد، الفرع، المستودع، البنود المجمعة، وتفصيلات النكهات (Breakdowns).
+/// </summary>
 public class PurchaseInvoiceWithDetailsSpec : BaseSpecification<PurchaseInvoice>
 {
+    /// <summary>تهيئة مواصفة فاتورة المشتريات بالمعرف وتضمين تفاصيل النكهات</summary>
+    /// <param name="id">معرف فاتورة المشتريات</param>
     public PurchaseInvoiceWithDetailsSpec(Guid id)
         : base(p => p.Id == id)
     {
@@ -17,11 +22,17 @@ public class PurchaseInvoiceWithDetailsSpec : BaseSpecification<PurchaseInvoice>
         AddInclude(p => p.Items);
         AddInclude("Items.Product");
         AddInclude("Items.ProductBarCode");
+        AddInclude("Items.Breakdowns");
+        AddInclude("Items.Breakdowns.ProductBarCode");
     }
 }
 
+/// <summary>
+/// مواصفة فلترة فواتير المشتريات وتصفحها بالترقيم مع فلاتر التاريخ والمورد والفرع والمستودع والحالة وطريقة الدفع.
+/// </summary>
 public class PurchaseInvoiceFilterSpec : BaseSpecification<PurchaseInvoice>
 {
+    /// <summary>تهيئة مواصفة فلترة فواتير المشتريات</summary>
     public PurchaseInvoiceFilterSpec(
         Guid? supplierId = null,
         Guid? branchId = null,

@@ -2,99 +2,654 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
-             FlowDirection="RightToLeft">
-    <Grid Margin="32" Background="{StaticResource BgBrush}">
+             xmlns:helpers="clr-namespace:RetalSystemAPI.Desktop.Helpers"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:RetalSystemAPI.Desktop.ViewModels.Tenants"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:TenantsViewModel}"
+             FlowDirection="RightToLeft" Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Background="{DynamicResource BackgroundBrush}">
         <Grid.RowDefinitions>
+            <!-- 0: Page Top Header -->
             <RowDefinition Height="Auto" />
+            <!-- 1: Alerts -->
             <RowDefinition Height="Auto" />
+            <!-- 2: Main Scrollable Content Area -->
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,24">
-            <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="الملف الشخصي للمستأجر" Style="{StaticResource H1TextBlockStyle}" />
-                <TextBlock Text="إدارة بيانات المنشأة والإعدادات الخاصة بك" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
-            </StackPanel>
-            <Button Content="تحديث البيانات" Style="{StaticResource GhostButtonStyle}" Command="{Binding LoadProfileCommand}" HorizontalAlignment="Left" DockPanel.Dock="Right" VerticalAlignment="Center" Padding="12,8" />
-        </DockPanel>
+        <!-- ════════════════════ TOP HEADER BAR ════════════════════ -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="28,18">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-        <!-- Alerts Section -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,16">
-            <!-- Error Message Banner -->
-            <Border Background="#FEE2E2" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
-                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}">
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#991B1B" FontSize="13" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" />
+                <!-- Title & Subtitle -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconTenants}" Fill="{DynamicResource PrimaryBrush}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="الملف الشخصي للمؤسسة" Style="{StaticResource H1TextBlockStyle}" />
+                            <TextBlock Text="إدارة الهوية البصرية، البيانات القانونية والضريبية، وإعدادات الفواتير والمطبوعات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Global Action Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="تحديث البيانات" Style="{StaticResource GhostButtonStyle}" Command="{Binding LoadProfileCommand}" Padding="14,9" Margin="0,0,10,0" />
+                    <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveProfileCommand}" Padding="22,9">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="💾" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="حفظ التغييرات" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ════════════════════ ALERTS SECTION ════════════════════ -->
+        <StackPanel Grid.Row="1" Margin="28,16,28,0">
+            <!-- Error Banner -->
+            <Border Background="{DynamicResource DangerLightBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontSize="13" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </Grid>
             </Border>
 
-            <!-- Success Message Banner -->
-            <Border Background="#D1FAE5" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
-                    Visibility="{Binding SuccessMessage, Converter={StaticResource NullToVisibilityConverter}}">
-                <TextBlock Text="{Binding SuccessMessage}" Foreground="#065F46" FontSize="13" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" />
+            <!-- Success Banner -->
+            <Border Background="{DynamicResource SuccessLightBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10"
+                    Visibility="{Binding SuccessMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="✅" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding SuccessMessage}" Foreground="{DynamicResource SuccessBrush}" FontSize="13" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </Grid>
             </Border>
         </StackPanel>
 
-        <!-- Profile Content -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
-                <!-- Summary Header Card -->
+        <!-- ════════════════════ MAIN SCROLLABLE CONTENT ════════════════════ -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,16,28,32">
+            <StackPanel MaxWidth="1100" HorizontalAlignment="Stretch">
+
+                <!-- ── 1. HERO / SUMMARY BANNER CARD ── -->
                 <Border Style="{StaticResource CardBorderStyle}" Padding="24" Margin="0,0,0,20">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <!-- Logo Avatar & Upload -->
                             <ColumnDefinition Width="Auto" />
+                            <!-- Organization Main Info -->
                             <ColumnDefinition Width="*" />
+                            <!-- Quick Stat Badges -->
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Profile Avatar Icon -->
-                        <Border Grid.Column="0" Width="64" Height="64" CornerRadius="32" Background="{StaticResource PrimaryBrush}" Margin="0,0,20,0" VerticalAlignment="Center">
-                            <TextBlock Text="🏢" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <!-- Logo Avatar Container -->
+                        <Border Grid.Column="0" Width="100" Height="100" CornerRadius="16" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,24,0" VerticalAlignment="Center" ClipToBounds="True">
+                            <Grid>
+                                <!-- Default Placeholder if no logo -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                            Visibility="{Binding DisplayLogoUrl, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <TextBlock Text="🏢" FontSize="36" HorizontalAlignment="Center" />
+                                    <TextBlock Text="شعار المنشأة" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                </StackPanel>
+
+                                <!-- Actual Image Preview -->
+                                <Image helpers:ImageHelper.SourceUrl="{Binding DisplayLogoUrl}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                            </Grid>
                         </Border>
 
-                        <!-- Tenant Overview -->
+                        <!-- Organization Main Info -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentTenant.Name, FallbackValue='جاري التحميل...'}" Style="{StaticResource H2TextBlockStyle}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="{Binding TenantName, FallbackValue='اسم المؤسسة'}" Style="{StaticResource H1TextBlockStyle}" FontSize="22" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <!-- Status Badge -->
+                                <Border Background="{Binding CurrentTenant.IsActive, Converter={StaticResource StatusToColorConverter}}" CornerRadius="12" Padding="10,3" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentTenant.IsActive, Converter={StaticResource StatusTextConverter}}" Foreground="White" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource AppFontFamily}" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Commercial Name & Industry Subtitles -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding CommercialName, FallbackValue='الاسم التجاري'}" Style="{StaticResource BodyTextBlockStyle}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <TextBlock Text=" • " Foreground="{DynamicResource TextMutedBrush}" Margin="6,0" Visibility="{Binding BusinessType, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
+                                <TextBlock Text="{Binding BusinessType}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" />
+                            </StackPanel>
+
+                            <!-- Logo Buttons & Quick Metadata -->
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="معرف المستأجر: " Style="{StaticResource CaptionTextBlockStyle}" />
-                                <TextBlock Text="{Binding CurrentTenant.Id}" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="Bold" />
+                                <Button Style="{StaticResource GhostButtonStyle}" Command="{Binding SelectAndUploadLogoCommand}" Padding="12,6" Margin="0,0,8,0" FontSize="12">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📷" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="رفع / تغيير الشعار" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource GhostButtonStyle}" Command="{Binding RemoveLogoCommand}" Padding="10,6" Margin="0,0,14,0" FontSize="12" Foreground="{DynamicResource DangerBrush}"
+                                        Visibility="{Binding LogoUrl, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                                    <TextBlock Text="إزالة الشعار" />
+                                </Button>
+
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="رمز المستأجر: " Style="{StaticResource CaptionTextBlockStyle}" />
+                                    <TextBlock Text="{Binding CurrentTenant.Id}" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Status Badge -->
-                        <Border Grid.Column="2" VerticalAlignment="Center" Background="{Binding CurrentTenant.IsActive, Converter={StaticResource StatusToColorConverter}}" CornerRadius="16" Padding="14,6">
-                            <TextBlock Text="{Binding CurrentTenant.IsActive, Converter={StaticResource StatusTextConverter}}" Foreground="White" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource AppFontFamily}" />
+                        <!-- Quick Stat Counters on the left side of Header -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Branches Stat Card -->
+                            <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,12,0" MinWidth="110">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentTenant.BranchesCount, FallbackValue='0'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" FontFamily="{StaticResource AppFontFamily}" />
+                                    <TextBlock Text="الفروع النشطة" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Warehouses Stat Card -->
+                            <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,12,0" MinWidth="110">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentTenant.WarehousesCount, FallbackValue='0'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" FontFamily="{StaticResource AppFontFamily}" />
+                                    <TextBlock Text="المستودعات" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Users Stat Card -->
+                            <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16,12" MinWidth="110">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentTenant.UsersCount, FallbackValue='0'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" FontFamily="{StaticResource AppFontFamily}" />
+                                    <TextBlock Text="المستخدمين" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ── 2. TAB NAVIGATION BAR ── -->
+                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="6" Margin="0,0,0,20">
+                    <UniformGrid Rows="1">
+                        <!-- Tab 0: General & Branding -->
+                        <Button Command="{Binding SetTabCommand}" CommandParameter="0" Style="{StaticResource GhostButtonStyle}" Padding="12,10" Margin="2"
+                                Background="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBrushConverter}, ConverterParameter=0}"
+                                BorderBrush="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBorderBrushConverter}, ConverterParameter=0}"
+                                BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="🏢" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="الهوية والبيانات العامة" FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveForegroundConverter}, ConverterParameter=0}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Tab 1: Tax & Legal -->
+                        <Button Command="{Binding SetTabCommand}" CommandParameter="1" Style="{StaticResource GhostButtonStyle}" Padding="12,10" Margin="2"
+                                Background="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBrushConverter}, ConverterParameter=1}"
+                                BorderBrush="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBorderBrushConverter}, ConverterParameter=1}"
+                                BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="📋" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="السجل والبيانات الضريبية" FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveForegroundConverter}, ConverterParameter=1}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Tab 2: Contact & Location -->
+                        <Button Command="{Binding SetTabCommand}" CommandParameter="2" Style="{StaticResource GhostButtonStyle}" Padding="12,10" Margin="2"
+                                Background="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBrushConverter}, ConverterParameter=2}"
+                                BorderBrush="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBorderBrushConverter}, ConverterParameter=2}"
+                                BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="📞" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="الاتصال والعناوين" FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveForegroundConverter}, ConverterParameter=2}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Tab 3: Invoice & Print -->
+                        <Button Command="{Binding SetTabCommand}" CommandParameter="3" Style="{StaticResource GhostButtonStyle}" Padding="12,10" Margin="2"
+                                Background="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBrushConverter}, ConverterParameter=3}"
+                                BorderBrush="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBorderBrushConverter}, ConverterParameter=3}"
+                                BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="🧾" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="إعدادات الفواتير والمطبوعات" FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveForegroundConverter}, ConverterParameter=3}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Tab 4: Financial Defaults -->
+                        <Button Command="{Binding SetTabCommand}" CommandParameter="4" Style="{StaticResource GhostButtonStyle}" Padding="12,10" Margin="2"
+                                Background="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBrushConverter}, ConverterParameter=4}"
+                                BorderBrush="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveBorderBrushConverter}, ConverterParameter=4}"
+                                BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="⚙️" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="الإعدادات المالية والإقليمية" FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedTabIndex, Converter={StaticResource TabIndexToActiveForegroundConverter}, ConverterParameter=4}" />
+                            </StackPanel>
+                        </Button>
+                    </UniformGrid>
+                </Border>
+
+                <!-- ── 3. TAB 0: GENERAL & BRANDING ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="28"
+                        Visibility="{Binding SelectedTabIndex, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=0}">
+                    <StackPanel>
+                        <TextBlock Text="البيانات الأساسية والهوية البصرية للمنشأة" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,20" />
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Organization Legal Name -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="اسم المؤسسة / المنشأة *" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding TenantName, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="الاسم المسجل في المنظومة والشاشات الرئيسية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Commercial Name -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="الاسم التجاري الرسمي (Commercial Trade Name)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding CommercialName, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="الاسم الظاهر للزبائن في المطبوعات والفواتير" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Business Type -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="نوع النشاط التجاري / قطاع الأعمال" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding BusinessType, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: تجارة تجزئة وجملة، مواد غذائية، أجهزة إلكترونية، صيدلية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Readonly Tenant ID -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="رمز ومعرف المنشأة في النظام (Tenant ID)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding CurrentTenant.Id, ValidatesOnExceptions=True}" IsReadOnly="True" Style="{StaticResource DefaultTextBoxStyle}" Background="{DynamicResource SurfaceActiveBrush}" Foreground="{DynamicResource TextMutedBrush}" Padding="12,10" />
+                                <TextBlock Text="معرف وحيد للمنشأة يستخدم في الربط والتوثيق البرمجي" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Description -->
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="وصف النشاط ونبذة عن المنشأة" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12,10" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 4. TAB 1: TAX & LEGAL ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="28"
+                        Visibility="{Binding SelectedTabIndex, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=1}">
+                    <StackPanel>
+                        <TextBlock Text="البيانات القانونية والسجل الضريبي" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,8" />
+                        <TextBlock Text="تُستخدم هذه البيانات في طباعة الفواتير الضريبية والمطابقة مع اللوائح النظامية الرسمية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,24" />
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Tax Number / VAT -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="الرقم الضريبي (Tax / VAT Number)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding TaxNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="الرقم الضريبي الخاص بالمؤسسة المعتمد بالفواتير الرسمية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Commercial Registration Number (CRN) -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="رقم السجل التجاري (Commercial Registration - CRN)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding CommercialRegistrationNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="رقم القيد في السجل التجاري الصادر من وزارة التجارة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Legal Info Alert Note -->
+                        <Border Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,8,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ️" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="تنبيه الفوترة الضريبية" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}" FontFamily="{StaticResource AppFontFamily}" />
+                                    <TextBlock Text="عند إدخال الرقم الضريبي ورقم السجل التجاري، سيتم تضمينها تلقائياً في ترويسة جميع فواتير نقاط البيع (POS) وفواتير المبيعات الصادرة." Style="{StaticResource CaptionTextBlockStyle}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 5. TAB 2: CONTACT & LOCATION ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="28"
+                        Visibility="{Binding SelectedTabIndex, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=2}">
+                    <StackPanel>
+                        <TextBlock Text="معلومات الاتصال والموقع الجغرافي" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,20" />
+
+                        <!-- Phones -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Primary Phone -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="رقم الهاتف الرئيسي *" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: 0912345678 أو 0921234567" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Additional Phone / WhatsApp -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="رقم هاتف إضافي / واتساب التجاري" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding AdditionalPhone, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="رقم خدمة العملاء والدعم الفني" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Email & Website -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Contact Email -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="البريد الإلكتروني الرسمي للمؤسسة" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding ContactEmail, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: contact@retal-system.com" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Website URL -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="الموقع الإلكتروني (Website)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding WebsiteUrl, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: https://www.yourcompany.com" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Country, City, Postal Code -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Country -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="الدولة" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding Country, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                            </StackPanel>
+
+                            <!-- City -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="المدينة" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                            </StackPanel>
+
+                            <!-- Postal Code -->
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="الرمز البريدي / صندوق البريد" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding PostalCode, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Full Detailed Address -->
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="العنوان التفصيلي (الشارع، الحي، المعلم القريب)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12,10" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 6. TAB 3: INVOICE & PRINT SETTINGS (WITH LIVE PREVIEW) ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="28"
+                        Visibility="{Binding SelectedTabIndex, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=3}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <!-- Input Settings Form -->
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="24" />
+                            <!-- Live Invoice Preview Card -->
+                            <ColumnDefinition Width="380" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column: Inputs -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="نصوص المطبوعات وسياسة الفواتير" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,8" />
+                            <TextBlock Text="قم بتهيئة النصوص الترحيبية وشروط البيع والاستبدال والحسابات المصرفية" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,20" />
+
+                            <!-- Header Note -->
+                            <StackPanel Margin="0,0,0,16">
+                                <TextBlock Text="نص ترويسة الفاتورة (Header Note)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding InvoiceHeaderNote, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12,10" />
+                                <TextBlock Text="نص ترحيبي أو إشعار يظهر أعلى الفاتورة تحت الشعار مباشرة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Footer Note / Terms -->
+                            <StackPanel Margin="0,0,0,16">
+                                <TextBlock Text="نص تذييل الفاتورة وشروط الاسترجاع والاستبدال (Footer Note)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding InvoiceFooterNote, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12,10" />
+                                <TextBlock Text="مثال: البضاعة المباعة ترد وتستبدل خلال 3 أيام مع إحضار أصل الفاتورة" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Bank Details -->
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="بيانات الحسابات البنكية ورقم الآيبان (Bank Account Details)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding BankDetails, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12,10" />
+                                <TextBlock Text="تظهر أسفل الفواتير للعملاء الراغبين بالسداد والتحويل البنكي" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right Column: Live Invoice Preview Card -->
+                        <Border Grid.Column="2" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20" VerticalAlignment="Top">
+                            <StackPanel>
+                                <Border Background="{DynamicResource PrimaryLightBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Center" Margin="0,0,0,16">
+                                    <TextBlock Text="👁️ معاينة حية لشكل الفاتورة المطبوعة" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" FontFamily="{StaticResource AppFontFamily}" />
+                                </Border>
+
+                                <!-- Header Preview -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding CommercialName, FallbackValue='الاسم التجاري'}" FontWeight="Bold" FontSize="14" FontFamily="{StaticResource AppFontFamily}" />
+                                        <TextBlock Text="{Binding TenantName, FallbackValue='اسم المنشأة'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding TaxNumber, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                                            <TextBlock Text="الرقم الضريبي: " FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                                            <TextBlock Text="{Binding TaxNumber}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding PhoneNumber}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <!-- Logo Thumbnail -->
+                                    <Border Grid.Column="1" Width="44" Height="44" CornerRadius="8" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                        <Grid>
+                                            <TextBlock Text="🏢" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding DisplayLogoUrl, Converter={StaticResource NullToVisibilityConverter}}" />
+                                            <Image Source="{Binding DisplayLogoUrl}" Stretch="UniformToFill" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Header Note in Preview -->
+                                <Border Background="{DynamicResource SurfaceActiveBrush}" CornerRadius="4" Padding="8,4" Margin="0,0,0,12"
+                                        Visibility="{Binding InvoiceHeaderNote, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                                    <TextBlock Text="{Binding InvoiceHeaderNote}" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                </Border>
+
+                                <Separator Margin="0,0,0,10" Background="{DynamicResource BorderBrush}" />
+
+                                <!-- Mock Items Table -->
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="البند" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
+                                            <TextBlock Grid.Column="1" Text="الكمية" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Margin="12,0" />
+                                            <TextBlock Grid.Column="2" Text="الإجمالي" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
+                                        </Grid>
+                                        <Separator Margin="0,0,0,6" Background="{DynamicResource BorderBrush}" />
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="صنف تجريبي رقم #1" FontSize="10" />
+                                            <TextBlock Grid.Column="1" Text="2" FontSize="10" Margin="12,0" />
+                                            <TextBlock Grid.Column="2" Text="50.00" FontSize="10" FontWeight="SemiBold" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Footer Note in Preview -->
+                                <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8"
+                                        Visibility="{Binding InvoiceFooterNote, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="شروط الفاتورة والاسترجاع:" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                        <TextBlock Text="{Binding InvoiceFooterNote}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Bank Details in Preview -->
+                                <Border Background="{DynamicResource AccentLightBrush}" BorderBrush="{DynamicResource AccentLightBrush}" BorderThickness="1" CornerRadius="6" Padding="8"
+                                        Visibility="{Binding BankDetails, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="بيانات التحويل البنكي:" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,2" />
+                                        <TextBlock Text="{Binding BankDetails}" FontSize="9" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
 
-                <!-- Detailed Settings Card -->
-                <Border Style="{StaticResource CardBorderStyle}" Padding="24">
+                <!-- ── 7. TAB 4: FINANCIAL & REGIONAL DEFAULTS ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="28"
+                        Visibility="{Binding SelectedTabIndex, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=4}">
                     <StackPanel>
-                        <TextBlock Text="معلومات حساب المنشأة" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,20" />
+                        <TextBlock Text="الإعدادات والسياسات المالية والخيارات الافتراضية" Style="{StaticResource H2TextBlockStyle}" Margin="0,0,0,20" />
 
-                        <!-- Tenant Name Input -->
-                        <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="اسم المستأجر / المنشأة" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
-                            <TextBox Text="{Binding TenantName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
-                        </StackPanel>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                        <!-- Readonly Tenant ID -->
-                        <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="رمز المستأجر (ID)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
-                            <TextBox Text="{Binding CurrentTenant.Id}" IsReadOnly="True" Style="{StaticResource DefaultTextBoxStyle}" Background="#F3F4F6" Foreground="#6B7280" Padding="12,10" />
-                        </StackPanel>
+                            <!-- Default Currency Name -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="اسم العملة الافتراضية" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding DefaultCurrency, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: دينار ليبي، ريال سعودي، درهم إماراتي، دولار" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
 
-                        <!-- Action Buttons -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,12,0,0">
-                            <Button Content="حفظ التغييرات" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveProfileCommand}" Padding="24,10" Margin="0,0,12,0" />
-                            <Button Content="إلغاء التعديل" Style="{StaticResource GhostButtonStyle}" Command="{Binding LoadProfileCommand}" Padding="16,10" />
-                        </StackPanel>
+                            <!-- Currency Symbol -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="رمز العملة الافتراضي" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding DefaultCurrencySymbol, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="مثال: د.ل أو ر.س أو $" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Tax Rate -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="نسبة ضريبة القيمة المضافة الافتراضية (%)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding DefaultTaxRate, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="تُطبق هذه النسبة تلقائياً على فواتير المبيعات والمشتريات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- Timezone -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="المنطقة الزمنية (Timezone)" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox Text="{Binding Timezone, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Padding="12,10" />
+                                <TextBlock Text="افتراضي: Africa/Tripoli" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Tax Inclusive Checkbox -->
+                        <Border Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,8,0,0">
+                            <CheckBox IsChecked="{Binding IsTaxIncludedInPrices, Mode=TwoWay}" VerticalContentAlignment="Center">
+                                <StackPanel Margin="8,0,0,0">
+                                    <TextBlock Text="أسعار البيع شاملة لضريبة القيمة المضافة بشكل افتراضي" FontWeight="Bold" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TextBlock Text="عند تفعيل هذا الخيار، يتم احتساب السعر المدخل في كارت الصنف شاملاً للضريبة دون إضافتها كبند منفصل." Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </CheckBox>
+                        </Border>
                     </StackPanel>
                 </Border>
+
+                <!-- ── 8. BOTTOM ACTIONS BAR ── -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="20" Margin="0,20,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveProfileCommand}" Padding="28,12" Margin="0,0,12,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="💾" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="حفظ جميع التغييرات" FontWeight="Bold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Content="إلغاء وإعادة تحميل البيانات" Style="{StaticResource GhostButtonStyle}" Command="{Binding LoadProfileCommand}" Padding="16,12" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="تأكد من مراجعة كافة التبويبات قبل الضغط على حفظ التغييرات" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Loading Overlay -->
+        <!-- ════════════════════ LOADING OVERLAY ════════════════════ -->
         <controls:LoadingOverlay Grid.RowSpan="3" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <controls:LoadingOverlay Grid.RowSpan="3" Visibility="{Binding IsUploadingLogo, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
 </UserControl>

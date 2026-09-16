@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -74,10 +75,13 @@ public partial class CategoryFormViewModel : BaseViewModel
     private readonly ICategoryApiService _categoryApiService;
 
     [ObservableProperty] private Guid? _categoryId;
-    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم التصنيف مطلوب")]
+    private string _name = string.Empty;
     [ObservableProperty] private Guid? _parentCategoryId;
     [ObservableProperty] private ObservableCollection<CategoryDto> _availableParentCategories = new();
     [ObservableProperty] private bool _isEditMode;
+    public CategoryDto? CreatedCategory { get; private set; }
     public Action? CloseWindowHandler { get; set; }
 
     public CategoryFormViewModel(ICategoryApiService categoryApiService)
@@ -87,6 +91,7 @@ public partial class CategoryFormViewModel : BaseViewModel
 
     public void Initialize(CategoryDto? cat)
     {
+        CreatedCategory = null;
         if (cat != null) 
         { 
             IsEditMode = true; 
@@ -132,6 +137,7 @@ public partial class CategoryFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name)) { ErrorMessage = "اسم التصنيف مطلوب"; return; }
 
         Guid? parentIdToSave = (ParentCategoryId.HasValue && ParentCategoryId.Value != Guid.Empty)
@@ -143,12 +149,22 @@ public partial class CategoryFormViewModel : BaseViewModel
             if (IsEditMode && CategoryId.HasValue)
             {
                 var res = await _categoryApiService.UpdateAsync(CategoryId.Value, new UpdateCategoryRequest { Name = Name, ParentCategoryId = parentIdToSave });
-                if (res.Success) CloseWindowHandler?.Invoke(); else ErrorMessage = res.Message;
+                if (res.Success)
+                {
+                    CreatedCategory = res.Data ?? new CategoryDto { Id = CategoryId.Value, Name = Name, ParentCategoryId = parentIdToSave };
+                    CloseWindowHandler?.Invoke();
+                }
+                else ErrorMessage = res.Message;
             }
             else
             {
                 var res = await _categoryApiService.CreateAsync(new CreateCategoryRequest { Name = Name, ParentCategoryId = parentIdToSave });
-                if (res.Success) CloseWindowHandler?.Invoke(); else ErrorMessage = res.Message;
+                if (res.Success)
+                {
+                    CreatedCategory = res.Data ?? new CategoryDto { Id = Guid.NewGuid(), Name = Name, ParentCategoryId = parentIdToSave };
+                    CloseWindowHandler?.Invoke();
+                }
+                else ErrorMessage = res.Message;
             }
         });
     }
@@ -212,9 +228,12 @@ public partial class UnitFormViewModel : BaseViewModel
 {
     private readonly IUnitApiService _unitApiService;
     [ObservableProperty] private Guid? _unitId;
-    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم الوحدة مطلوب")]
+    private string _name = string.Empty;
     [ObservableProperty] private string? _symbol;
     [ObservableProperty] private bool _isEditMode;
+    public UnitDto? CreatedUnit { get; private set; }
     public Action? CloseWindowHandler { get; set; }
 
     public UnitFormViewModel(IUnitApiService unitApiService)
@@ -224,6 +243,7 @@ public partial class UnitFormViewModel : BaseViewModel
 
     public void Initialize(UnitDto? unit)
     {
+        CreatedUnit = null;
         if (unit != null) { IsEditMode = true; UnitId = unit.Id; Name = unit.Name; Symbol = unit.Symbol; }
         else { IsEditMode = false; UnitId = null; Name = string.Empty; Symbol = string.Empty; }
     }
@@ -231,18 +251,29 @@ public partial class UnitFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (string.IsNullOrWhiteSpace(Name)) { ErrorMessage = "اسم الوحدة مطلوب"; return; }
         await ExecuteAsync(async () =>
         {
             if (IsEditMode && UnitId.HasValue)
             {
                 var res = await _unitApiService.UpdateAsync(UnitId.Value, new UpdateUnitRequest { Name = Name, Symbol = Symbol });
-                if (res.Success) CloseWindowHandler?.Invoke(); else ErrorMessage = res.Message;
+                if (res.Success)
+                {
+                    CreatedUnit = res.Data ?? new UnitDto { Id = UnitId.Value, Name = Name, Symbol = Symbol };
+                    CloseWindowHandler?.Invoke();
+                }
+                else ErrorMessage = res.Message;
             }
             else
             {
                 var res = await _unitApiService.CreateAsync(new CreateUnitRequest { Name = Name, Symbol = Symbol });
-                if (res.Success) CloseWindowHandler?.Invoke(); else ErrorMessage = res.Message;
+                if (res.Success)
+                {
+                    CreatedUnit = res.Data ?? new UnitDto { Id = Guid.NewGuid(), Name = Name, Symbol = Symbol };
+                    CloseWindowHandler?.Invoke();
+                }
+                else ErrorMessage = res.Message;
             }
         });
     }
@@ -256,6 +287,9 @@ public partial class ProductsViewModel : BaseViewModel
     [ObservableProperty] private int _totalPages = 1;
     [ObservableProperty] private int _pageSize = 10;
     [ObservableProperty] private string _searchQuery = string.Empty;
+
+    /// <summary>مطابقة الباركود تماماً — يقتصر البحث على التطابق التام مع الباركود بدلاً من الاحتواء</summary>
+    [ObservableProperty] private bool _exactBarcodeMatch = false;
 
     partial void OnPageSizeChanged(int value)
     {
@@ -272,32 +306,83 @@ public partial class ProductsViewModel : BaseViewModel
         _ = LoadProductsAsync();
     }
 
+    [ObservableProperty] private int _totalCount;
+    private int _loadVersion;
+    private string _loadedQuery = string.Empty;
+    public string EmptyTitle => string.IsNullOrWhiteSpace(_loadedQuery) ? "أضف أول منتج" : "لا توجد نتائج مطابقة";
+    public string EmptyDescription => string.IsNullOrWhiteSpace(_loadedQuery) ? "ابدأ بإضافة منتج أو استيراد ملف Excel." : "جرّب اسمًا أو كودًا آخر، أو امسح البحث لعرض جميع المنتجات.";
+
+    [RelayCommand]
+    private async Task SearchAsync()
+    {
+        CurrentPage = 1;
+        await LoadProductsAsync();
+    }
+
+    [RelayCommand]
+    private async Task ClearSearchAsync()
+    {
+        SearchQuery = string.Empty;
+        CurrentPage = 1;
+        await LoadProductsAsync();
+    }
+
     [RelayCommand]
     public async Task LoadProductsAsync()
     {
-        await ExecuteAsync(async () =>
+        var version = ++_loadVersion;
+        var query = SearchQuery.Trim();
+        if (query != _loadedQuery) CurrentPage = 1;
+        var page = CurrentPage;
+        var pageSize = PageSize;
+        _loadedQuery = query;
+        IsLoading = true;
+        ErrorMessage = null;
+        OnPropertyChanged(nameof(EmptyTitle));
+        OnPropertyChanged(nameof(EmptyDescription));
+        try
         {
-            if (!string.IsNullOrWhiteSpace(SearchQuery))
+            if (query.Length > 0)
             {
-                var searchRes = await _productApiService.SearchAsync(SearchQuery);
-                if (searchRes.Success && searchRes.Data != null)
+                var result = await _productApiService.SearchAsync(query);
+                if (version != _loadVersion) return;
+                if (!result.Success || result.Data == null) throw new InvalidOperationException("تعذر البحث عن المنتجات. أعد المحاولة.");
+
+                // في وضع مطابقة الباركود التامة: يبقى فقط من يحمل باركوداً مطابقاً حرفياً
+                if (ExactBarcodeMatch)
                 {
-                    Products = new ObservableCollection<ProductDto>(searchRes.Data);
-                    TotalPages = 1;
+                    result.Data = result.Data
+                        .Where(p => p.BarCodes != null && p.BarCodes.Any(b => string.Equals(b.BarCode, query, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
                 }
+
+                TotalCount = result.Data.Count;
+                TotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalCount / pageSize));
+                CurrentPage = Math.Clamp(page, 1, TotalPages);
+                Products = new ObservableCollection<ProductDto>(result.Data.Skip((CurrentPage - 1) * pageSize).Take(pageSize));
             }
             else
             {
-                var res = await _productApiService.GetPagedAsync(CurrentPage, PageSize);
-                if (res.Success && res.Data != null)
+                var result = await _productApiService.GetPagedAsync(page, pageSize);
+                if (version != _loadVersion) return;
+                if (!result.Success || result.Data == null) throw new InvalidOperationException("تعذر تحميل المنتجات. تحقق من الاتصال وأعد المحاولة.");
+                TotalCount = result.Data.TotalCount;
+                TotalPages = Math.Max(1, result.Data.TotalPages);
+                if (page > TotalPages)
                 {
-                    Products = new ObservableCollection<ProductDto>(res.Data.Items);
-                    TotalPages = res.Data.TotalPages > 0 ? res.Data.TotalPages : 1;
+                    CurrentPage = TotalPages;
+                    await LoadProductsAsync();
+                    return;
                 }
+                Products = new ObservableCollection<ProductDto>(result.Data.Items);
             }
-        });
+        }
+        catch (Exception)
+        {
+            if (version == _loadVersion) ErrorMessage = "تعذر تحميل النتائج. تحقق من الاتصال ثم اضغط إعادة المحاولة.";
+        }
+        finally { if (version == _loadVersion) IsLoading = false; }
     }
-
     [RelayCommand]
     private async Task NextPageAsync()
     {
@@ -409,43 +494,53 @@ public partial class ProductsViewModel : BaseViewModel
         }
     }
 
+    public Func<Task>? OpenImportWizardHandler { get; set; }
+
     [RelayCommand]
     private async Task ImportExcelAsync()
     {
-        var ofd = new Microsoft.Win32.OpenFileDialog
+        if (OpenImportWizardHandler != null)
         {
-            Filter = "ملفات Excel (*.xlsx)|*.xlsx",
-            Title = "اختر ملف Excel لاستيراد الأصناف"
-        };
-
-        if (ofd.ShowDialog() == true)
+            await OpenImportWizardHandler();
+            await LoadProductsAsync();
+        }
+        else
         {
-            await ExecuteAsync(async () =>
+            var ofd = new Microsoft.Win32.OpenFileDialog
             {
-                var res = await _productApiService.ImportExcelAsync(ofd.FileName);
-                if (res.Success && res.Data != null)
-                {
-                    var data = res.Data;
-                    string msg = $"تمت عملية الاستيراد بنجاح:\n" +
-                                 $"• الأصناف المضافة/المحدثة: {data.ProductsImported}\n" +
-                                 $"• الباركودات المضافة/المحدثة: {data.BarcodesImported}\n" +
-                                 $"• التصنيفات المضافة/المحدثة: {data.CategoriesImported}";
+                Filter = "ملفات Excel (*.xlsx)|*.xlsx",
+                Title = "اختر ملف Excel لاستيراد الأصناف"
+            };
 
-                    if (data.Warnings.Count > 0)
+            if (ofd.ShowDialog() == true)
+            {
+                await ExecuteAsync(async () =>
+                {
+                    var res = await _productApiService.ImportExcelAsync(ofd.FileName);
+                    if (res.Success && res.Data != null)
                     {
-                        msg += $"\n\nالتنبيهات ({data.Warnings.Count}):\n" + string.Join("\n", data.Warnings.Take(5));
-                    }
+                        var data = res.Data;
+                        string msg = $"تمت عملية الاستيراد بنجاح:\n" +
+                                     $"• الأصناف المضافة/المحدثة: {data.ProductsImported}\n" +
+                                     $"• الباركودات المضافة/المحدثة: {data.BarcodesImported}\n" +
+                                     $"• التصنيفات المضافة/المحدثة: {data.CategoriesImported}";
 
-                    System.Windows.MessageBox.Show(msg, "نتيجة الاستيراد", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                    await LoadProductsAsync();
-                }
-                else
-                {
-                    string err = res.Message ?? "حدث خطأ غير معروف أثناء عملية الاستيراد";
-                    ErrorMessage = err;
-                    System.Windows.MessageBox.Show($"فشلت عملية الاستيراد:\n{err}", "خطأ في الاستيراد", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                }
-            });
+                        if (data.Warnings.Count > 0)
+                        {
+                            msg += $"\n\nالتنبيهات ({data.Warnings.Count}):\n" + string.Join("\n", data.Warnings.Take(5));
+                        }
+
+                        System.Windows.MessageBox.Show(msg, "نتيجة الاستيراد", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                        await LoadProductsAsync();
+                    }
+                    else
+                    {
+                        string err = res.Message ?? "حدث خطأ غير معروف أثناء عملية الاستيراد";
+                        ErrorMessage = err;
+                        System.Windows.MessageBox.Show($"فشلت عملية الاستيراد:\n{err}", "خطأ في الاستيراد", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    }
+                });
+            }
         }
     }
 }
@@ -459,11 +554,11 @@ public partial class ProductFormViewModel : BaseViewModel
     private readonly IWarehouseApiService _warehouseApiService;
 
     [ObservableProperty] private Guid? _productId;
-    [ObservableProperty] private string _name = string.Empty;
-    [ObservableProperty] private string _code = string.Empty;
+    [ObservableProperty, NotifyDataErrorInfo, System.ComponentModel.DataAnnotations.Required(ErrorMessage = "اسم المنتج مطلوب")] private string _name = string.Empty;
+    [ObservableProperty, NotifyDataErrorInfo, System.ComponentModel.DataAnnotations.Required(ErrorMessage = "كود المنتج مطلوب")] private string _code = string.Empty;
     [ObservableProperty] private string? _description;
-    [ObservableProperty] private decimal _costPrice;
-    [ObservableProperty] private decimal _salePrice;
+    [ObservableProperty, NotifyDataErrorInfo, System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "79228162514264337593543950335", ErrorMessage = "التكلفة يجب أن تكون صفرًا أو أكثر")] private decimal _costPrice;
+    [ObservableProperty, NotifyDataErrorInfo, System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "79228162514264337593543950335", ErrorMessage = "سعر البيع يجب أن يكون صفرًا أو أكثر")] private decimal _salePrice;
     [ObservableProperty] private Guid _categoryId;
 
     [ObservableProperty] private ObservableCollection<CategoryDto> _categories = new();
@@ -493,13 +588,66 @@ public partial class ProductFormViewModel : BaseViewModel
 
     // Product Images support
     [ObservableProperty] private ObservableCollection<ProductImageDto> _productImages = new();
+    [ObservableProperty] private ObservableCollection<PendingProductImage> _pendingProductImages = new();
     [ObservableProperty] private ObservableCollection<ProductBarCodeDto> _existingBarCodesForImages = new();
     [ObservableProperty] private string _selectedUploadFilePath = string.Empty;
     [ObservableProperty] private bool _selectedUploadIsDefault;
     [ObservableProperty] private Guid? _selectedUploadBarcodeId;
 
+    // حالة رفع الصور (شريط التقدم)
+    [ObservableProperty] private bool _isUploadingImage;
+    [ObservableProperty] private int _uploadProgressPercent;
+    [ObservableProperty] private string _uploadStatusText = string.Empty;
+
     [ObservableProperty] private bool _isEditMode;
+    public ProductDto? CreatedOrUpdatedProduct { get; private set; }
+    public Func<Task<CategoryDto?>>? OpenCategoryDialogHandler { get; set; }
+    public Func<Task<UnitDto?>>? OpenUnitDialogHandler { get; set; }
     public Action? CloseWindowHandler { get; set; }
+
+    [RelayCommand]
+    private async Task QuickCreateCategoryAsync()
+    {
+        if (OpenCategoryDialogHandler != null)
+        {
+            var cat = await OpenCategoryDialogHandler();
+            if (cat != null)
+            {
+                var catRes = await _categoryApiService.GetAllAsync();
+                if (catRes.Success && catRes.Data != null)
+                {
+                    Categories = new ObservableCollection<CategoryDto>(catRes.Data);
+                }
+                else if (!Categories.Any(c => c.Id == cat.Id))
+                {
+                    Categories.Add(cat);
+                }
+                CategoryId = cat.Id;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task QuickCreateUnitAsync()
+    {
+        if (OpenUnitDialogHandler != null)
+        {
+            var unit = await OpenUnitDialogHandler();
+            if (unit != null)
+            {
+                var unitRes = await _unitApiService.GetAllAsync();
+                if (unitRes.Success && unitRes.Data != null)
+                {
+                    Units = new ObservableCollection<UnitDto>(unitRes.Data);
+                }
+                else if (!Units.Any(u => u.Id == unit.Id))
+                {
+                    Units.Add(unit);
+                }
+                SelectedAddUnitId = unit.Id;
+            }
+        }
+    }
 
     public ProductFormViewModel(
         IProductApiService productApiService,
@@ -582,6 +730,7 @@ public partial class ProductFormViewModel : BaseViewModel
             );
 
             ExistingBarCodesForImages = new ObservableCollection<ProductBarCodeDto>(p.BarCodes);
+            SyncBarcodesForImages();
             await LoadProductImagesAsync();
         }
         else
@@ -597,7 +746,9 @@ public partial class ProductFormViewModel : BaseViewModel
             ProductUnits = new ObservableCollection<CreateProductUnitRequest>();
             ProductBarCodes = new ObservableCollection<CreateProductBarCodeRequest>();
             ProductImages = new ObservableCollection<ProductImageDto>();
+            PendingProductImages = new ObservableCollection<PendingProductImage>();
             ExistingBarCodesForImages = new ObservableCollection<ProductBarCodeDto>();
+            SyncBarcodesForImages();
         }
 
         // Reset Add inputs
@@ -654,25 +805,65 @@ public partial class ProductFormViewModel : BaseViewModel
     private async Task UploadProductImageAsync()
     {
         ErrorMessage = string.Empty;
-        if (!ProductId.HasValue || ProductId.Value == Guid.Empty)
-        {
-            ErrorMessage = "يرجى حفظ بيانات المنتج الأساسية أولاً لتفعيل إمكانية رفع الصور";
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(SelectedUploadFilePath) || !System.IO.File.Exists(SelectedUploadFilePath))
         {
             ErrorMessage = "يرجى اختيار صورة صالحة من جهازك عبر زر الاستعراض";
             return;
         }
 
+        // منتج جديد لم يُحفظ بعد: تسجيل الصورة في قائمة الانتظار وعرضها في الشبكة،
+        // وسيتم رفعها تلقائياً فور نجاح حفظ المنتج
+        if (!ProductId.HasValue || ProductId.Value == Guid.Empty)
+        {
+            string barCode = string.Empty;
+            string barcodeTitle = "صورة عامة للمنتج";
+            if (SelectedUploadBarcodeId.HasValue)
+            {
+                var bc = ExistingBarCodesForImages.FirstOrDefault(b => b.Id == SelectedUploadBarcodeId.Value);
+                if (bc != null)
+                {
+                    barCode = bc.BarCode;
+                    barcodeTitle = string.IsNullOrWhiteSpace(bc.Title) ? bc.BarCode : bc.Title;
+                }
+            }
+
+            if (PendingProductImages.Any(p => p.FilePath.Equals(SelectedUploadFilePath, StringComparison.OrdinalIgnoreCase) &&
+                                              p.BarCode == barCode))
+            {
+                ErrorMessage = "هذه الصورة مضافة بالفعل لنفس الكود في قائمة الانتظار";
+                return;
+            }
+
+            PendingProductImages.Add(new PendingProductImage
+            {
+                TempBarcodeId = SelectedUploadBarcodeId ?? Guid.Empty,
+                BarCode = barCode,
+                BarcodeTitle = barcodeTitle,
+                FilePath = SelectedUploadFilePath,
+                IsDefault = SelectedUploadIsDefault
+            });
+
+            SuccessMessage = "تمت إضافة الصورة لقائمة الانتظار وستُرفع تلقائياً فور حفظ المنتج.";
+            SelectedUploadFilePath = string.Empty;
+            SelectedUploadIsDefault = false;
+            SelectedUploadBarcodeId = null;
+            return;
+        }
+
+        // منتج محفوظ مسبقاً: رفع فوري مع متابعة التقدم
         await ExecuteAsync(async () =>
         {
+            IsUploadingImage = true;
+            UploadProgressPercent = 0;
+            UploadStatusText = "جاري رفع الصورة ...";
+
+            var progress = new Progress<int>(percent => { UploadProgressPercent = percent; });
             var res = await _productImageApiService.UploadAsync(
                 ProductId.Value,
                 SelectedUploadFilePath,
                 SelectedUploadIsDefault,
-                SelectedUploadBarcodeId);
+                SelectedUploadBarcodeId,
+                progress);
 
             if (res.Success)
             {
@@ -680,12 +871,22 @@ public partial class ProductFormViewModel : BaseViewModel
                 SelectedUploadIsDefault = false;
                 SelectedUploadBarcodeId = null;
                 await LoadProductImagesAsync();
+                SuccessMessage = "تم رفع الصورة بنجاح";
             }
             else
             {
                 ErrorMessage = res.Message ?? "فشل رفع الصورة";
             }
+
+            IsUploadingImage = false;
+            UploadStatusText = string.Empty;
         });
+    }
+
+    [RelayCommand]
+    private void RemovePendingProductImage(PendingProductImage? pending)
+    {
+        if (pending != null) PendingProductImages.Remove(pending);
     }
 
     [RelayCommand]
@@ -796,6 +997,7 @@ public partial class ProductFormViewModel : BaseViewModel
         });
 
         SyncStorageQuantitiesMap();
+        SyncBarcodesForImages();
 
         SelectedAddBarCode = string.Empty;
         SelectedAddBarCodeTitle = string.Empty;
@@ -810,6 +1012,42 @@ public partial class ProductFormViewModel : BaseViewModel
         {
             ProductBarCodes.Remove(barCode);
             SyncStorageQuantitiesMap();
+            SyncBarcodesForImages();
+        }
+    }
+
+    private void SyncBarcodesForImages()
+    {
+        var currentBarcodes = ProductBarCodes.ToList();
+
+        // Remove barcodes no longer present in ProductBarCodes
+        var toRemove = ExistingBarCodesForImages
+            .Where(e => !currentBarcodes.Any(b => b.BarCode.Equals(e.BarCode, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        foreach (var rem in toRemove) ExistingBarCodesForImages.Remove(rem);
+
+        // Add or update barcodes from ProductBarCodes
+        foreach (var bc in currentBarcodes)
+        {
+            var titleText = string.IsNullOrWhiteSpace(bc.Title)
+                ? bc.BarCode
+                : $"{bc.Title} ({bc.BarCode})";
+
+            var existing = ExistingBarCodesForImages.FirstOrDefault(e => e.BarCode.Equals(bc.BarCode, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                ExistingBarCodesForImages.Add(new ProductBarCodeDto
+                {
+                    Id = Guid.NewGuid(),
+                    BarCode = bc.BarCode,
+                    Title = titleText,
+                    Description = bc.Description
+                });
+            }
+            else
+            {
+                existing.Title = titleText;
+            }
         }
     }
 
@@ -847,6 +1085,8 @@ public partial class ProductFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        ValidateAllProperties();
+        if (HasErrors) { ErrorMessage = "راجع الحقول المعلّمة قبل حفظ المنتج."; return; }
         if (string.IsNullOrWhiteSpace(Name) || CategoryId == Guid.Empty)
         {
             ErrorMessage = "يرجى تعبئة الحقول المطلوبة (اسم المنتج والتصنيف)";
@@ -869,7 +1109,29 @@ public partial class ProductFormViewModel : BaseViewModel
                     BarCodes = ProductBarCodes.ToList()
                 };
                 var res = await _productApiService.UpdateAsync(ProductId.Value, req);
-                if (res.Success) CloseWindowHandler?.Invoke(); else ErrorMessage = res.Message;
+                if (res.Success)
+                {
+                    CreatedOrUpdatedProduct = res.Data ?? new ProductDto
+                    {
+                        Id = ProductId.Value,
+                        Name = Name,
+                        Code = Code,
+                        Description = Description,
+                        CostPrice = CostPrice,
+                        SalePrice = SalePrice,
+                        CategoryId = CategoryId,
+                        CategoryName = Categories.FirstOrDefault(c => c.Id == CategoryId)?.Name ?? string.Empty
+                    };
+
+                    // رفع الصور المعلقة المضافة أثناء التعديل (إن وجدت)
+                    var createdBarcodes = res.Data?.BarCodes ?? ExistingBarCodesForImages.ToList();
+                    bool allUploaded = await UploadPendingProductImagesAsync(ProductId.Value, createdBarcodes);
+                    if (allUploaded)
+                    {
+                        CloseWindowHandler?.Invoke();
+                    }
+                }
+                else ErrorMessage = res.Message;
             }
             else
             {
@@ -892,11 +1154,22 @@ public partial class ProductFormViewModel : BaseViewModel
                 var res = await _productApiService.CreateAsync(req);
                 if (res.Success && res.Data != null)
                 {
-                    // الانتقال لوضع التعديل مباشرة لتمكين رفع الصور فور الانتهاء من إنشاء المنتج
+                    CreatedOrUpdatedProduct = res.Data;
                     ProductId = res.Data.Id;
                     IsEditMode = true;
+
+                    // رفع جميع الصور المعلقة المرتبطة بالأكواد (يُعاد ربط
+                    // معرف الباركود المؤقت بالمعرف الحقيقي الصادر من الخادم)
+                    bool allUploaded = await UploadPendingProductImagesAsync(res.Data.Id, res.Data.BarCodes);
+
                     ExistingBarCodesForImages = new ObservableCollection<ProductBarCodeDto>(res.Data.BarCodes);
-                    CloseWindowHandler?.Invoke();
+
+                    if (allUploaded)
+                    {
+                        CloseWindowHandler?.Invoke();
+                    }
+                    // عند فشل بعض الصور تبقى النافذة مفتوحة على وضع التعديل؛
+                    // المنتج محفوظ والصور الفاشلة ما زالت في قائمة الانتظار لإعادة المحاولة
                 }
                 else
                 {
@@ -904,5 +1177,72 @@ public partial class ProductFormViewModel : BaseViewModel
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// رفع جميع الصور المعلقة للمنتج بعد حفظه، مع إعادة ربط معرف الباركود المؤقت
+    /// بالمعرف الحقيقي الصادر من الخادم، وإظهار تقدم الرفع الكلي.
+    /// الصور المرفوعة بنجاح تُزال من قائمة الانتظار والفاشلة تبقى لإعادة المحاولة.
+    /// </summary>
+    private async Task<bool> UploadPendingProductImagesAsync(Guid productId, List<ProductBarCodeDto> createdBarcodes)
+    {
+        if (PendingProductImages.Count == 0) return true;
+
+        IsUploadingImage = true;
+        UploadStatusText = $"جاري رفع الصور (0/{PendingProductImages.Count}) ...";
+        UploadProgressPercent = 0;
+
+        var pendingList = PendingProductImages.ToList();
+        int completedCount = 0;
+        var uploadErrors = new List<string>();
+
+        foreach (var pending in pendingList)
+        {
+            Guid? matchedBarcodeId = null;
+            if (!string.IsNullOrWhiteSpace(pending.BarCode))
+            {
+                var createdBc = createdBarcodes.FirstOrDefault(
+                    b => b.BarCode.Equals(pending.BarCode, StringComparison.OrdinalIgnoreCase));
+                if (createdBc != null) matchedBarcodeId = createdBc.Id;
+            }
+
+            var perImageProgress = new Progress<int>(percent =>
+            {
+                int overall = ((completedCount * 100) + percent) / pendingList.Count;
+                if (overall > 100) overall = 100;
+                UploadProgressPercent = overall;
+            });
+
+            var uploadRes = await _productImageApiService.UploadAsync(
+                productId,
+                pending.FilePath,
+                pending.IsDefault,
+                matchedBarcodeId,
+                perImageProgress);
+
+            if (!uploadRes.Success)
+            {
+                uploadErrors.Add($"{pending.FileName}: {uploadRes.Message}");
+            }
+            else
+            {
+                PendingProductImages.Remove(pending);
+            }
+
+            completedCount++;
+            UploadStatusText = $"جاري رفع الصور ({completedCount}/{pendingList.Count}) ...";
+        }
+
+        IsUploadingImage = false;
+        UploadStatusText = string.Empty;
+        UploadProgressPercent = 0;
+
+        if (uploadErrors.Count > 0)
+        {
+            ErrorMessage = "تم حفظ المنتج لكن فشل رفع بعض الصور: " + string.Join(" | ", uploadErrors) + " — الصور الفاشلة ما زالت في قائمة الانتظار.";
+            return false;
+        }
+
+        return true;
     }
 }

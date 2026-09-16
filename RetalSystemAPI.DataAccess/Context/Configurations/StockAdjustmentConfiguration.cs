@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لعمليات تسوية الجرد المخزني (StockAdjustments).
+/// </summary>
 public class StockAdjustmentConfiguration : IEntityTypeConfiguration<StockAdjustment>
 {
     public void Configure(EntityTypeBuilder<StockAdjustment> builder)

@@ -2,8 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
-             FlowDirection="RightToLeft">
-    <Grid Margin="24" Background="{StaticResource BgBrush}">
+             FlowDirection="RightToLeft" Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid Margin="24" Background="{DynamicResource BgBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -30,7 +30,7 @@
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
-
-        <controls:LoadingOverlay Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <controls:ListFeedback Grid.Row="1" ItemsCount="{Binding Units.Count}" IsLoading="{Binding IsLoading}" Message="{Binding ErrorMessage}" RetryCommand="{Binding LoadUnitsCommand}" />
+        <controls:LoadingOverlay Grid.RowSpan="2" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
 </UserControl>

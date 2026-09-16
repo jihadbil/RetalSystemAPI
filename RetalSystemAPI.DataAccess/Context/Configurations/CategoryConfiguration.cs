@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API للتصنيفات الشجرية (Categories) والعلاقات الذاتية والتنظيمية.
+/// </summary>
 public class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
     public void Configure(EntityTypeBuilder<Category> builder)

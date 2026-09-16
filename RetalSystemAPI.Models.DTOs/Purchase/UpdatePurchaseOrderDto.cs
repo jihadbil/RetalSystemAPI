@@ -7,6 +7,8 @@ public class UpdatePurchaseOrderDto
     [Required(ErrorMessage = "معرف الطلبية مطلوب")]
     public Guid Id { get; set; }
 
+    public Guid? SupplierId { get; set; }
+
     public Guid? WarehouseId { get; set; }
 
     public DateTime? ExpectedDate { get; set; }

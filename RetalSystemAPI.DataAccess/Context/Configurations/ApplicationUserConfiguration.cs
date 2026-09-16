@@ -4,6 +4,9 @@ using RetalSystemAPI.Models;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لكيان المستخدم (ApplicationUser) لربطه بالفرع والمستأجر والفهارس.
+/// </summary>
 public class ApplicationUserConfiguration : IEntityTypeConfiguration<ApplicationUser>
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)

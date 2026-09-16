@@ -17,19 +17,23 @@ using RetalSystemAPI.Services.Warehouses.Specifications;
 namespace RetalSystemAPI.Services.Sales.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة فواتير المبيعات وحركات البيع وخصم المخزون.
+/// تنفيذ خدمة إدارة فواتير المبيعات وحركات البيع وخصم المخزون والتحقق من كفاية الأرصدة.
 /// </summary>
 public class SalesInvoiceService : ISalesInvoiceService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة فواتير المبيعات مع حقن وحدة العمل والمحول.
+    /// </summary>
     public SalesInvoiceService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SalesInvoiceResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultAsync(new SalesInvoiceWithDetailsSpec(id), ct);
@@ -42,6 +46,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<SalesInvoiceResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SalesInvoiceResponseDto>> GetByInvoiceNumberAsync(string invoiceNumber, CancellationToken ct = default)
     {
         var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultAsync(new SalesInvoiceWithDetailsSpec(invoiceNumber), ct);
@@ -54,6 +59,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<SalesInvoiceResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<SalesInvoiceSummaryDto>>> GetAllAsync(
         Guid? branchId = null,
         Guid? warehouseId = null,
@@ -65,13 +71,14 @@ public class SalesInvoiceService : ISalesInvoiceService
         string? search = null,
         CancellationToken ct = default)
     {
-        var spec = new SalesInvoiceWithDetailsSpec(branchId, warehouseId, customerId, status, paymentMethod, fromDate, toDate, search);
+        var spec = new SalesInvoiceListSpec(branchId, warehouseId, customerId, status, paymentMethod, fromDate, toDate, search);
         var invoices = await _unitOfWork.SalesInvoices.FindAsync(spec, ct);
         var dtos = _mapper.Map<IReadOnlyList<SalesInvoiceSummaryDto>>(invoices);
 
         return ServiceResult<IReadOnlyList<SalesInvoiceSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<SalesInvoiceSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -85,7 +92,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         string? search = null,
         CancellationToken ct = default)
     {
-        var spec = new SalesInvoiceWithDetailsSpec(branchId, warehouseId, customerId, status, paymentMethod, fromDate, toDate, search);
+        var spec = new SalesInvoiceListSpec(branchId, warehouseId, customerId, status, paymentMethod, fromDate, toDate, search);
         var (items, totalCount) = await _unitOfWork.SalesInvoices.GetPagedAsync(spec, pageNumber, pageSize, ct);
 
         var dtos = _mapper.Map<IReadOnlyList<SalesInvoiceSummaryDto>>(items);
@@ -94,6 +101,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<PagedResult<SalesInvoiceSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SalesInvoiceResponseDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default)
     {
         bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
@@ -128,25 +136,70 @@ public class SalesInvoiceService : ISalesInvoiceService
             return ServiceResult<SalesInvoiceResponseDto>.Failure("يجب إضافة بند واحد على الأقل للفاتورة", ErrorCodes.ValidationError);
         }
 
-        // التحقق من كفاية المخزون وتجهيز البنود
-        foreach (var item in dto.Items)
+        // حل الباركود الافتراضي للأصناف إن لم يتم تحديده — دفعة واحدة لكل الأصناف
+        var productIdsNeedingDefaultBarcode = dto.Items
+            .Where(i => !i.ProductBarCodeId.HasValue)
+            .Select(i => i.ProductId)
+            .Distinct()
+            .ToList();
+
+        // ملاحظة: اختيار الباركود "الأول" لكل صنف يتبع نفس عدم الحتمية السابق (FirstOrDefault بلا ترتيب)
+        if (productIdsNeedingDefaultBarcode.Count > 0)
         {
-            if (warehouse.Type == WarehouseType.Show)
+            var defaultBarcodes = await _unitOfWork.ProductBarCodes.FindAsync(
+                b => productIdsNeedingDefaultBarcode.Contains(b.ProductId), ct);
+            var defaultBarcodeByProduct = defaultBarcodes
+                .GroupBy(b => b.ProductId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            foreach (var item in dto.Items)
             {
-                var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductId == item.ProductId, ct);
-                if (stock is null || stock.Quantity < item.Quantity)
+                if (!item.ProductBarCodeId.HasValue &&
+                    defaultBarcodeByProduct.TryGetValue(item.ProductId, out var defaultBarcode))
                 {
-                    return ServiceResult<SalesInvoiceResponseDto>.Failure($"الكمية المطلوبة غير متوفرة في صالة العرض للصنف المحدد", ErrorCodes.InsufficientShowroomStock);
+                    item.ProductBarCodeId = defaultBarcode.Id;
                 }
             }
-            else if (warehouse.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+        }
+
+        // جلب أرصدة المستودع دفعة واحدة حسب نوعه (فحص + خصم من نفس الكيانات المتتبعة)
+        if (warehouse.Type == WarehouseType.Show)
+        {
+            var productTotals = dto.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var warehouseProductIds = productTotals.Keys.ToList();
+            var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                s => s.WarehouseId == warehouse.Id && warehouseProductIds.Contains(s.ProductId), ct))
+                .ToDictionary(s => s.ProductId);
+
+            foreach (var (productId, totalQty) in productTotals)
             {
-                var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                if (stock is null || stock.Quantity < item.Quantity)
+                if (!stocksByProduct.TryGetValue(productId, out var stock) || stock.Quantity < totalQty)
                 {
-                    return ServiceResult<SalesInvoiceResponseDto>.Failure($"الكمية المطلوبة غير متوفرة في المخزن للصنف المحدد", ErrorCodes.InsufficientStock);
+                    return ServiceResult<SalesInvoiceResponseDto>.Failure("الكمية المطلوبة غير متوفرة في صالة العرض للصنف المحدد", ErrorCodes.InsufficientShowroomStock);
+                }
+            }
+        }
+        else if (warehouse.Type == WarehouseType.Storge)
+        {
+            foreach (var item in dto.Items)
+            {
+                if (!item.ProductBarCodeId.HasValue)
+                {
+                    return ServiceResult<SalesInvoiceResponseDto>.Failure("لم يتم العثور على باركود للصنف المحدد في المخزن", ErrorCodes.InsufficientStock);
+                }
+            }
+
+            var barcodeTotals = dto.Items.GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var warehouseBarcodeIds = barcodeTotals.Keys.ToList();
+            var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                s => s.WarehouseId == warehouse.Id && warehouseBarcodeIds.Contains(s.ProductBarcodeId), ct))
+                .ToDictionary(s => s.ProductBarcodeId);
+
+            foreach (var (barcodeId, totalQty) in barcodeTotals)
+            {
+                if (!stocksByBarcode.TryGetValue(barcodeId, out var stock) || stock.Quantity < totalQty)
+                {
+                    return ServiceResult<SalesInvoiceResponseDto>.Failure("الكمية المطلوبة غير متوفرة في المخزن للصنف المحدد", ErrorCodes.InsufficientStock);
                 }
             }
         }
@@ -166,27 +219,36 @@ public class SalesInvoiceService : ISalesInvoiceService
             LineTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount
         }).ToList();
 
-        // خصم الكميات من المخزون
-        foreach (var item in invoice.Items)
+        // خصم الكميات من المخزون — على نفس الأرصدة المتتبعة التي تم فحصها أعلاه (بدون استعلامات إضافية)
+        if (warehouse.Type == WarehouseType.Show)
         {
-            if (warehouse.Type == WarehouseType.Show)
+            var productTotals = invoice.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var warehouseProductIds = productTotals.Keys.ToList();
+            var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                s => s.WarehouseId == warehouse.Id && warehouseProductIds.Contains(s.ProductId), ct))
+                .ToDictionary(s => s.ProductId);
+
+            foreach (var (productId, totalQty) in productTotals)
             {
-                var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductId == item.ProductId, ct);
-                if (stock != null)
+                if (stocksByProduct.TryGetValue(productId, out var stock))
                 {
-                    stock.Quantity -= item.Quantity;
-                    _unitOfWork.ShowroomStocks.Update(stock);
+                    stock.Quantity -= totalQty;
                 }
             }
-            else if (warehouse.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+        }
+        else if (warehouse.Type == WarehouseType.Storge)
+        {
+            var barcodeTotals = invoice.Items.Where(i => i.ProductBarCodeId.HasValue).GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var warehouseBarcodeIds = barcodeTotals.Keys.ToList();
+            var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                s => s.WarehouseId == warehouse.Id && warehouseBarcodeIds.Contains(s.ProductBarcodeId), ct))
+                .ToDictionary(s => s.ProductBarcodeId);
+
+            foreach (var (barcodeId, totalQty) in barcodeTotals)
             {
-                var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                if (stock != null)
+                if (stocksByBarcode.TryGetValue(barcodeId, out var stock))
                 {
-                    stock.Quantity -= item.Quantity;
-                    _unitOfWork.StorgeStocks.Update(stock);
+                    stock.Quantity -= totalQty;
                 }
             }
         }
@@ -200,12 +262,198 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<SalesInvoiceResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SalesInvoiceResponseDto>> UpdateAsync(Guid id, UpdateSalesInvoiceDto dto, CancellationToken ct = default)
     {
-        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultAsync(new SalesInvoiceWithDetailsSpec(id), ct);
+        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync(new SalesInvoiceWithDetailsSpec(id), ct);
         if (invoice is null)
         {
             return ServiceResult<SalesInvoiceResponseDto>.Failure("فاتورة المبيعات غير موجودة", ErrorCodes.SalesInvoiceNotFound);
+        }
+
+        // قاعدة قفل الترحيل: الفواتير المدفوعة/المرحلة وفواتير نقاط البيع مغلقة نهائياً — التعديل عبر الإلغاء أو المرتجع
+        if (invoice.Status == InvoiceStatus.Paid || invoice.Status == InvoiceStatus.PartiallyPaid)
+        {
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة مدفوعة — استخدم الإلغاء أو تسجيل مرتجع", ErrorCodes.ValidationError);
+        }
+
+        if (invoice.Status == InvoiceStatus.Cancelled || invoice.Status == InvoiceStatus.Voided)
+        {
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة ملغاة أو باطلة", ErrorCodes.ValidationError);
+        }
+
+        if (invoice.InvoiceNumber.StartsWith("POS-", StringComparison.OrdinalIgnoreCase))
+        {
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("فواتير نقاط البيع مغلقة نهائياً — لا يمكن تعديلها، استخدم المرتجع أو الإلغاء", ErrorCodes.ValidationError);
+        }
+
+        var warehouse = invoice.Warehouse ?? await _unitOfWork.Warehouses.GetByIdAsync(invoice.WarehouseId, ct);
+        if (warehouse is null)
+        {
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("المستودع أو صالة العرض غير موجودة", ErrorCodes.WarehouseNotFound);
+        }
+
+        // في حال تم إرسال بنود جديدة لتعديل الفاتورة (القائمة الفارغة مرفوضة كي لا يُفلت استرجاع كمية البنود المحذوفة)
+        if (dto.Items != null)
+        {
+            if (!dto.Items.Any())
+            {
+                return ServiceResult<SalesInvoiceResponseDto>.Failure("يجب أن تحتوي الفاتورة على بند واحد على الأقل", ErrorCodes.ValidationError);
+            }
+
+            // حل الباركود الافتراضي دفعة واحدة
+            var productIdsNeedingDefaultBarcode = dto.Items
+                .Where(i => !i.ProductBarCodeId.HasValue)
+                .Select(i => i.ProductId)
+                .Distinct()
+                .ToList();
+
+            if (productIdsNeedingDefaultBarcode.Count > 0)
+            {
+                var defaultBarcodes = await _unitOfWork.ProductBarCodes.FindAsync(
+                    b => productIdsNeedingDefaultBarcode.Contains(b.ProductId), ct);
+                var defaultBarcodeByProduct = defaultBarcodes
+                    .GroupBy(b => b.ProductId)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                foreach (var item in dto.Items)
+                {
+                    if (!item.ProductBarCodeId.HasValue &&
+                        defaultBarcodeByProduct.TryGetValue(item.ProductId, out var defaultBarcode))
+                    {
+                        item.ProductBarCodeId = defaultBarcode.Id;
+                    }
+                }
+            }
+
+            // 1. استعادة أرصدة المخزون القديمة مؤقتاً وجلب الأرصدة المعنية دفعة واحدة
+            if (warehouse.Type == WarehouseType.Show)
+            {
+                var oldProductIds = invoice.Items.Select(i => i.ProductId).Distinct().ToList();
+                var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    s => s.WarehouseId == warehouse.Id && oldProductIds.Contains(s.ProductId), ct))
+                    .ToDictionary(s => s.ProductId);
+
+                foreach (var oldItem in invoice.Items)
+                {
+                    if (stocksByProduct.TryGetValue(oldItem.ProductId, out var stock))
+                    {
+                        stock.Quantity += oldItem.Quantity;
+                    }
+                }
+
+                // 2. التحقق من كفاية الأرصدة للبنود الجديدة (نفس الكيانات المتتبعة)
+                var requiredShowStock = dto.Items
+                    .GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+
+                foreach (var (productId, qty) in requiredShowStock)
+                {
+                    if (!stocksByProduct.TryGetValue(productId, out var stock) || stock.Quantity < qty)
+                    {
+                        // التراجع عن الزيادة المؤقتة
+                        foreach (var oldItem in invoice.Items)
+                        {
+                            if (stocksByProduct.TryGetValue(oldItem.ProductId, out var s))
+                            {
+                                s.Quantity -= oldItem.Quantity;
+                            }
+                        }
+                        return ServiceResult<SalesInvoiceResponseDto>.Failure("الكمية المطلوبة غير متوفرة في صالة العرض للصنف المحدد", ErrorCodes.InsufficientShowroomStock);
+                    }
+                }
+
+                // 3. خصم الكميات الجديدة (نفس الكيانات المتتبعة)
+                foreach (var (productId, qty) in requiredShowStock)
+                {
+                    if (stocksByProduct.TryGetValue(productId, out var stock))
+                    {
+                        stock.Quantity -= qty;
+                    }
+                }
+            }
+            else if (warehouse.Type == WarehouseType.Storge)
+            {
+                var oldBarcodeIds = invoice.Items
+                    .Where(i => i.ProductBarCodeId.HasValue)
+                    .Select(i => i.ProductBarCodeId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var stocksByBarcode = oldBarcodeIds.Count > 0
+                    ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        s => s.WarehouseId == warehouse.Id && oldBarcodeIds.Contains(s.ProductBarcodeId), ct))
+                        .ToDictionary(s => s.ProductBarcodeId)
+                    : new Dictionary<Guid, StorgeStock>();
+
+                foreach (var oldItem in invoice.Items)
+                {
+                    if (oldItem.ProductBarCodeId.HasValue &&
+                        stocksByBarcode.TryGetValue(oldItem.ProductBarCodeId.Value, out var stock))
+                    {
+                        stock.Quantity += oldItem.Quantity;
+                    }
+                }
+
+                var requiredStorgeStock = dto.Items
+                    .Where(i => i.ProductBarCodeId.HasValue)
+                    .GroupBy(i => i.ProductBarCodeId!.Value)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+
+                foreach (var (barcodeId, qty) in requiredStorgeStock)
+                {
+                    if (!stocksByBarcode.TryGetValue(barcodeId, out var stock) || stock.Quantity < qty)
+                    {
+                        // التراجع عن الزيادة المؤقتة
+                        foreach (var oldItem in invoice.Items)
+                        {
+                            if (oldItem.ProductBarCodeId.HasValue &&
+                                stocksByBarcode.TryGetValue(oldItem.ProductBarCodeId.Value, out var s))
+                            {
+                                s.Quantity -= oldItem.Quantity;
+                            }
+                        }
+                        return ServiceResult<SalesInvoiceResponseDto>.Failure("الكمية المطلوبة غير متوفرة في المخزن للصنف المحدد", ErrorCodes.InsufficientStock);
+                    }
+                }
+
+                foreach (var (barcodeId, qty) in requiredStorgeStock)
+                {
+                    if (stocksByBarcode.TryGetValue(barcodeId, out var stock))
+                    {
+                        stock.Quantity -= qty;
+                    }
+                }
+            }
+
+            // 4. تحديث قائمة بنود الفاتورة وحساب الإجماليات
+            invoice.Items.Clear();
+            decimal subTotal = 0;
+            decimal totalDiscount = 0;
+            foreach (var item in dto.Items)
+            {
+                var lineDiscount = item.DiscountAmount;
+                var lineTotal = (item.Quantity * item.UnitPrice) - lineDiscount;
+                subTotal += (item.Quantity * item.UnitPrice);
+                totalDiscount += lineDiscount;
+
+                invoice.Items.Add(new SalesInvoiceItem
+                {
+                    TenantId = invoice.TenantId,
+                    SalesInvoiceId = invoice.Id,
+                    ProductId = item.ProductId,
+                    ProductBarCodeId = item.ProductBarCodeId,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    UnitCost = item.UnitCost,
+                    DiscountAmount = lineDiscount,
+                    LineTotal = lineTotal
+                });
+            }
+
+            invoice.SubTotal = subTotal;
+            invoice.DiscountAmount = totalDiscount;
+            invoice.TotalAmount = subTotal - totalDiscount;
         }
 
         invoice.Status = dto.Status;
@@ -223,9 +471,11 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<SalesInvoiceResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SalesInvoiceResponseDto>> UpdateStatusAsync(Guid id, InvoiceStatus status, CancellationToken ct = default)
     {
-        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultAsync(new SalesInvoiceWithDetailsSpec(id), ct);
+        // جلب الفاتورة متتبعةً حتى تُحفظ تعديلاتها (الحالة + أثر استرجاع المخزون) عند الحفظ
+        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync(new SalesInvoiceWithDetailsSpec(id), ct);
         if (invoice is null)
         {
             return ServiceResult<SalesInvoiceResponseDto>.Failure("فاتورة المبيعات غير موجودة", ErrorCodes.SalesInvoiceNotFound);
@@ -235,34 +485,49 @@ public class SalesInvoiceService : ISalesInvoiceService
                             (invoice.Status != InvoiceStatus.Cancelled && invoice.Status != InvoiceStatus.Voided);
 
         invoice.Status = status;
-        _unitOfWork.SalesInvoices.Update(invoice);
 
-        // استعادة المخزون في حال إلغاء الفاتورة
+        // استعادة المخزون في حال إلغاء الفاتورة — دفعة أرصدة واحدة
         if (isCancelling && invoice.Items != null && invoice.Items.Any())
         {
             var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(invoice.WarehouseId, ct);
             if (warehouse != null)
             {
-                foreach (var item in invoice.Items)
+                if (warehouse.Type == WarehouseType.Show)
                 {
-                    if (warehouse.Type == WarehouseType.Show)
+                    var productIds = invoice.Items.Select(i => i.ProductId).Distinct().ToList();
+                    var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
+                        .ToDictionary(s => s.ProductId);
+
+                    foreach (var item in invoice.Items)
                     {
-                        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                            s => s.WarehouseId == warehouse.Id && s.ProductId == item.ProductId, ct);
-                        if (stock != null)
+                        if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
                         {
                             stock.Quantity += item.Quantity;
-                            _unitOfWork.ShowroomStocks.Update(stock);
                         }
                     }
-                    else if (warehouse.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+                }
+                else if (warehouse.Type == WarehouseType.Storge)
+                {
+                    var barcodeIds = invoice.Items
+                        .Where(i => i.ProductBarCodeId.HasValue)
+                        .Select(i => i.ProductBarCodeId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (barcodeIds.Count > 0)
                     {
-                        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                            s => s.WarehouseId == warehouse.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                        if (stock != null)
+                        var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                            s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
+                            .ToDictionary(s => s.ProductBarcodeId);
+
+                        foreach (var item in invoice.Items)
                         {
-                            stock.Quantity += item.Quantity;
-                            _unitOfWork.StorgeStocks.Update(stock);
+                            if (item.ProductBarCodeId.HasValue &&
+                                stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
+                            {
+                                stock.Quantity += item.Quantity;
+                            }
                         }
                     }
                 }
@@ -277,12 +542,68 @@ public class SalesInvoiceService : ISalesInvoiceService
         return ServiceResult<SalesInvoiceResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultAsync(new SalesInvoiceWithDetailsSpec(id), ct);
+        var invoice = await _unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync(new SalesInvoiceWithDetailsSpec(id), ct);
         if (invoice is null)
         {
             return ServiceResult.Failure("فاتورة المبيعات غير موجودة", ErrorCodes.SalesInvoiceNotFound);
+        }
+
+        // منع حذف فاتورة لها مرتجعات مرتبطة — يلزم حذف المرتجعات أولاً
+        bool hasReturns = await _unitOfWork.SalesReturns.ExistsAsync(r => r.OriginalInvoiceId == id, ct);
+        if (hasReturns)
+        {
+            return ServiceResult.Failure("لا يمكن حذف فاتورة لها مرتجعات مرتبطة — احذف المرتجعات أولاً", ErrorCodes.ValidationError);
+        }
+
+        // استرجاع المخزون إذا تم حذف فاتورة نشطة — دفعة أرصدة واحدة
+        if (invoice.Status != InvoiceStatus.Cancelled && invoice.Status != InvoiceStatus.Voided && invoice.Items != null && invoice.Items.Any())
+        {
+            var warehouse = invoice.Warehouse ?? await _unitOfWork.Warehouses.GetByIdAsync(invoice.WarehouseId, ct);
+            if (warehouse != null)
+            {
+                if (warehouse.Type == WarehouseType.Show)
+                {
+                    var productIds = invoice.Items.Select(i => i.ProductId).Distinct().ToList();
+                    var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
+                        .ToDictionary(s => s.ProductId);
+
+                    foreach (var item in invoice.Items)
+                    {
+                        if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
+                        {
+                            stock.Quantity += item.Quantity;
+                        }
+                    }
+                }
+                else if (warehouse.Type == WarehouseType.Storge)
+                {
+                    var barcodeIds = invoice.Items
+                        .Where(i => i.ProductBarCodeId.HasValue)
+                        .Select(i => i.ProductBarCodeId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (barcodeIds.Count > 0)
+                    {
+                        var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                            s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
+                            .ToDictionary(s => s.ProductBarcodeId);
+
+                        foreach (var item in invoice.Items)
+                        {
+                            if (item.ProductBarCodeId.HasValue &&
+                                stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
+                            {
+                                stock.Quantity += item.Quantity;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         _unitOfWork.SalesInvoices.SoftDelete(invoice);

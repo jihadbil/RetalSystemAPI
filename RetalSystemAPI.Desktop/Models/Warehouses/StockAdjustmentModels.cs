@@ -5,13 +5,11 @@ namespace RetalSystemAPI.Desktop.Models.Warehouses;
 
 public enum StockAdjustmentReason
 {
-    InventoryCount = 0,
-    DamagedGoods = 1,
-    ExpiredGoods = 2,
-    TheftOrLoss = 3,
-    FoundStock = 4,
-    DataEntryCorrection = 5,
-    Other = 6
+    InventoryCount = 1,
+    Damaged = 2,
+    Expired = 3,
+    InitialSetup = 4,
+    Other = 5
 }
 
 public class StockAdjustmentDto
@@ -25,11 +23,9 @@ public class StockAdjustmentDto
     public string ReasonName => Reason switch
     {
         StockAdjustmentReason.InventoryCount => "جرد دوري / سنوي",
-        StockAdjustmentReason.DamagedGoods => "بضاعة تالفة",
-        StockAdjustmentReason.ExpiredGoods => "بضاعة منتهية الصلاحية",
-        StockAdjustmentReason.TheftOrLoss => "فقدان أو سرقة",
-        StockAdjustmentReason.FoundStock => "بضاعة معثور عليها زائفة",
-        StockAdjustmentReason.DataEntryCorrection => "تصحيح خطأ إدخال",
+        StockAdjustmentReason.Damaged => "بضاعة تالفة",
+        StockAdjustmentReason.Expired => "بضاعة منتهية الصلاحية",
+        StockAdjustmentReason.InitialSetup => "إعداد رصيد افتتاحي",
         StockAdjustmentReason.Other => "أسباب أخرى",
         _ => "أخرى"
     };
@@ -47,11 +43,9 @@ public class StockAdjustmentSummaryDto
     public string ReasonName => Reason switch
     {
         StockAdjustmentReason.InventoryCount => "جرد دوري",
-        StockAdjustmentReason.DamagedGoods => "بضاعة تالفة",
-        StockAdjustmentReason.ExpiredGoods => "منتهي الصلاحية",
-        StockAdjustmentReason.TheftOrLoss => "عجز / فقدان",
-        StockAdjustmentReason.FoundStock => "فائض معثور عليه",
-        StockAdjustmentReason.DataEntryCorrection => "تصحيح خطأ إدخال",
+        StockAdjustmentReason.Damaged => "بضاعة تالفة",
+        StockAdjustmentReason.Expired => "منتهي الصلاحية",
+        StockAdjustmentReason.InitialSetup => "رصيد افتتاحي",
         StockAdjustmentReason.Other => "أخرى",
         _ => "أخرى"
     };
@@ -63,10 +57,14 @@ public class StockAdjustmentItemDto
     public Guid Id { get; set; }
     public Guid ProductId { get; set; }
     public string? ProductName { get; set; }
+    public Guid? ProductBarCodeId { get; set; }
+    public string? BarcodeTitle { get; set; }
+    public string? BarcodeValue { get; set; }
     public int SystemQuantity { get; set; }
     public int ActualQuantity { get; set; }
     public int DifferenceQuantity { get; set; }
     public decimal UnitCost { get; set; }
+    public StockAdjustmentReason Reason { get; set; } = StockAdjustmentReason.InventoryCount;
 }
 
 public class CreateStockAdjustmentRequest
@@ -84,8 +82,19 @@ public class CreateStockAdjustmentItemRequest
     public Guid ProductId { get; set; }
     public string? ProductName { get; set; }
     public Guid? ProductBarCodeId { get; set; }
+    public string? BarcodeTitle { get; set; }
+    public string? BarcodeValue { get; set; }
     public int SystemQuantity { get; set; }
     public int ActualQuantity { get; set; } = 1;
     public int DifferenceQuantity => ActualQuantity - SystemQuantity;
     public decimal UnitCost { get; set; }
+    public StockAdjustmentReason Reason { get; set; } = StockAdjustmentReason.InventoryCount;
+    public string ReasonDisplay => Reason switch
+    {
+        StockAdjustmentReason.InventoryCount => "جرد دوري",
+        StockAdjustmentReason.Damaged => "بضاعة تالفة",
+        StockAdjustmentReason.Expired => "منتهي الصلاحية",
+        StockAdjustmentReason.InitialSetup => "رصيد افتتاحي",
+        _ => "أخرى"
+    };
 }

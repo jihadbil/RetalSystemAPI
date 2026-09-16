@@ -35,11 +35,29 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.BarcodeTitle, opt => opt.MapFrom(src => src.ProductBarcode != null ? src.ProductBarcode.Title : null!))
             .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarcode != null ? src.ProductBarcode.BarCode : null!))
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.ProductBarcode != null && src.ProductBarcode.Product != null ? src.ProductBarcode.Product.Name : null!))
+            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src =>
+                src.ProductBarcode != null && src.ProductBarcode.Product != null
+                    ? (src.ProductBarcode.Product.ProductImages.FirstOrDefault(i => i.BarcodeId == src.ProductBarcodeId) != null
+                        ? src.ProductBarcode.Product.ProductImages.First(i => i.BarcodeId == src.ProductBarcodeId).ImageUrl
+                        : (src.ProductBarcode.Product.ProductImages.FirstOrDefault(i => i.IsDefault) != null
+                            ? src.ProductBarcode.Product.ProductImages.First(i => i.IsDefault).ImageUrl
+                            : (src.ProductBarcode.Product.ProductImages.FirstOrDefault() != null
+                                ? src.ProductBarcode.Product.ProductImages.First().ImageUrl
+                                : null)))
+                    : null))
             .ForMember(dest => dest.IsBelowMinLevel, opt => opt.MapFrom(src => src.Quantity < src.MinStockLevel));
 
         CreateMap<ShowroomStock, ShowroomStockResponseDto>()
             .ForMember(dest => dest.WarehouseName, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Name : null!))
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null!))
+            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src =>
+                src.Product != null
+                    ? (src.Product.ProductImages.FirstOrDefault(i => i.IsDefault) != null
+                        ? src.Product.ProductImages.First(i => i.IsDefault).ImageUrl
+                        : (src.Product.ProductImages.FirstOrDefault() != null
+                            ? src.Product.ProductImages.First().ImageUrl
+                            : null))
+                    : null))
             .ForMember(dest => dest.IsBelowMinLevel, opt => opt.MapFrom(src => src.Quantity < src.MinStockLevel));
 
         // ── StockTransfer ─────────────────────────────────────────
@@ -104,7 +122,13 @@ public class WarehouseMappingProfile : Profile
         CreateMap<StockAdjustmentItem, StockAdjustmentItemResponseDto>()
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty))
             .ForMember(dest => dest.BarcodeTitle, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.Title : null))
-            .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null));
+            .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null))
+            .ForMember(dest => dest.ReasonName, opt => opt.MapFrom(src =>
+                src.Reason == StockAdjustmentReason.InventoryCount ? "جرد دوري" :
+                src.Reason == StockAdjustmentReason.Damaged ? "بضاعة تالفة" :
+                src.Reason == StockAdjustmentReason.Expired ? "بضاعة منتهية الصلاحية" :
+                src.Reason == StockAdjustmentReason.InitialSetup ? "رصيد افتتاحي" :
+                src.Reason == StockAdjustmentReason.Other ? "أخرى" : src.Reason.ToString()));
 
         CreateMap<StockAdjustmentItemDto, StockAdjustmentItem>()
             .ForMember(dest => dest.DifferenceQuantity, opt => opt.MapFrom(src => src.ActualQuantity - src.SystemQuantity));

@@ -6,6 +6,7 @@ namespace RetalSystemAPI.Desktop.Models.Sales;
 public enum InvoiceStatus
 {
     Draft = 0,
+    Pending = 1,
     Issued = 1,
     Paid = 2,
     PartiallyPaid = 3,
@@ -15,11 +16,13 @@ public enum InvoiceStatus
 
 public enum PaymentMethod
 {
-    Cash = 0,
-    Card = 1,
+    Cash = 1,
     BankTransfer = 2,
-    Credit = 3,
-    Multiple = 4
+    CreditCard = 3,
+    Card = 3,
+    Credit = 4,
+    Cheque = 5,
+    Multiple = 6
 }
 
 public class SalesInvoiceDto
@@ -52,6 +55,7 @@ public class SalesInvoiceDto
         PaymentMethod.Card => "بطاقة مصرفية",
         PaymentMethod.BankTransfer => "تحويل مصرفي",
         PaymentMethod.Credit => "آجل / على الحساب",
+        PaymentMethod.Cheque => "صك",
         PaymentMethod.Multiple => "دفعات متعددة",
         _ => "نقداً"
     };
@@ -98,11 +102,12 @@ public class SalesInvoiceItemDto
 {
     public Guid Id { get; set; }
     public Guid ProductId { get; set; }
-    public string? ProductName { get; set; }
+    public string ProductName { get; set; } = null!;
     public Guid? ProductBarCodeId { get; set; }
-    public string? BarCode { get; set; }
+    public string? Barcode { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal UnitCost { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal LineTotal { get; set; }
 }
@@ -113,9 +118,9 @@ public class CreateSalesInvoiceRequest
     public Guid BranchId { get; set; }
     public Guid WarehouseId { get; set; }
     public Guid? CustomerId { get; set; }
-    public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
+    public DateTime InvoiceDate { get; set; } = DateTime.Now;
     public DateTime? DueDate { get; set; }
-    public InvoiceStatus Status { get; set; } = InvoiceStatus.Issued;
+    public InvoiceStatus Status { get; set; } = InvoiceStatus.Paid;
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
@@ -144,4 +149,5 @@ public class UpdateSalesInvoiceRequest
     public PaymentMethod PaymentMethod { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
+    public List<CreateSalesInvoiceItemRequest>? Items { get; set; }
 }

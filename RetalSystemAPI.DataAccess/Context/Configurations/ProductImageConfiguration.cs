@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لصور الأصناف والباركودات (ProductImages).
+/// </summary>
 public class ProductImageConfiguration : IEntityTypeConfiguration<ProductImage>
 {
     public void Configure(EntityTypeBuilder<ProductImage> builder)

@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Purchase;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لأوامر وطلبات الشراء (PurchaseOrders).
+/// </summary>
 public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder>
 {
     public void Configure(EntityTypeBuilder<PurchaseOrder> builder)

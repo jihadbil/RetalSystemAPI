@@ -5,10 +5,10 @@ namespace RetalSystemAPI.Desktop.Models.Warehouses;
 
 public enum StockTransferStatus
 {
-    Draft = 0,
-    Confirmed = 1,
-    Completed = 2,
-    Cancelled = 3
+    Draft = 1,
+    Confirmed = 2,
+    Completed = 3,
+    Cancelled = 4
 }
 
 public class StockTransferDto
@@ -78,6 +78,8 @@ public class CreateStockTransferItemRequest
     public Guid ProductId { get; set; }
     public string? ProductName { get; set; }
     public Guid? ProductBarCodeId { get; set; }
+    public string? BarcodeTitle { get; set; }
+    public string? BarcodeValue { get; set; }
     public int Quantity { get; set; } = 1;
     public string? Notes { get; set; }
 }

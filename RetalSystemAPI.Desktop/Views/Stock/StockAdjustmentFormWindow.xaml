@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:warehouses="clr-namespace:RetalSystemAPI.Desktop.Models.Warehouses"
-        Title="تسجيل تسوية جردية" Height="680" Width="820"
+        Title="تسجيل تسوية جردية" Height="680" Width="880"
         WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
-        Background="#FFFFFF" ResizeMode="NoResize">
+        Background="{DynamicResource SurfaceBrush}" ResizeMode="NoResize" Foreground="{DynamicResource TextPrimaryBrush}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -15,7 +15,7 @@
 
         <!-- Header -->
         <TextBlock Text="⚖️ تسجيل تسوية جردية وضبط الفوارق المخزنية" 
-                   FontSize="20" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
+                   FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,16"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,0,10,0">
@@ -28,80 +28,110 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="رقم التسوية *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding AdjustmentNumber, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+                        <TextBlock Text="رقم التسوية *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding AdjustmentNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" IsReadOnly="{Binding IsViewOnly}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="6,0,6,0">
-                        <TextBlock Text="المستودع / الصالة المعنية *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="المستودع / الصالة المعنية *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Margin="6,0,0,0">
-                        <TextBlock Text="سبب التسوية *" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
+                        <TextBlock Text="سبب التسوية *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <ComboBox SelectedValue="{Binding Reason}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}">
                             <ComboBoxItem Content="جرد دوري / سنوي" Tag="{x:Static warehouses:StockAdjustmentReason.InventoryCount}" IsSelected="True"/>
-                            <ComboBoxItem Content="بضاعة تالفة" Tag="{x:Static warehouses:StockAdjustmentReason.DamagedGoods}"/>
-                            <ComboBoxItem Content="بضاعة منتهية الصلاحية" Tag="{x:Static warehouses:StockAdjustmentReason.ExpiredGoods}"/>
-                            <ComboBoxItem Content="فقدان أو سرقة" Tag="{x:Static warehouses:StockAdjustmentReason.TheftOrLoss}"/>
-                            <ComboBoxItem Content="بضاعة معثور عليها زائفة" Tag="{x:Static warehouses:StockAdjustmentReason.FoundStock}"/>
-                            <ComboBoxItem Content="تصحيح خطأ إدخال" Tag="{x:Static warehouses:StockAdjustmentReason.DataEntryCorrection}"/>
+                            <ComboBoxItem Content="بضاعة تالفة" Tag="{x:Static warehouses:StockAdjustmentReason.Damaged}"/>
+                            <ComboBoxItem Content="بضاعة منتهية الصلاحية" Tag="{x:Static warehouses:StockAdjustmentReason.Expired}"/>
+                            <ComboBoxItem Content="إعداد رصيد افتتاحي" Tag="{x:Static warehouses:StockAdjustmentReason.InitialSetup}"/>
                             <ComboBoxItem Content="أسباب أخرى" Tag="{x:Static warehouses:StockAdjustmentReason.Other}"/>
                         </ComboBox>
                     </StackPanel>
                 </Grid>
 
                 <!-- Add Items Section (visible only in create mode) -->
-                <Border Background="#F9FAFB" CornerRadius="8" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12"
+                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12"
                         Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Text="📊 إضافة بنود الأصناف للجرد" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,8"/>
+                        <TextBlock Text="📊 إضافة بنود الأصناف للجرد" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2.5*"/>
-                                <ColumnDefinition Width="1*"/>
-                                <ColumnDefinition Width="1*"/>
-                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="2.2*"/>
+                                <ColumnDefinition Width="1.6*"/>
+                                <ColumnDefinition Width="1.4*"/>
+                                <ColumnDefinition Width="0.9*"/>
+                                <ColumnDefinition Width="0.9*"/>
+                                <ColumnDefinition Width="0.9*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="الصنف" FontSize="11" Foreground="#6B7280"/>
+                                <TextBlock Text="بحث بالاسم أو الباركود" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding ProductSearchTerm, UpdateSourceTrigger=PropertyChanged, Delay=300}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
+                                <CheckBox Content="مطابقة الباركود تماماً" IsChecked="{Binding ExactBarcodeMatch}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" ToolTip="يقتصر البحث على التطابق التام مع رقم الباركود"/>
+                                <TextBlock Text="الصنف العام (اكتب للبحث)" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,6,0,4"/>
                                 <ComboBox ItemsSource="{Binding AvailableProducts}" SelectedItem="{Binding SelectedProductToAdd}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="4,0,4,0">
-                                <TextBlock Text="الكمية الدفترية" FontSize="11" Foreground="#6B7280"/>
-                                <TextBox Text="{Binding SystemQuantityToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                                <TextBlock Text="النكهة / الباركود" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <ComboBox ItemsSource="{Binding AvailableBarcodes}" SelectedItem="{Binding SelectedBarcodeToAdd}" Height="34" VerticalContentAlignment="Center"
+                                          IsEnabled="{Binding IsStorageWarehouse}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Title, TargetNullValue='افتراضي'}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding BarCode, StringFormat='{} ({0})'}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Margin="4,0,4,0">
-                                <TextBlock Text="الكمية الفعلية" FontSize="11" Foreground="#6B7280"/>
-                                <TextBox Text="{Binding ActualQuantityToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                                <TextBlock Text="سبب البند" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <ComboBox SelectedValue="{Binding ReasonToAdd}" SelectedValuePath="Tag" Height="34" VerticalContentAlignment="Center">
+                                    <ComboBoxItem Content="جرد دوري" Tag="{x:Static warehouses:StockAdjustmentReason.InventoryCount}" IsSelected="True"/>
+                                    <ComboBoxItem Content="بضاعة تالفة" Tag="{x:Static warehouses:StockAdjustmentReason.Damaged}"/>
+                                    <ComboBoxItem Content="منتهي الصلاحية" Tag="{x:Static warehouses:StockAdjustmentReason.Expired}"/>
+                                    <ComboBoxItem Content="رصيد افتتاحي" Tag="{x:Static warehouses:StockAdjustmentReason.InitialSetup}"/>
+                                    <ComboBoxItem Content="أخرى" Tag="{x:Static warehouses:StockAdjustmentReason.Other}"/>
+                                </ComboBox>
                             </StackPanel>
 
                             <StackPanel Grid.Column="3" Margin="4,0,4,0">
-                                <TextBlock Text="التكلفة التقديرية" FontSize="11" Foreground="#6B7280"/>
-                                <TextBox Text="{Binding UnitCostToAdd, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="#FFFFFF"/>
+                                <TextBlock Text="الكمية الدفترية" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding SystemQuantityToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceActiveBrush}" IsReadOnly="True"/>
                             </StackPanel>
 
-                            <Button Grid.Column="4" Content="+ إضافة" Command="{Binding AddItemCommand}" VerticalAlignment="Bottom" Height="34" Padding="14,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                            <StackPanel Grid.Column="4" Margin="4,0,4,0">
+                                <TextBlock Text="الكمية الفعلية" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding ActualQuantityToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="5" Margin="4,0,4,0">
+                                <TextBlock Text="التكلفة التقديرية" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBox Text="{Binding UnitCostToAdd, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="34" VerticalContentAlignment="Center" Padding="6,0" Background="{DynamicResource SurfaceBrush}"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="6" Content="+ إضافة" Command="{Binding AddItemCommand}" VerticalAlignment="Bottom" Height="34" Padding="14,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Items DataGrid -->
-                <Border Background="#FFFFFF" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" Margin="0,0,0,12">
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
                     <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="140" MaxHeight="220" GridLinesVisibility="Horizontal" HeadersVisibility="Column" Background="Transparent" RowHeight="34">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="2.5*"/>
-                            <DataGridTextColumn Header="الكمية الدفترية (النظام)" Binding="{Binding SystemQuantity}" Width="1.3*"/>
-                            <DataGridTextColumn Header="الكمية الفعلية (الجرد)" Binding="{Binding ActualQuantity}" Width="1.3*"/>
-                            <DataGridTextColumn Header="الفارق" Binding="{Binding DifferenceQuantity}" Width="1*"/>
+                            <DataGridTextColumn Header="الصنف / النكهة / الباركود" Binding="{Binding ProductName}" Width="2.2*"/>
+                            <DataGridTextColumn Header="سبب البند" Binding="{Binding ReasonDisplay}" Width="1.1*"/>
+                            <DataGridTextColumn Header="الكمية الدفترية" Binding="{Binding SystemQuantity}" Width="1*"/>
+                            <DataGridTextColumn Header="الكمية الفعلية" Binding="{Binding ActualQuantity}" Width="1*"/>
+                            <DataGridTextColumn Header="الفارق" Binding="{Binding DifferenceQuantity}" Width="0.9*"/>
                             <DataGridTemplateColumn Header="حذف" Width="60">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
+                                        <Button Content="✕" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Background="{DynamicResource DangerBrush}" Foreground="White" FontWeight="Bold" BorderThickness="0" Width="24" Height="24" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -109,16 +139,16 @@
                     </DataGrid>
                 </Border>
 
-                <TextBlock Text="ملاحظات التسوية" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#F9FAFB" IsReadOnly="{Binding IsViewOnly}"/>
+                <TextBlock Text="ملاحظات التسوية" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="{DynamicResource SurfaceHoverBrush}" IsReadOnly="{Binding IsViewOnly}"/>
             </StackPanel>
         </ScrollViewer>
 
         <!-- Footer Actions -->
         <DockPanel Grid.Row="2" Margin="0,16,0,0">
-            <Button Content="حفظ وتطبيق التسوية الجردية" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="#38E07B" Foreground="#0F291E" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+            <Button Content="حفظ وتطبيق التسوية الجردية" Command="{Binding SaveCommand}" DockPanel.Dock="Left" Height="40" Padding="24,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
                     Visibility="{Binding IsViewOnly, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#EF4444" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
         </DockPanel>
     </Grid>
 </Window>

@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Suppliers;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبيانات الموردين (Suppliers) والأرصدة الافتتاحية والفهارس.
+/// </summary>
 public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
 {
     public void Configure(EntityTypeBuilder<Supplier> builder)

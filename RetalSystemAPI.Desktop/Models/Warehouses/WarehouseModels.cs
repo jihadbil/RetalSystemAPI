@@ -52,9 +52,14 @@ public class StorgeStockDto
     public string BarcodeTitle { get; set; } = null!;
     public string BarcodeValue { get; set; } = null!;
     public string ProductName { get; set; } = null!;
+    public string? ImageUrl { get; set; }
     public int Quantity { get; set; }
     public int MinStockLevel { get; set; }
     public bool IsBelowMinLevel { get; set; }
+
+    public string? DisplayImageUrl => !string.IsNullOrWhiteSpace(ImageUrl)
+        ? (ImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? ImageUrl : $"https://localhost:7226/{ImageUrl.TrimStart('/')}")
+        : null;
 }
 
 public class SetStorgeStockRequest
@@ -72,9 +77,14 @@ public class ShowroomStockDto
     public string WarehouseName { get; set; } = null!;
     public Guid ProductId { get; set; }
     public string ProductName { get; set; } = null!;
+    public string? ImageUrl { get; set; }
     public int Quantity { get; set; }
     public int MinStockLevel { get; set; }
     public bool IsBelowMinLevel { get; set; }
+
+    public string? DisplayImageUrl => !string.IsNullOrWhiteSpace(ImageUrl)
+        ? (ImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? ImageUrl : $"https://localhost:7226/{ImageUrl.TrimStart('/')}")
+        : null;
 }
 
 public class SetShowroomStockRequest

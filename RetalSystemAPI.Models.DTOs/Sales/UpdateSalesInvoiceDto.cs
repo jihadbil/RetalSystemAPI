@@ -17,4 +17,6 @@ public class UpdateSalesInvoiceDto
 
     [MaxLength(500, ErrorMessage = "الملاحظات يجب أن لا تتجاوز 500 حرف")]
     public string? Notes { get; set; }
+
+    public List<SalesInvoiceItemDto>? Items { get; set; }
 }

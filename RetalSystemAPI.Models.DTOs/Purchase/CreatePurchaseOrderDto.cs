@@ -11,6 +11,8 @@ public class CreatePurchaseOrderDto
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
     public Guid BranchId { get; set; }
 
+    public Guid? SupplierId { get; set; }
+
     public Guid? WarehouseId { get; set; }
 
     [Required(ErrorMessage = "تاريخ الطلبية مطلوب")]

@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لجدول الوحدات الأساسية (Units) وضمان عدم تكرار اسم الوحدة للمستأجر نفسه.
+/// </summary>
 public class UnitConfiguration : IEntityTypeConfiguration<Unit>
 {
     public void Configure(EntityTypeBuilder<Unit> builder)

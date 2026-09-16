@@ -12,6 +12,7 @@ public interface ITenantApiService
 {
     Task<ApiResponse<TenantDto>> GetMyProfileAsync(CancellationToken ct = default);
     Task<ApiResponse<TenantDto>> UpdateMyProfileAsync(UpdateTenantRequest request, CancellationToken ct = default);
+    Task<ApiResponse<TenantDto>> UploadLogoAsync(string filePath, CancellationToken ct = default);
     Task<ApiResponse<List<TenantDto>>> GetAllAsync(CancellationToken ct = default);
     Task<ApiResponse<PagedResult<TenantDto>>> GetPagedAsync(int pageNumber = 1, int pageSize = 10, CancellationToken ct = default);
     Task<ApiResponse<TenantDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
@@ -38,6 +39,11 @@ public class TenantApiService : ITenantApiService
     public Task<ApiResponse<TenantDto>> UpdateMyProfileAsync(UpdateTenantRequest request, CancellationToken ct = default)
     {
         return _apiClient.PutAsync<TenantDto>("tenants/me", request, ct);
+    }
+
+    public Task<ApiResponse<TenantDto>> UploadLogoAsync(string filePath, CancellationToken ct = default)
+    {
+        return _apiClient.PostFileAsync<TenantDto>("tenants/me/logo", filePath, ct);
     }
 
     public Task<ApiResponse<List<TenantDto>>> GetAllAsync(CancellationToken ct = default)

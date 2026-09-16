@@ -27,4 +27,10 @@ public class AuthResponseDto
 
     [JsonPropertyName("tenantId")]
     public Guid TenantId { get; set; }
+
+    [JsonPropertyName("roles")]
+    public System.Collections.Generic.List<string> Roles { get; set; } = new();
+
+    [JsonPropertyName("permissions")]
+    public System.Collections.Generic.List<string> Permissions { get; set; } = new();
 }

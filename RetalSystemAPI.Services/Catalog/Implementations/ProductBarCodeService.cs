@@ -14,8 +14,12 @@ using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
 
+/// <summary>
+/// مواصفة جلب جميع باركودات صنف محدد مع المنتج وصوره.
+/// </summary>
 public class ProductBarCodesByProductSpec : BaseSpecification<ProductBarCode>
 {
+    /// <summary>تهيئة مواصفة باركودات الصنف بالمعرف</summary>
     public ProductBarCodesByProductSpec(Guid productId) : base(b => b.ProductId == productId)
     {
         AddInclude(b => b.Product!);
@@ -23,8 +27,13 @@ public class ProductBarCodesByProductSpec : BaseSpecification<ProductBarCode>
     }
 }
 
+/// <summary>
+/// مواصفة جلب كافة الباركودات مع البحث بالرقم أو العنوان أو اسم المنتج
+/// (تضمّن المنتج وصوره — حقل Images في الاستجابة يعتمد عليهما).
+/// </summary>
 public class AllProductBarCodesSpec : BaseSpecification<ProductBarCode>
 {
+    /// <summary>تهيئة مواصفة البحث الشامل في الباركودات</summary>
     public AllProductBarCodesSpec(string? search = null)
         : base(b => string.IsNullOrWhiteSpace(search) ||
                    b.BarCode.Contains(search) ||
@@ -37,19 +46,21 @@ public class AllProductBarCodesSpec : BaseSpecification<ProductBarCode>
 }
 
 /// <summary>
-/// تنفيذ خدمة إدارة باركودات المنتجات.
+/// تنفيذ خدمة إدارة باركودات ونكهات المنتجات وتحديث أرصدة التخزين التلقائية.
 /// </summary>
 public class ProductBarCodeService : IProductBarCodeService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>تهيئة خدمة الباركود مع حقن وحدة العمل والمحول</summary>
     public ProductBarCodeService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetAllAsync(string? search = null, CancellationToken ct = default)
     {
         var spec = new AllProductBarCodesSpec(search);
@@ -59,6 +70,7 @@ public class ProductBarCodeService : IProductBarCodeService
         return ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         var spec = new ProductBarCodesByProductSpec(productId);
@@ -68,6 +80,7 @@ public class ProductBarCodeService : IProductBarCodeService
         return ServiceResult<IReadOnlyList<ProductBarCodeResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductBarCodeResponseDto>> AddBarCodeAsync(
         Guid productId,
         CreateProductBarCodeDto dto,
@@ -110,6 +123,7 @@ public class ProductBarCodeService : IProductBarCodeService
         return ServiceResult<ProductBarCodeResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductBarCodeResponseDto>> UpdateBarCodeAsync(
         Guid barCodeId,
         UpdateProductBarCodeDto dto,
@@ -138,6 +152,7 @@ public class ProductBarCodeService : IProductBarCodeService
         return ServiceResult<ProductBarCodeResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> RemoveBarCodeAsync(Guid barCodeId, CancellationToken ct = default)
     {
         var barCodeEntity = await _unitOfWork.ProductBarCodes.GetByIdAsync(barCodeId, ct);

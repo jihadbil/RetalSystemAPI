@@ -58,6 +58,14 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (!Directory.Exists(webRootPath))
+{
+    Directory.CreateDirectory(webRootPath);
+}
+
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

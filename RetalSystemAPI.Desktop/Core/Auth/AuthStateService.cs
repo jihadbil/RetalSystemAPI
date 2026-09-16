@@ -10,8 +10,25 @@ public class AuthStateService
 
     public string? JwtToken { get; private set; }
     public string? CurrentUserId { get; private set; }
+    public string? CurrentUserName { get; private set; }
     public Guid? CurrentTenantId { get; private set; }
+    public System.Collections.Generic.List<string> CurrentRoles { get; private set; } = new();
+    public System.Collections.Generic.HashSet<string> CurrentPermissions { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     public bool IsAuthenticated => !string.IsNullOrEmpty(JwtToken);
+    public bool IsCashier => CurrentRoles.Any(r => r.Equals("Cashier", StringComparison.OrdinalIgnoreCase) || r.Equals("كاشير", StringComparison.OrdinalIgnoreCase)) && !IsAdmin;
+    public bool IsAdmin => CurrentRoles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) || r.Equals("مدير", StringComparison.OrdinalIgnoreCase));
+
+    public bool HasPermission(string permission)
+    {
+        if (IsAdmin) return true;
+        if (string.IsNullOrWhiteSpace(permission)) return true;
+        return CurrentPermissions.Contains(permission);
+    }
+
+    public bool CanAccessScreen(string screenPermission)
+    {
+        return HasPermission(screenPermission);
+    }
 
     public event EventHandler? AuthStateChanged;
 
@@ -26,9 +43,16 @@ public class AuthStateService
         }
     }
 
-    public void SetToken(string token, string? userId = null, Guid? tenantId = null, bool rememberMe = false)
+    public void SetToken(
+        string token, 
+        string? userId = null, 
+        Guid? tenantId = null, 
+        bool rememberMe = false, 
+        System.Collections.Generic.List<string>? roles = null, 
+        string? userName = null,
+        System.Collections.Generic.IEnumerable<string>? permissions = null)
     {
-        ProcessToken(token, saveToStore: rememberMe, fallbackUserId: userId, fallbackTenantId: tenantId);
+        ProcessToken(token, saveToStore: rememberMe, fallbackUserId: userId, fallbackTenantId: tenantId, fallbackRoles: roles, fallbackUserName: userName, fallbackPermissions: permissions);
         AuthStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -36,12 +60,22 @@ public class AuthStateService
     {
         JwtToken = null;
         CurrentUserId = null;
+        CurrentUserName = null;
         CurrentTenantId = null;
+        CurrentRoles.Clear();
+        CurrentPermissions.Clear();
         _credentialStore.ClearToken();
         AuthStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void ProcessToken(string token, bool saveToStore, string? fallbackUserId = null, Guid? fallbackTenantId = null)
+    private void ProcessToken(
+        string token, 
+        bool saveToStore, 
+        string? fallbackUserId = null, 
+        Guid? fallbackTenantId = null, 
+        System.Collections.Generic.List<string>? fallbackRoles = null, 
+        string? fallbackUserName = null,
+        System.Collections.Generic.IEnumerable<string>? fallbackPermissions = null)
     {
         try
         {
@@ -94,6 +128,81 @@ public class AuthStateService
             else
             {
                 CurrentTenantId = fallbackTenantId;
+            }
+
+            // 4. استخراج اسم المستخدم (UserName)
+            if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", out var nameProp) ||
+                root.TryGetProperty("name", out nameProp) ||
+                root.TryGetProperty("unique_name", out nameProp))
+            {
+                CurrentUserName = nameProp.GetString();
+            }
+            else
+            {
+                CurrentUserName = fallbackUserName;
+            }
+
+            // 5. استخراج الأدوار (Roles)
+            CurrentRoles.Clear();
+            if (root.TryGetProperty("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var roleProp) ||
+                root.TryGetProperty("role", out roleProp))
+            {
+                if (roleProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var r in roleProp.EnumerateArray())
+                    {
+                        var s = r.GetString();
+                        if (!string.IsNullOrWhiteSpace(s)) CurrentRoles.Add(s);
+                    }
+                }
+                else if (roleProp.ValueKind == JsonValueKind.String)
+                {
+                    var s = roleProp.GetString();
+                    if (!string.IsNullOrWhiteSpace(s)) CurrentRoles.Add(s);
+                }
+            }
+            else if (fallbackRoles != null && fallbackRoles.Count > 0)
+            {
+                CurrentRoles.AddRange(fallbackRoles);
+            }
+
+            // 6. استخراج الصلاحيات (Permissions)
+            CurrentPermissions.Clear();
+            foreach (var prop in root.EnumerateObject())
+            {
+                if (prop.NameEquals("Permission") || prop.NameEquals("permission"))
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var elem in prop.Value.EnumerateArray())
+                        {
+                            var perm = elem.GetString();
+                            if (!string.IsNullOrWhiteSpace(perm))
+                            {
+                                CurrentPermissions.Add(perm);
+                            }
+                        }
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var perm = prop.Value.GetString();
+                        if (!string.IsNullOrWhiteSpace(perm))
+                        {
+                            CurrentPermissions.Add(perm);
+                        }
+                    }
+                }
+            }
+
+            if (fallbackPermissions != null)
+            {
+                foreach (var perm in fallbackPermissions)
+                {
+                    if (!string.IsNullOrWhiteSpace(perm))
+                    {
+                        CurrentPermissions.Add(perm);
+                    }
+                }
             }
 
             JwtToken = token;

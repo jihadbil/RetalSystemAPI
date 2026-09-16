@@ -28,6 +28,20 @@ public interface IUserApiService
     Task<ApiResponse> ResetPasswordAsync(string id, ResetPasswordRequest request, CancellationToken ct = default);
 
     Task<ApiResponse<List<RoleDto>>> GetRolesAsync(CancellationToken ct = default);
+
+    Task<ApiResponse<RoleDto>> CreateRoleAsync(CreateRoleRequest request, CancellationToken ct = default);
+
+    Task<ApiResponse> DeleteRoleAsync(string roleId, CancellationToken ct = default);
+
+    Task<ApiResponse<List<PermissionDto>>> GetAllPermissionsAsync(CancellationToken ct = default);
+
+    Task<ApiResponse<RolePermissionsDto>> GetRolePermissionsAsync(string roleId, CancellationToken ct = default);
+
+    Task<ApiResponse> UpdateRolePermissionsAsync(string roleId, UpdateRolePermissionsDto request, CancellationToken ct = default);
+
+    Task<ApiResponse<UserPermissionsDto>> GetUserPermissionsAsync(string userId, CancellationToken ct = default);
+
+    Task<ApiResponse> UpdateUserPermissionsAsync(string userId, UpdateUserPermissionsDto request, CancellationToken ct = default);
 }
 
 public class UserApiService : IUserApiService
@@ -87,5 +101,40 @@ public class UserApiService : IUserApiService
     public Task<ApiResponse<List<RoleDto>>> GetRolesAsync(CancellationToken ct = default)
     {
         return _apiClient.GetAsync<List<RoleDto>>("users/roles", ct);
+    }
+
+    public Task<ApiResponse<RoleDto>> CreateRoleAsync(CreateRoleRequest request, CancellationToken ct = default)
+    {
+        return _apiClient.PostAsync<RoleDto>("users/roles", request, ct);
+    }
+
+    public Task<ApiResponse> DeleteRoleAsync(string roleId, CancellationToken ct = default)
+    {
+        return _apiClient.DeleteAsync($"users/roles/{roleId}", ct);
+    }
+
+    public Task<ApiResponse<List<PermissionDto>>> GetAllPermissionsAsync(CancellationToken ct = default)
+    {
+        return _apiClient.GetAsync<List<PermissionDto>>("users/permissions", ct);
+    }
+
+    public Task<ApiResponse<RolePermissionsDto>> GetRolePermissionsAsync(string roleId, CancellationToken ct = default)
+    {
+        return _apiClient.GetAsync<RolePermissionsDto>($"users/roles/{roleId}/permissions", ct);
+    }
+
+    public Task<ApiResponse> UpdateRolePermissionsAsync(string roleId, UpdateRolePermissionsDto request, CancellationToken ct = default)
+    {
+        return _apiClient.PutAsync($"users/roles/{roleId}/permissions", request, ct);
+    }
+
+    public Task<ApiResponse<UserPermissionsDto>> GetUserPermissionsAsync(string userId, CancellationToken ct = default)
+    {
+        return _apiClient.GetAsync<UserPermissionsDto>($"users/{userId}/permissions", ct);
+    }
+
+    public Task<ApiResponse> UpdateUserPermissionsAsync(string userId, UpdateUserPermissionsDto request, CancellationToken ct = default)
+    {
+        return _apiClient.PutAsync($"users/{userId}/permissions", request, ct);
     }
 }

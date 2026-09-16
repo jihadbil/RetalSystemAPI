@@ -18,6 +18,9 @@ public class CustomerMappingProfile : Profile
 
         CreateMap<Customer, CustomerSummaryDto>()
             .ForMember(dest => dest.PhoneCount, opt => opt.MapFrom(src => src.CustomerPhones.Count))
+            .ForMember(dest => dest.PrimaryPhone, opt => opt.MapFrom(src =>
+                src.CustomerPhones.Where(p => p.IsDefault).Select(p => p.PhoneNumber).FirstOrDefault()
+                ?? src.CustomerPhones.Select(p => p.PhoneNumber).FirstOrDefault()))
             .ForMember(dest => dest.TypeName, opt => opt.MapFrom(src =>
                 src.Type == CustomerType.Retail ? "قطاعي" :
                 src.Type == CustomerType.Wholesale ? "جملة" :

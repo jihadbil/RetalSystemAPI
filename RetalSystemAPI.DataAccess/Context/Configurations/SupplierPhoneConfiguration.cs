@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Suppliers;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لأرقام هواتف الموردين (SupplierPhones).
+/// </summary>
 public class SupplierPhoneConfiguration : IEntityTypeConfiguration<SupplierPhone>
 {
     public void Configure(EntityTypeBuilder<SupplierPhone> builder)

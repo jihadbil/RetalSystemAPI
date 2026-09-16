@@ -12,7 +12,7 @@ using RetalSystemAPI.Services.FileUpload.Interfaces;
 namespace RetalSystemAPI.Services.FileUpload.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة رفع الملفات لحفظ الصور على الخادم المحلي داخل wwwroot/uploads.
+/// تنفيذ خدمة رفع الملفات لحفظ الصور على الخادم المحلي داخل wwwroot/uploads مقسمة حسب المستأجرين.
 /// </summary>
 public class FileUploadService : IFileUploadService
 {
@@ -20,12 +20,16 @@ public class FileUploadService : IFileUploadService
     private readonly ICurrentTenantService _tenantService;
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
+    /// <summary>
+    /// تهيئة خدمة رفع الملفات مع حقن بيئة الاستضافة وخدمة المستأجر الحالي.
+    /// </summary>
     public FileUploadService(IWebHostEnvironment environment, ICurrentTenantService tenantService)
     {
         _environment = environment;
         _tenantService = tenantService;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<string>> UploadAsync(IFormFile file, string subfolder, CancellationToken ct = default)
     {
         if (file is null || file.Length == 0)
@@ -77,6 +81,7 @@ public class FileUploadService : IFileUploadService
         }
     }
 
+    /// <inheritdoc />
     public Task<ServiceResult> DeleteAsync(string fileUrl, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(fileUrl))
@@ -109,6 +114,7 @@ public class FileUploadService : IFileUploadService
         }
     }
 
+    /// <inheritdoc />
     public bool IsValidImageExtension(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName)) return false;
@@ -116,6 +122,7 @@ public class FileUploadService : IFileUploadService
         return AllowedExtensions.Contains(ext);
     }
 
+    /// <inheritdoc />
     public bool IsWithinSizeLimit(long fileSizeBytes, long maxSizeBytes = 5 * 1024 * 1024)
     {
         return fileSizeBytes <= maxSizeBytes;

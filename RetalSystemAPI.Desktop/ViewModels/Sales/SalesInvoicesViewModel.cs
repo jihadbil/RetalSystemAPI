@@ -21,6 +21,8 @@ namespace RetalSystemAPI.Desktop.ViewModels.Sales;
 
 public partial class SalesInvoicesViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly ISalesInvoiceApiService _salesInvoiceApiService;
     private readonly IBranchApiService _branchApiService;
     private readonly IWarehouseApiService _warehouseApiService;
@@ -94,6 +96,7 @@ public partial class SalesInvoicesViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadInvoicesAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             var res = await _salesInvoiceApiService.GetPagedAsync(
@@ -103,17 +106,24 @@ public partial class SalesInvoicesViewModel : BaseViewModel
                 warehouseId: SelectedWarehouse?.Id,
                 status: SelectedStatus,
                 search: SearchQuery);
+            if (version != _loadVersion) return;
 
             if (res.Success && res.Data != null)
             {
                 Invoices = new ObservableCollection<SalesInvoiceSummaryDto>(res.Data.Items);
                 TotalPages = res.Data.TotalPages > 0 ? res.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadInvoicesAsync();
+                    return;
+                }
             }
             else
             {
                 ErrorMessage = res.Message ?? "فشل تحميل فواتير المبيعات";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -192,6 +202,32 @@ public partial class SalesInvoicesViewModel : BaseViewModel
             if (res.Success) await LoadInvoicesAsync();
             else ErrorMessage = res.Message;
         });
+    }
+    partial void OnSelectedBranchChanged(BranchDto? value)
+    {
+        CurrentPage = 1;
+        _ = LoadInvoicesAsync();
+    }
+    partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
+    {
+        CurrentPage = 1;
+        _ = LoadInvoicesAsync();
+    }
+    partial void OnSelectedStatusChanged(InvoiceStatus? value)
+    {
+        CurrentPage = 1;
+        _ = LoadInvoicesAsync();
+    }
+    partial void OnSearchQueryChanged(string? value)
+    {
+        CurrentPage = 1;
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadInvoicesAsync);
+    }
+    partial void OnPageSizeChanged(int value)
+    {
+        CurrentPage = 1;
+        _ = LoadInvoicesAsync();
     }
 }
 
@@ -280,6 +316,13 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private bool _isEditMode;
+
+    /// <summary>الفتورة مغلقة نهائياً (مدفوعة/مرحلة أو من نقاط البيع) — التعديل عبر المرتجع أو الإلغاء فقط</summary>
+    [ObservableProperty]
+    private bool _isLocked;
+
+    /// <summary>فتح نموذج مرتجع مبيعات مربوط بهذه الفاتورة مع بند مبدئي — يوفره المحتوي (العرض) عند فتح النافذة</summary>
+    public Func<Guid, CreateSalesInvoiceItemRequest, Task>? OpenReturnDialogHandler { get; set; }
 
     public Action? CloseWindowHandler { get; set; }
 
@@ -403,6 +446,11 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
                 TaxAmount = inv.TaxAmount;
                 TotalAmount = inv.TotalAmount;
                 RemainingAmount = inv.RemainingAmount;
+
+                // الفواتير المدفوعة/المدفوعة جزئياً وفواتير نقاط البيع مغلقة نهائياً
+                IsLocked = inv.Status == InvoiceStatus.Paid ||
+                           inv.Status == InvoiceStatus.PartiallyPaid ||
+                           inv.InvoiceNumber.StartsWith("POS-", StringComparison.OrdinalIgnoreCase);
             }
             else
             {
@@ -430,6 +478,7 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
         {
             ProductId = SelectedProductToAdd.Id,
             ProductName = SelectedProductToAdd.Name,
+            ProductBarCodeId = SelectedProductToAdd.BarCodes?.FirstOrDefault()?.Id,
             Quantity = QuantityToAdd,
             UnitPrice = UnitPriceToAdd,
             DiscountAmount = DiscountToAdd
@@ -452,6 +501,18 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
         {
             Items.Remove(item);
             RecalculateTotals();
+        }
+    }
+
+    /// <summary>إنشاء مرتجع مبيعات مربوط بهذه الفاتورة بدءاً من البند المحدد (يفتح نموذج المرتجع معبأً)</summary>
+    [RelayCommand]
+    private async Task CreateReturnFromItemAsync(object? parameter)
+    {
+        if (parameter is not CreateSalesInvoiceItemRequest item || InvoiceId is null) return;
+
+        if (OpenReturnDialogHandler != null)
+        {
+            await OpenReturnDialogHandler(InvoiceId.Value, item);
         }
     }
 
@@ -493,7 +554,8 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
                     Status = Status,
                     PaymentMethod = PaymentMethod,
                     PaidAmount = PaidAmount,
-                    Notes = Notes
+                    Notes = Notes,
+                    Items = Items.ToList()
                 };
                 var res = await _salesInvoiceApiService.UpdateAsync(InvoiceId.Value, req);
                 if (res.Success) CloseWindowHandler?.Invoke();

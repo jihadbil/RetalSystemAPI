@@ -1,0 +1,140 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Pos.ProductSearchDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:RetalSystemAPI.Desktop.Helpers"
+        Title="البحث عن الأصناف" Height="580" Width="820"
+        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
+        Background="{DynamicResource SurfaceBrush}"
+        WindowStyle="SingleBorderWindow"
+        KeyDown="Window_KeyDown" Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ════════ TOP SEARCH & FILTER BAR ════════ -->
+        <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" CornerRadius="10" Padding="12" Margin="0,0,0,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="220"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource PrimaryBrush}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="ابحث باسم الصنف:" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBox Grid.Column="1" x:Name="TxtSearch" Height="38" VerticalContentAlignment="Center" Padding="10,0" 
+                         Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1.5"
+                         FontSize="14" TextChanged="TxtSearch_TextChanged" Margin="0,0,12,0"/>
+
+                <TextBlock Grid.Column="2" Text="الفئة:" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+
+                <ComboBox Grid.Column="3" x:Name="CmbCategory" Height="38" VerticalContentAlignment="Center" SelectionChanged="CmbCategory_SelectionChanged" DisplayMemberPath="Name"/>
+            </Grid>
+        </Border>
+
+        <!-- ════════ UNIFIED FULL-WIDTH PRODUCTS LIST / GRID ════════ -->
+        <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}" CornerRadius="10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="4">
+            <DataGrid x:Name="DgProducts" AutoGenerateColumns="False" IsReadOnly="True" 
+                      SelectionMode="Single" SelectionUnit="FullRow"
+                      GridLinesVisibility="Horizontal" HeadersVisibility="Column" 
+                      Background="Transparent" RowHeight="56" 
+                      MouseDoubleClick="DgProducts_MouseDoubleClick">
+                <DataGrid.Columns>
+                    <!-- 1. Product Image Thumbnail -->
+                    <DataGridTemplateColumn Header="الصورة" Width="64">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Grid>
+                                        <!-- Placeholder Icon -->
+                                        <Path Data="{StaticResource IconProducts}" Fill="{DynamicResource TextMutedBrush}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <!-- Real Image -->
+                                        <Image helpers:ImageHelper.SourceUrl="{Binding DisplayImageUrl}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 2. Product Name & Code/Barcode -->
+                    <DataGridTemplateColumn Header="اسم الصنف والباركود" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel VerticalAlignment="Center" Margin="6,0">
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4" Padding="6,1" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding Code, StringFormat='{}كود: {0}'}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding DefaultBarCode, TargetNullValue=''}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 3. Category -->
+                    <DataGridTemplateColumn Header="التصنيف" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CategoryName, TargetNullValue='غير مصنف'}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 4. Showroom Stock Quantity -->
+                    <DataGridTemplateColumn Header="رصيد الصالة" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ShowroomQuantity, StringFormat='{}{0} قطعة'}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 5. Sale Price -->
+                    <DataGridTemplateColumn Header="سعر البيع" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource PrimaryLightBrush}" CornerRadius="6" Padding="10,4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SalePrice, StringFormat={}{0:N2} د.ل}" FontWeight="Bold" FontSize="13.5" Foreground="{DynamicResource SuccessBrush}"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 5. Action Button -->
+                    <DataGridTemplateColumn Header="إجراء" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="إضافة للسلة ⏎" Click="BtnSelectRow_Click" Style="{StaticResource PrimaryButtonStyle}" Height="30" Padding="10,0" FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- ════════ FOOTER ════════ -->
+        <Border Grid.Row="2" Margin="0,12,0,0">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtCount" Text="عدد النتائج: 0 صنف" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="💡 تلميح: اضغط Enter أو انقر نقراً مزدوجاً على الصنف لإضافته مباشرة" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Content="إغلاق النافذة (Esc)" Click="BtnClose_Click" Style="{StaticResource GhostButtonStyle}" HorizontalAlignment="Right" Height="36" Padding="16,0"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -9,4 +9,6 @@ public class AuthResponseDto
     public string UserName { get; set; } = null!;
     public Guid TenantId { get; set; }
     public Guid BranchId { get; set; }
+    public System.Collections.Generic.List<string> Roles { get; set; } = new();
+    public System.Collections.Generic.List<string> Permissions { get; set; } = new();
 }

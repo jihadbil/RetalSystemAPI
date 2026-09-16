@@ -14,7 +14,8 @@ public class BranchMappingProfile : Profile
 
         CreateMap<BranchPhone, BranchPhoneResponseDto>();
 
-        CreateMap<CreateBranchDto, BranchEntity>();
+        CreateMap<CreateBranchDto, BranchEntity>()
+            .ForMember(dest => dest.BranchPhones, opt => opt.MapFrom(src => src.Phones));
 
         CreateMap<BranchPhoneDto, BranchPhone>();
 

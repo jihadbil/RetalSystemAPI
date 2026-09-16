@@ -14,19 +14,23 @@ using RetalSystemAPI.Services.Suppliers.Specifications;
 namespace RetalSystemAPI.Services.Suppliers.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة الموردين وأرقام هواتفهم.
+/// تنفيذ خدمة إدارة الموردين، حساباتهم، وجهات الاتصال وأرقام الهواتف التابعة لهم.
 /// </summary>
 public class SupplierService : ISupplierService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة الموردين مع حقن وحدة العمل وAutoMapper.
+    /// </summary>
     public SupplierService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SupplierResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(id), ct);
@@ -39,6 +43,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<SupplierResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<SupplierSummaryDto>>> GetAllAsync(CancellationToken ct = default)
     {
         var suppliers = await _unitOfWork.Suppliers.FindAsync(new SupplierWithDetailsSpec(), ct);
@@ -46,6 +51,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<IReadOnlyList<SupplierSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default)
     {
         var spec = new SupplierWithDetailsSpec(search);
@@ -57,6 +63,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<PagedResult<SupplierSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SupplierResponseDto>> CreateAsync(CreateSupplierDto dto, CancellationToken ct = default)
     {
         bool exists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Name == dto.Name, ct);
@@ -84,6 +91,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SupplierResponseDto>> UpdateAsync(Guid id, UpdateSupplierDto dto, CancellationToken ct = default)
     {
         var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(id), ct);
@@ -110,6 +118,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id, ct);
@@ -124,6 +133,7 @@ public class SupplierService : ISupplierService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<SupplierResponseDto>> AddPhoneAsync(Guid supplierId, SupplierPhoneDto dto, CancellationToken ct = default)
     {
         var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(supplierId), ct);
@@ -148,6 +158,7 @@ public class SupplierService : ISupplierService
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeletePhoneAsync(Guid supplierId, Guid phoneId, CancellationToken ct = default)
     {
         var phone = await _unitOfWork.SupplierPhones.GetByIdAsync(phoneId, ct);

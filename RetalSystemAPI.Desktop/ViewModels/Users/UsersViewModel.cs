@@ -1,10 +1,13 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RetalSystemAPI.Desktop.Constants;
+using RetalSystemAPI.Desktop.Core.Auth;
 using RetalSystemAPI.Desktop.Models.Branch;
 using RetalSystemAPI.Desktop.Models.Users;
 using RetalSystemAPI.Desktop.Services;
@@ -15,8 +18,18 @@ namespace RetalSystemAPI.Desktop.ViewModels.Users;
 
 public partial class UsersViewModel : BaseViewModel
 {
+    private int _loadVersion;
+
     private readonly IUserApiService _userApiService;
     private readonly IBranchApiService _branchApiService;
+    private readonly AuthStateService _authStateService;
+    private readonly IToastService _toastService;
+
+    public bool CanCreateUser => _authStateService.HasPermission(Permissions.Users.Create);
+    public bool CanEditUser => _authStateService.HasPermission(Permissions.Users.Edit);
+    public bool CanDeleteUser => _authStateService.HasPermission(Permissions.Users.Delete);
+    public bool CanResetPassword => _authStateService.HasPermission(Permissions.Users.ResetPassword);
+    public bool CanManageRoles => _authStateService.HasPermission(Permissions.Roles.Manage);
 
     [ObservableProperty]
     private ObservableCollection<UserSummaryDto> _users = new();
@@ -41,12 +54,20 @@ public partial class UsersViewModel : BaseViewModel
 
     public Func<UserSummaryDto?, Task>? OpenFormDialogHandler { get; set; }
     public Func<UserSummaryDto, Task>? OpenResetPasswordDialogHandler { get; set; }
+    public Func<Task>? OpenRolePermissionsDialogHandler { get; set; }
+    public Func<UserSummaryDto, Task>? OpenUserPermissionsDialogHandler { get; set; }
     public Func<string, string, Task<bool>>? ConfirmDeleteHandler { get; set; }
 
-    public UsersViewModel(IUserApiService userApiService, IBranchApiService branchApiService)
+    public UsersViewModel(
+        IUserApiService userApiService, 
+        IBranchApiService branchApiService,
+        AuthStateService authStateService,
+        IToastService toastService)
     {
         _userApiService = userApiService;
         _branchApiService = branchApiService;
+        _authStateService = authStateService;
+        _toastService = toastService;
         _ = InitializeAsync();
     }
 
@@ -68,7 +89,8 @@ public partial class UsersViewModel : BaseViewModel
     partial void OnSearchQueryChanged(string? value)
     {
         CurrentPage = 1;
-        _ = LoadUsersAsync();
+        _loadVersion++;
+        _ = DebounceSearchAsync(LoadUsersAsync);
     }
 
     partial void OnSelectedBranchFilterChanged(BranchDto? value)
@@ -80,20 +102,28 @@ public partial class UsersViewModel : BaseViewModel
     [RelayCommand]
     public async Task LoadUsersAsync()
     {
+        var version = ++_loadVersion;
         await ExecuteAsync(async () =>
         {
             Guid? branchId = SelectedBranchFilter?.Id;
             var response = await _userApiService.GetPagedAsync(CurrentPage, PageSize, SearchQuery, branchId);
+            if (version != _loadVersion) return;
             if (response.Success && response.Data != null)
             {
                 Users = new ObservableCollection<UserSummaryDto>(response.Data.Items);
                 TotalPages = response.Data.TotalPages > 0 ? response.Data.TotalPages : 1;
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    await LoadUsersAsync();
+                    return;
+                }
             }
             else
             {
                 ErrorMessage = response.Message ?? "فشل تحميل قائمة المستخدمين";
             }
-        });
+        }, isCurrent: () => version == _loadVersion);
     }
 
     [RelayCommand]
@@ -117,8 +147,46 @@ public partial class UsersViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private async Task ManageRolesPermissionsAsync()
+    {
+        if (!CanManageRoles)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية إدارة الأدوار ومصفوفة الصلاحيات", "صلاحية مرفوضة");
+            return;
+        }
+
+        if (OpenRolePermissionsDialogHandler != null)
+        {
+            await OpenRolePermissionsDialogHandler.Invoke();
+            await LoadUsersAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenUserPermissionsAsync(object? parameter)
+    {
+        if (!CanManageRoles)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية إدارة وتخصيص صلاحيات المستخدمين", "صلاحية مرفوضة");
+            return;
+        }
+
+        if (parameter is UserSummaryDto user && OpenUserPermissionsDialogHandler != null)
+        {
+            await OpenUserPermissionsDialogHandler.Invoke(user);
+            await LoadUsersAsync();
+        }
+    }
+
+    [RelayCommand]
     private async Task CreateUserAsync()
     {
+        if (!CanCreateUser)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية إضافة مستخدم جديد", "صلاحية مرفوضة");
+            return;
+        }
+
         if (OpenFormDialogHandler != null)
         {
             await OpenFormDialogHandler(null);
@@ -129,6 +197,12 @@ public partial class UsersViewModel : BaseViewModel
     [RelayCommand]
     private async Task EditUserAsync(object? parameter)
     {
+        if (!CanEditUser)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية تعديل بيانات المستخدم", "صلاحية مرفوضة");
+            return;
+        }
+
         if (parameter is UserSummaryDto user && OpenFormDialogHandler != null)
         {
             await OpenFormDialogHandler(user);
@@ -139,6 +213,12 @@ public partial class UsersViewModel : BaseViewModel
     [RelayCommand]
     private async Task ResetPasswordAsync(object? parameter)
     {
+        if (!CanResetPassword)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية إعادة تعيين كلمة المرور", "صلاحية مرفوضة");
+            return;
+        }
+
         if (parameter is UserSummaryDto user && OpenResetPasswordDialogHandler != null)
         {
             await OpenResetPasswordDialogHandler(user);
@@ -148,6 +228,12 @@ public partial class UsersViewModel : BaseViewModel
     [RelayCommand]
     private async Task DeleteUserAsync(object? parameter)
     {
+        if (!CanDeleteUser)
+        {
+            _toastService.ShowWarning("ليس لديك صلاحية حذف المستخدم", "صلاحية مرفوضة");
+            return;
+        }
+
         if (parameter is not UserSummaryDto user) return;
         if (ConfirmDeleteHandler != null)
         {
@@ -162,6 +248,11 @@ public partial class UsersViewModel : BaseViewModel
             else ErrorMessage = res.Message ?? "فشل حذف المستخدم";
         });
     }
+    partial void OnPageSizeChanged(int value)
+    {
+        CurrentPage = 1;
+        _ = LoadUsersAsync();
+    }
 }
 
 public partial class UserFormViewModel : BaseViewModel
@@ -172,10 +263,12 @@ public partial class UserFormViewModel : BaseViewModel
     [ObservableProperty]
     private string? _userId;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "اسم المستخدم مطلوب")]
     private string _userName = string.Empty;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [RetalSystemAPI.Desktop.Helpers.OptionalEmail]
     private string _email = string.Empty;
 
     [ObservableProperty]
@@ -187,7 +280,8 @@ public partial class UserFormViewModel : BaseViewModel
     [ObservableProperty]
     private ObservableCollection<BranchDto> _branches = new();
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyDataErrorInfo]
+    [Required(ErrorMessage = "يرجى اختيار الفرع التابع للمستخدم")]
     private BranchDto? _selectedBranch;
 
     [ObservableProperty]
@@ -203,6 +297,16 @@ public partial class UserFormViewModel : BaseViewModel
     private bool _isEditMode;
 
     public Action? CloseWindowHandler { get; set; }
+    public System.Func<string, string, Task>? OpenResetPasswordHandler { get; set; }
+
+    [RelayCommand]
+    private async Task OpenResetPasswordAsync()
+    {
+        if (IsEditMode && !string.IsNullOrEmpty(UserId) && OpenResetPasswordHandler != null)
+        {
+            await OpenResetPasswordHandler(UserId, UserName);
+        }
+    }
 
     public UserFormViewModel(IUserApiService userApiService, IBranchApiService branchApiService)
     {
@@ -278,6 +382,7 @@ public partial class UserFormViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!ValidateForm()) return;
         if (!IsEditMode && string.IsNullOrWhiteSpace(UserName))
         {
             ErrorMessage = "اسم المستخدم مطلوب";
@@ -366,6 +471,7 @@ public partial class ResetPasswordViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (IsLoading) return;
         if (string.IsNullOrWhiteSpace(NewPassword))
         {
             ErrorMessage = "كلمة المرور الجديدة مطلوبة";

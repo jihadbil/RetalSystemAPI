@@ -34,15 +34,47 @@ public partial class PurchaseInvoicesView : UserControl
             Owner = Window.GetWindow(this)
         };
 
-        formVm.CloseAction = () => window.Close();
+        formVm.CloseAction = () =>
+        {
+            if (formVm.SaveSuccessful) window.DialogResult = true;
+            else window.Close();
+        };
+        formVm.OpenReturnDialogHandler = (invoiceId, item) => OpenReturnFromInvoiceItemAsync(window, invoiceId, item);
         window.ShowDialog();
 
         return formVm.SaveSuccessful;
     }
 
+    /// <summary>فتح نموذج مرتجع المشتريات مربوط بفاتورة مغلقة وبدءه ببند الفاتورة المحدد</summary>
+    private async Task OpenReturnFromInvoiceItemAsync(Window owner, Guid invoiceId, CreatePurchaseInvoiceItemRequest item)
+    {
+        var returnVm = _serviceProvider.GetRequiredService<PurchaseReturnFormViewModel>();
+
+        var prefilled = new CreatePurchaseReturnItemRequest
+        {
+            ProductId = item.ProductId,
+            ProductName = item.ProductName,
+            ProductBarCodeId = item.ProductBarCodeId,
+            BarcodeTitle = !string.IsNullOrWhiteSpace(item.BarCode) ? item.BarCode : "افتراضي",
+            Quantity = 1,
+            UnitPrice = item.UnitPrice
+        };
+        await returnVm.InitializeForInvoiceAsync(invoiceId, prefilled);
+
+        var returnWindow = new PurchaseReturnFormWindow
+        {
+            DataContext = returnVm,
+            Owner = owner
+        };
+
+        returnVm.CloseWindowHandler = () => returnWindow.DialogResult = true;
+        returnWindow.ShowDialog();
+    }
+
     private Task<bool> ConfirmActionAsync(string title, string message)
     {
-        var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
-        return Task.FromResult(result == MessageBoxResult.Yes);
+        return Task.FromResult(RetalSystemAPI.Desktop.Controls.ModernConfirmDialog.ShowConfirm(
+            Window.GetWindow(this) ?? Application.Current.MainWindow, title, message,
+            "تأكيد", "تراجع", RetalSystemAPI.Desktop.Controls.ConfirmDialogType.Danger));
     }
 }

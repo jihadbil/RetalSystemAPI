@@ -15,19 +15,23 @@ using RetalSystemAPI.Services.Customers.Specifications;
 namespace RetalSystemAPI.Services.Customers.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة العملاء وحساباتهم وأرقام هواتفهم.
+/// تنفيذ خدمة إدارة العملاء وسجل هواتفهم وحدود الائتمان.
 /// </summary>
 public class CustomerService : ICustomerService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة العملاء مع حقن وحدة العمل وAutoMapper.
+    /// </summary>
     public CustomerService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CustomerResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
@@ -40,6 +44,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<CustomerResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<CustomerSummaryDto>>> GetAllAsync(CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var spec = new CustomerWithDetailsSpec(type, isActive, search);
@@ -49,6 +54,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<IReadOnlyList<CustomerSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var spec = new CustomerWithDetailsSpec(type, isActive, search);
@@ -60,6 +66,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<PagedResult<CustomerSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CustomerResponseDto>> CreateAsync(CreateCustomerDto dto, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(dto.Code))
@@ -91,6 +98,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CustomerResponseDto>> UpdateAsync(Guid id, UpdateCustomerDto dto, CancellationToken ct = default)
     {
         var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
@@ -116,7 +124,7 @@ public class CustomerService : ICustomerService
         customer.CreditLimit = dto.CreditLimit;
         customer.IsActive = dto.IsActive;
 
-        if (dto.Phones != null)
+        if (dto.Phones != null && dto.Phones.Any())
         {
             if (customer.CustomerPhones != null && customer.CustomerPhones.Any())
             {
@@ -144,6 +152,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var customer = await _unitOfWork.Customers.GetByIdAsync(id, ct);
@@ -158,6 +167,7 @@ public class CustomerService : ICustomerService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CustomerResponseDto>> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default)
     {
         var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
@@ -174,6 +184,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<CustomerResponseDto>> AddPhoneAsync(Guid customerId, CustomerPhoneDto dto, CancellationToken ct = default)
     {
         var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(customerId), ct);
@@ -208,6 +219,7 @@ public class CustomerService : ICustomerService
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default)
     {
         var phone = await _unitOfWork.CustomerPhones.GetByIdAsync(phoneId, ct);

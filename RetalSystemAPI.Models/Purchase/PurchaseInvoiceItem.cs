@@ -22,4 +22,6 @@ public class PurchaseInvoiceItem : TenantBaseEntity
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
     public decimal LineTotal { get; set; }
+
+    public ICollection<PurchaseInvoiceItemBreakdown> Breakdowns { get; set; } = new List<PurchaseInvoiceItemBreakdown>();
 }

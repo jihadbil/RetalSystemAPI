@@ -15,19 +15,23 @@ using RetalSystemAPI.Services.Warehouses.Specifications;
 namespace RetalSystemAPI.Services.Warehouses.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة التحويلات المخزنية ونقل البضائع وتحديث الأرصدة.
+/// تنفيذ خدمة إدارة التحويلات المخزنية ونقل البضائع وتحديث الأرصدة في المصدر والوجهة.
 /// </summary>
 public class StockTransferService : IStockTransferService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة التحويلات المخزنية مع حقن وحدة العمل والمحول.
+    /// </summary>
     public StockTransferService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockTransferResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(id), ct);
@@ -40,6 +44,7 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockTransferResponseDto>> GetByTransferNumberAsync(string transferNumber, CancellationToken ct = default)
     {
         var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(transferNumber), ct);
@@ -52,6 +57,7 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<StockTransferSummaryDto>>> GetAllAsync(
         Guid? fromWarehouseId = null,
         Guid? toWarehouseId = null,
@@ -61,13 +67,14 @@ public class StockTransferService : IStockTransferService
         string? search = null,
         CancellationToken ct = default)
     {
-        var spec = new StockTransferWithDetailsSpec(fromWarehouseId, toWarehouseId, status, fromDate, toDate, search);
+        var spec = new StockTransferListSpec(fromWarehouseId, toWarehouseId, status, fromDate, toDate, search);
         var transfers = await _unitOfWork.StockTransfers.FindAsync(spec, ct);
         var dtos = _mapper.Map<IReadOnlyList<StockTransferSummaryDto>>(transfers);
 
         return ServiceResult<IReadOnlyList<StockTransferSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<StockTransferSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -79,7 +86,7 @@ public class StockTransferService : IStockTransferService
         string? search = null,
         CancellationToken ct = default)
     {
-        var spec = new StockTransferWithDetailsSpec(fromWarehouseId, toWarehouseId, status, fromDate, toDate, search);
+        var spec = new StockTransferListSpec(fromWarehouseId, toWarehouseId, status, fromDate, toDate, search);
         var (items, totalCount) = await _unitOfWork.StockTransfers.GetPagedAsync(spec, pageNumber, pageSize, ct);
 
         var dtos = _mapper.Map<IReadOnlyList<StockTransferSummaryDto>>(items);
@@ -88,6 +95,7 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<PagedResult<StockTransferSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockTransferResponseDto>> CreateAsync(CreateStockTransferDto dto, CancellationToken ct = default)
     {
         if (dto.FromWarehouseId == dto.ToWarehouseId)
@@ -139,6 +147,7 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockTransferResponseDto>> UpdateAsync(Guid id, UpdateStockTransferDto dto, CancellationToken ct = default)
     {
         var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(id), ct);
@@ -165,9 +174,10 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockTransferResponseDto>> UpdateStatusAsync(Guid id, StockTransferStatus status, CancellationToken ct = default)
     {
-        var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(id), ct);
+        var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultTrackedAsync(new StockTransferWithDetailsSpec(id), ct);
         if (transfer is null)
         {
             return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);
@@ -188,63 +198,129 @@ public class StockTransferService : IStockTransferService
                 return ServiceResult<StockTransferResponseDto>.Failure("أحد المستودعات غير موجود", ErrorCodes.WarehouseNotFound);
             }
 
-            // التحقق من كفاية المخزون في المستودع المصدر
-            foreach (var item in transfer.Items)
+            // التحقق من كفاية المخزون في المستودع المصدر — دفعة أرصدة واحدة
+            if (fromWh.Type == WarehouseType.Storge)
             {
-                if (fromWh.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+                var barcodeIds = transfer.Items
+                    .Where(i => i.ProductBarCodeId.HasValue)
+                    .Select(i => i.ProductBarCodeId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (barcodeIds.Count > 0)
                 {
-                    var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == fromWh.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                    if (stock is null || stock.Quantity < item.Quantity)
+                    var barcodeTotals = transfer.Items
+                        .Where(i => i.ProductBarCodeId.HasValue)
+                        .GroupBy(i => i.ProductBarCodeId!.Value)
+                        .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                    var sourceStocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        s => s.WarehouseId == fromWh.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
+                        .ToDictionary(s => s.ProductBarcodeId);
+
+                    foreach (var (productBarcodeId, totalQuantity) in barcodeTotals)
                     {
-                        return ServiceResult<StockTransferResponseDto>.Failure($"الكمية غير متوفرة في المخزن المصدر", ErrorCodes.InsufficientStock);
+                        if (!sourceStocksByBarcode.TryGetValue(productBarcodeId, out var stock) || stock.Quantity < totalQuantity)
+                        {
+                            return ServiceResult<StockTransferResponseDto>.Failure("الكمية المطلوبة غير متوفرة في المخزن المصدر للنكهة/الباركود المحدد", ErrorCodes.InsufficientStock);
+                        }
                     }
                 }
-                else if (fromWh.Type == WarehouseType.Show)
+            }
+            else if (fromWh.Type == WarehouseType.Show)
+            {
+                var productIds = transfer.Items
+                    .Select(i => i.ProductId)
+                    .Distinct()
+                    .ToList();
+
+                if (productIds.Count > 0)
                 {
-                    var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == fromWh.Id && s.ProductId == item.ProductId, ct);
-                    if (stock is null || stock.Quantity < item.Quantity)
+                    var productTotals = transfer.Items
+                        .GroupBy(i => i.ProductId)
+                        .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                    var sourceStocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        s => s.WarehouseId == fromWh.Id && productIds.Contains(s.ProductId), ct))
+                        .ToDictionary(s => s.ProductId);
+
+                    foreach (var (productId, totalQuantity) in productTotals)
                     {
-                        return ServiceResult<StockTransferResponseDto>.Failure($"الكمية غير متوفرة في صالة العرض المصدر", ErrorCodes.InsufficientStock);
+                        if (!sourceStocksByProduct.TryGetValue(productId, out var stock) || stock.Quantity < totalQuantity)
+                        {
+                            return ServiceResult<StockTransferResponseDto>.Failure("الكمية المطلوبة غير متوفرة في صالة العرض المصدر للصنف المحدد", ErrorCodes.InsufficientStock);
+                        }
                     }
                 }
             }
 
-            // تنفيذ الخصم والإضافة
-            foreach (var item in transfer.Items)
+            // تنفيذ الخصم من المصدر على دفعة الأرصدة المتتبعة (المصدر ثم الوجهة)
+            if (fromWh.Type == WarehouseType.Storge)
             {
-                // 1. الخصم من المصدر
-                if (fromWh.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
-                {
-                    var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == fromWh.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                    if (stock != null)
-                    {
-                        stock.Quantity -= item.Quantity;
-                        _unitOfWork.StorgeStocks.Update(stock);
-                    }
-                }
-                else if (fromWh.Type == WarehouseType.Show)
-                {
-                    var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == fromWh.Id && s.ProductId == item.ProductId, ct);
-                    if (stock != null)
-                    {
-                        stock.Quantity -= item.Quantity;
-                        _unitOfWork.ShowroomStocks.Update(stock);
-                    }
-                }
+                var fromBarcodeIds = transfer.Items
+                    .Where(i => i.ProductBarCodeId.HasValue)
+                    .Select(i => i.ProductBarCodeId!.Value)
+                    .Distinct()
+                    .ToList();
 
-                // 2. الإضافة إلى الوجهة
-                if (toWh.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+                if (fromBarcodeIds.Count > 0)
                 {
-                    var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == toWh.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                    if (stock != null)
+                    var sourceStocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        s => s.WarehouseId == fromWh.Id && fromBarcodeIds.Contains(s.ProductBarcodeId), ct))
+                        .ToDictionary(s => s.ProductBarcodeId);
+
+                    foreach (var item in transfer.Items)
+                    {
+                        if (item.ProductBarCodeId.HasValue &&
+                            sourceStocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
+                        {
+                            stock.Quantity -= item.Quantity;
+                        }
+                    }
+                }
+            }
+            else if (fromWh.Type == WarehouseType.Show)
+            {
+                var fromProductIds = transfer.Items.Select(i => i.ProductId).Distinct().ToList();
+
+                if (fromProductIds.Count > 0)
+                {
+                    var sourceStocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        s => s.WarehouseId == fromWh.Id && fromProductIds.Contains(s.ProductId), ct))
+                        .ToDictionary(s => s.ProductId);
+
+                    foreach (var item in transfer.Items)
+                    {
+                        if (sourceStocksByProduct.TryGetValue(item.ProductId, out var stock))
+                        {
+                            stock.Quantity -= item.Quantity;
+                        }
+                    }
+                }
+            }
+
+            // 2. الإضافة إلى الوجهة — دفعة واحدة لكل نوع
+            if (toWh.Type == WarehouseType.Storge)
+            {
+                var toBarcodeIds = transfer.Items
+                    .Where(i => i.ProductBarCodeId.HasValue)
+                    .Select(i => i.ProductBarCodeId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var targetStocksByBarcode = toBarcodeIds.Count > 0
+                    ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        s => s.WarehouseId == toWh.Id && toBarcodeIds.Contains(s.ProductBarcodeId), ct))
+                        .ToDictionary(s => s.ProductBarcodeId)
+                    : new Dictionary<Guid, StorgeStock>();
+
+                foreach (var item in transfer.Items)
+                {
+                    if (!item.ProductBarCodeId.HasValue) continue;
+
+                    if (targetStocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
                     {
                         stock.Quantity += item.Quantity;
-                        _unitOfWork.StorgeStocks.Update(stock);
                     }
                     else
                     {
@@ -257,16 +333,25 @@ public class StockTransferService : IStockTransferService
                             MinStockLevel = 0
                         };
                         await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                        targetStocksByBarcode[item.ProductBarCodeId.Value] = newStock;
                     }
                 }
-                else if (toWh.Type == WarehouseType.Show)
+            }
+            else if (toWh.Type == WarehouseType.Show)
+            {
+                var toProductIds = transfer.Items.Select(i => i.ProductId).Distinct().ToList();
+
+                var targetStocksByProduct = toProductIds.Count > 0
+                    ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        s => s.WarehouseId == toWh.Id && toProductIds.Contains(s.ProductId), ct))
+                        .ToDictionary(s => s.ProductId)
+                    : new Dictionary<Guid, ShowroomStock>();
+
+                foreach (var item in transfer.Items)
                 {
-                    var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                        s => s.WarehouseId == toWh.Id && s.ProductId == item.ProductId, ct);
-                    if (stock != null)
+                    if (targetStocksByProduct.TryGetValue(item.ProductId, out var stock))
                     {
                         stock.Quantity += item.Quantity;
-                        _unitOfWork.ShowroomStocks.Update(stock);
                     }
                     else
                     {
@@ -279,13 +364,13 @@ public class StockTransferService : IStockTransferService
                             MinStockLevel = 0
                         };
                         await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                        targetStocksByProduct[item.ProductId] = newStock;
                     }
                 }
             }
         }
 
         transfer.Status = status;
-        _unitOfWork.StockTransfers.Update(transfer);
         await _unitOfWork.SaveChangesAsync(ct);
 
         var updated = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(id), ct) ?? transfer;
@@ -294,9 +379,11 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultAsync(new StockTransferWithDetailsSpec(id), ct);
+        // تحميل متتبع لتفادي تضارب النسخ المكررة عند تكرار الصنف في البنود أثناء SoftDelete
+        var transfer = await _unitOfWork.StockTransfers.FirstOrDefaultTrackedAsync(new StockTransferWithDetailsSpec(id), ct);
         if (transfer is null)
         {
             return ServiceResult.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);

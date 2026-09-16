@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لكيان الأصناف (Products) وتحديد دقة الحقول المالية والارتباط بالتصنيف.
+/// </summary>
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)

@@ -15,13 +15,16 @@ using RetalSystemAPI.Services.Warehouses.Specifications;
 namespace RetalSystemAPI.Services.Warehouses.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة رصيد المخزون في المخازن وصالات العرض.
+/// تنفيذ خدمة إدارة ومراقبة أرصدة المخازن وصالات العرض وتنبيهات مستويات النقص والتغذية التلقائية.
 /// </summary>
 public class StockService : IStockService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة المخزون مع حقن وحدة العمل والمحول.
+    /// </summary>
     public StockService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
@@ -30,6 +33,7 @@ public class StockService : IStockService
 
     // ── Storge Stock Implementation ──────────────────────────
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StorgeStockResponseDto>> GetStorgeStockAsync(Guid warehouseId, Guid productBarcodeId, CancellationToken ct = default)
     {
         var spec = new StorgeStockWithDetailsSpec(warehouseId, productBarcodeId);
@@ -44,33 +48,30 @@ public class StockService : IStockService
         return ServiceResult<StorgeStockResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<StorgeStockResponseDto>>> GetStorgeStocksByWarehouseAsync(Guid warehouseId, CancellationToken ct = default)
     {
-        // 1. استعلام كافة الباركودات/النكهات في النظام
-        var allBarCodes = await _unitOfWork.ProductBarCodes.GetAllAsync(ct);
-        var existingStocks = await _unitOfWork.StorgeStocks.FindAsync(s => s.WarehouseId == warehouseId, ct);
-        var existingBarcodeIds = new HashSet<Guid>(existingStocks.Select(s => s.ProductBarcodeId));
+        // 1. مفاتيح الباركودات/النكهات وأرصدة المستودع الحالية — أعمدة نحيفة فقط بدل الكيانات الكاملة
+        var allBarCodeIdsWithTenants = await _unitOfWork.ProductBarCodes.SelectAsync(bc => new { bc.Id, bc.TenantId }, ct);
+        var existingBarcodeIds = (await _unitOfWork.StorgeStocks.SelectAsync(
+            s => new { s.WarehouseId, s.ProductBarcodeId }, ct))
+            .Where(s => s.WarehouseId == warehouseId)
+            .Select(s => s.ProductBarcodeId)
+            .ToHashSet();
 
-        bool hasNew = false;
-        foreach (var bc in allBarCodes)
+        var missingBarcodes = allBarCodeIdsWithTenants.Where(bc => !existingBarcodeIds.Contains(bc.Id)).ToList();
+        if (missingBarcodes.Count > 0)
         {
-            if (!existingBarcodeIds.Contains(bc.Id))
+            var newStocks = missingBarcodes.Select(bc => new StorgeStock
             {
-                var newStock = new StorgeStock
-                {
-                    TenantId = bc.TenantId,
-                    WarehouseId = warehouseId,
-                    ProductBarcodeId = bc.Id,
-                    Quantity = 0,
-                    MinStockLevel = 0
-                };
-                await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
-                hasNew = true;
-            }
-        }
+                TenantId = bc.TenantId,
+                WarehouseId = warehouseId,
+                ProductBarcodeId = bc.Id,
+                Quantity = 0,
+                MinStockLevel = 0
+            }).ToList();
 
-        if (hasNew)
-        {
+            await _unitOfWork.StorgeStocks.AddRangeAsync(newStocks, ct);
             await _unitOfWork.SaveChangesAsync(ct);
         }
 
@@ -81,21 +82,23 @@ public class StockService : IStockService
         return ServiceResult<IReadOnlyList<StorgeStockResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<StorgeStockResponseDto>>> GetPagedStorgeStocksByWarehouseAsync(
         Guid warehouseId,
         int pageNumber = 1,
         int pageSize = 10,
         string? searchTerm = null,
+        bool exactBarcode = false,
         CancellationToken ct = default)
     {
         if (pageNumber < 1) pageNumber = 1;
         if (pageSize < 1) pageSize = 10;
         if (pageSize > 100) pageSize = 100;
 
-        var countSpec = new StorgeStockCountSpec(warehouseId, searchTerm);
+        var countSpec = new StorgeStockCountSpec(warehouseId, searchTerm, exactBarcode);
         int totalCount = await _unitOfWork.StorgeStocks.CountAsync(countSpec, ct);
 
-        var pagedSpec = new StorgeStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, isPaged: true);
+        var pagedSpec = new StorgeStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, exactBarcode, isPaged: true);
         var stocks = await _unitOfWork.StorgeStocks.FindAsync(pagedSpec, ct);
 
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
@@ -104,6 +107,7 @@ public class StockService : IStockService
         return ServiceResult<PagedResult<StorgeStockResponseDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StorgeStockResponseDto>> SetStorgeStockAsync(SetStorgeStockDto dto, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(dto.WarehouseId, ct);
@@ -148,6 +152,7 @@ public class StockService : IStockService
         return ServiceResult<StorgeStockResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<StorgeStockResponseDto>>> GetLowStorgeStockAlertsAsync(Guid? warehouseId = null, CancellationToken ct = default)
     {
         var spec = new LowStorgeStockSpec(warehouseId);
@@ -159,6 +164,7 @@ public class StockService : IStockService
 
     // ── Showroom Stock Implementation ─────────────────────────
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ShowroomStockResponseDto>> GetShowroomStockAsync(Guid warehouseId, Guid productId, CancellationToken ct = default)
     {
         var spec = new ShowroomStockWithDetailsSpec(warehouseId, productId);
@@ -173,33 +179,30 @@ public class StockService : IStockService
         return ServiceResult<ShowroomStockResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>> GetShowroomStocksByWarehouseAsync(Guid warehouseId, CancellationToken ct = default)
     {
-        // 1. استعلام كافة المنتجات في النظام
-        var allProducts = await _unitOfWork.Products.GetAllAsync(ct);
-        var existingStocks = await _unitOfWork.ShowroomStocks.FindAsync(s => s.WarehouseId == warehouseId, ct);
-        var existingProductIds = new HashSet<Guid>(existingStocks.Select(s => s.ProductId));
+        // 1. مفاتيح المنتجات وأرصدة الصالة الحالية — أعمدة نحيفة فقط بدل الكيانات الكاملة
+        var allProductIdsWithTenants = await _unitOfWork.Products.SelectAsync(p => new { p.Id, p.TenantId }, ct);
+        var existingProductIds = (await _unitOfWork.ShowroomStocks.SelectAsync(
+            s => new { s.WarehouseId, s.ProductId }, ct))
+            .Where(s => s.WarehouseId == warehouseId)
+            .Select(s => s.ProductId)
+            .ToHashSet();
 
-        bool hasNew = false;
-        foreach (var p in allProducts)
+        var missingProducts = allProductIdsWithTenants.Where(p => !existingProductIds.Contains(p.Id)).ToList();
+        if (missingProducts.Count > 0)
         {
-            if (!existingProductIds.Contains(p.Id))
+            var newStocks = missingProducts.Select(p => new ShowroomStock
             {
-                var newStock = new ShowroomStock
-                {
-                    TenantId = p.TenantId,
-                    WarehouseId = warehouseId,
-                    ProductId = p.Id,
-                    Quantity = 0,
-                    MinStockLevel = 0
-                };
-                await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
-                hasNew = true;
-            }
-        }
+                TenantId = p.TenantId,
+                WarehouseId = warehouseId,
+                ProductId = p.Id,
+                Quantity = 0,
+                MinStockLevel = 0
+            }).ToList();
 
-        if (hasNew)
-        {
+            await _unitOfWork.ShowroomStocks.AddRangeAsync(newStocks, ct);
             await _unitOfWork.SaveChangesAsync(ct);
         }
 
@@ -210,21 +213,23 @@ public class StockService : IStockService
         return ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<ShowroomStockResponseDto>>> GetPagedShowroomStocksByWarehouseAsync(
         Guid warehouseId,
         int pageNumber = 1,
         int pageSize = 10,
         string? searchTerm = null,
+        bool exactBarcode = false,
         CancellationToken ct = default)
     {
         if (pageNumber < 1) pageNumber = 1;
         if (pageSize < 1) pageSize = 10;
         if (pageSize > 100) pageSize = 100;
 
-        var countSpec = new ShowroomStockCountSpec(warehouseId, searchTerm);
+        var countSpec = new ShowroomStockCountSpec(warehouseId, searchTerm, exactBarcode);
         int totalCount = await _unitOfWork.ShowroomStocks.CountAsync(countSpec, ct);
 
-        var pagedSpec = new ShowroomStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, isPaged: true);
+        var pagedSpec = new ShowroomStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, exactBarcode, isPaged: true);
         var stocks = await _unitOfWork.ShowroomStocks.FindAsync(pagedSpec, ct);
 
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
@@ -233,6 +238,7 @@ public class StockService : IStockService
         return ServiceResult<PagedResult<ShowroomStockResponseDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ShowroomStockResponseDto>> SetShowroomStockAsync(SetShowroomStockDto dto, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(dto.WarehouseId, ct);
@@ -277,6 +283,7 @@ public class StockService : IStockService
         return ServiceResult<ShowroomStockResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>> GetLowShowroomStockAlertsAsync(Guid? warehouseId = null, CancellationToken ct = default)
     {
         var spec = new LowShowroomStockSpec(warehouseId);

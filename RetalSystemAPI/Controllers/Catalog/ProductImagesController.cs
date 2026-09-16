@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductImage;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -35,6 +37,7 @@ public class ProductImagesController : BaseApiController
     /// الحصول على جميع صور المنتج المحددة.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Products.View)]
     public async Task<IActionResult> GetByProduct([FromRoute] Guid productId, CancellationToken ct)
     {
         var result = await _productImageService.GetByProductAsync(productId, ct);
@@ -45,6 +48,7 @@ public class ProductImagesController : BaseApiController
     /// رفع صورة جديدة وإسنادها للمنتج.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Products.Edit)]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadImage(
         [FromRoute] Guid productId,
@@ -97,6 +101,7 @@ public class ProductImagesController : BaseApiController
     /// حذف صورة منتج.
     /// </summary>
     [HttpDelete("{imageId:guid}")]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> RemoveImage([FromRoute] Guid imageId, CancellationToken ct)
     {
         var result = await _productImageService.RemoveImageAsync(imageId, ct);
@@ -107,6 +112,7 @@ public class ProductImagesController : BaseApiController
     /// تعيين الصورة كمظهر افتراضي للمنتج.
     /// </summary>
     [HttpPatch("{imageId:guid}/set-default")]
+    [HasPermission(Permissions.Products.Edit)]
     public async Task<IActionResult> SetDefaultImage([FromRoute] Guid imageId, CancellationToken ct)
     {
         var result = await _productImageService.SetDefaultImageAsync(imageId, ct);

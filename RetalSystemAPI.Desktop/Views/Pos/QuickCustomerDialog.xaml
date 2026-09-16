@@ -1,0 +1,90 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Pos.QuickCustomerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:customers="clr-namespace:RetalSystemAPI.Desktop.Models.Customers"
+        Title="إضافة زبون جديد سريع" Height="460" Width="480"
+        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
+        Background="{DynamicResource SurfaceBrush}" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        KeyDown="Window_KeyDown" Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource PrimaryLightBrush}" CornerRadius="8" Padding="12,10" Margin="0,0,0,16">
+            <DockPanel>
+                <Path Data="{StaticResource IconCustomers}" Fill="{DynamicResource PrimaryDarkBrush}" Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="تسجيل زبون جديد في نقطة البيع" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                    <TextBlock Text="أدخل بيانات العميل ليتم ربط الفاتورة وحفظ حسابه فورياً" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Form Fields -->
+        <StackPanel Grid.Row="1">
+            <!-- Customer Name -->
+            <TextBlock Text="اسم العميل *" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtName" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource BackgroundBrush}" Margin="0,0,0,10" FontSize="13"/>
+
+            <!-- Phone & Type -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                    <TextBlock Text="رقم الهاتف *" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtPhone" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource BackgroundBrush}" FontSize="13"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                    <TextBlock Text="نوع العميل" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="CmbType" Height="36" VerticalContentAlignment="Center" SelectedIndex="0">
+                        <ComboBoxItem Content="عادي" Tag="{x:Static customers:CustomerType.Regular}"/>
+                        <ComboBoxItem Content="مميز (VIP)" Tag="{x:Static customers:CustomerType.Vip}"/>
+                        <ComboBoxItem Content="جملة" Tag="{x:Static customers:CustomerType.Wholesale}"/>
+                        <ComboBoxItem Content="شركة / مؤسسة" Tag="{x:Static customers:CustomerType.Corporate}"/>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <!-- Credit Limit & Code -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                    <TextBlock Text="سقف الدين / الائتمان (د.ل)" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtCreditLimit" Text="0" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource BackgroundBrush}" FontSize="13"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                    <TextBlock Text="كود العميل (اختياري)" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtCode" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource BackgroundBrush}" FontSize="13"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Address -->
+            <TextBlock Text="العنوان / ملاحظات" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtAddress" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource BackgroundBrush}" Margin="0,0,0,10" FontSize="13"/>
+
+            <!-- Error Message -->
+            <TextBlock x:Name="TxtError" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold" FontSize="12" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,6"/>
+        </StackPanel>
+
+        <!-- Footer Actions -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" x:Name="BtnSave" Content="حفظ واختيار العميل (Enter)" Click="BtnSave_Click" Style="{StaticResource PrimaryButtonStyle}" Height="40" Margin="0,0,4,0" FontWeight="Bold"/>
+            <Button Grid.Column="1" Content="إلغاء (Esc)" Click="BtnCancel_Click" Style="{StaticResource GhostButtonStyle}" Height="40" Margin="4,0,0,0"/>
+        </Grid>
+    </Grid>
+</Window>

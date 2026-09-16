@@ -55,4 +55,5 @@ public class PurchaseInvoice : TenantBaseEntity
     public string? Notes { get; set; }
 
     public ICollection<PurchaseInvoiceItem> Items { get; set; } = new List<PurchaseInvoiceItem>();
+    public ICollection<PurchaseReturn> Returns { get; set; } = new List<PurchaseReturn>();
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.Models.DTOs.Warehouses.StockAdjustment;
 
@@ -16,4 +17,9 @@ public class StockAdjustmentItemDto
 
     [Range(0, double.MaxValue, ErrorMessage = "تكلفة الوحدة يجب أن تكون أكبر من أو تساوي 0")]
     public decimal UnitCost { get; set; }
+
+    /// <summary>
+    /// سبب تسوية هذا البند تحديداً؛ إن لم يُرسل يُستخدم سبب التسوية العام.
+    /// </summary>
+    public StockAdjustmentReason? Reason { get; set; }
 }

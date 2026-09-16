@@ -9,6 +9,8 @@ using RetalSystemAPI.Services.Catalog.Implementations;
 using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Customers.Implementations;
 using RetalSystemAPI.Services.Customers.Interfaces;
+using RetalSystemAPI.Services.Dashboard.Implementations;
+using RetalSystemAPI.Services.Dashboard.Interfaces;
 using RetalSystemAPI.Services.FileUpload.Implementations;
 using RetalSystemAPI.Services.FileUpload.Interfaces;
 using RetalSystemAPI.Services.Purchase.Implementations;
@@ -29,6 +31,12 @@ namespace RetalSystemAPI.Services.Extensions;
 /// </summary>
 public static class ServicesLayerExtensions
 {
+    /// <summary>
+    /// تسجيل كافة ملفات التحويل (AutoMapper Profiles) والخدمات الفرعية لطبقة الخدمات في حاوية الاعتمادية.
+    /// </summary>
+    /// <param name="services">مجموعة الخدمات</param>
+    /// <param name="configuration">إعدادات التطبيق</param>
+    /// <returns>نفس حاوية الخدمات لاستكمال بناء التكوين</returns>
     public static IServiceCollection AddServicesLayer(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -67,9 +75,12 @@ public static class ServicesLayerExtensions
         services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+        services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
 
         services.AddScoped<IFileUploadService, FileUploadService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<RetalSystemAPI.Services.Users.Interfaces.IUserService, RetalSystemAPI.Services.Users.Implementations.UserService>();
+        services.AddScoped<RetalSystemAPI.Services.Common.Interfaces.ICurrentPermissionService, RetalSystemAPI.Services.Common.Implementations.CurrentPermissionService>();
 
         return services;
     }

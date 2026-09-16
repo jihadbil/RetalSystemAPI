@@ -15,19 +15,23 @@ using RetalSystemAPI.Services.Warehouses.Specifications;
 namespace RetalSystemAPI.Services.Warehouses.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة المخازن وصالات العرض.
+/// تنفيذ خدمة إدارة المستودعات وصالات العرض وتوليد سجلات الأرصدة الافتتاحية والتحقق من سلامة المخزون قبل الحذف.
 /// </summary>
 public class WarehouseService : IWarehouseService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة المستودعات مع حقن وحدة العمل والمحول.
+    /// </summary>
     public WarehouseService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<WarehouseResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.FirstOrDefaultAsync(new WarehouseWithDetailsSpec(id), ct);
@@ -40,6 +44,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult<WarehouseResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<WarehouseSummaryDto>>> GetAllAsync(Guid? branchId = null, WarehouseType? type = null, CancellationToken ct = default)
     {
         var spec = new WarehouseWithDetailsSpec(branchId, type);
@@ -49,6 +54,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult<IReadOnlyList<WarehouseSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<WarehouseSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? branchId = null, WarehouseType? type = null, CancellationToken ct = default)
     {
         var spec = new WarehouseWithDetailsSpec(branchId, type);
@@ -60,6 +66,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult<PagedResult<WarehouseSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<WarehouseResponseDto>> CreateAsync(CreateWarehouseDto dto, CancellationToken ct = default)
     {
         bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
@@ -80,40 +87,42 @@ public class WarehouseService : IWarehouseService
         await _unitOfWork.Warehouses.AddAsync(warehouse, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        // توليد أسطر المخزون تلقائياً للمخزن الجديد
+        // توليد أسطر المخزون تلقائياً للمخزن الجديد — تحميل المعرفات فقط (بدل الكيانات الكاملة) وإدراج دفعة واحدة
         if (warehouse.Type == WarehouseType.Storge)
         {
-            var allBarCodes = await _unitOfWork.ProductBarCodes.GetAllAsync(ct);
-            foreach (var bc in allBarCodes)
+            var allBarCodeIds = await _unitOfWork.ProductBarCodes.SelectAsync(bc => bc.Id, ct);
+            var newStocks = allBarCodeIds.Select(bcId => new StorgeStock
             {
-                var storgeStock = new StorgeStock
-                {
-                    TenantId = warehouse.TenantId,
-                    WarehouseId = warehouse.Id,
-                    ProductBarcodeId = bc.Id,
-                    Quantity = 0,
-                    MinStockLevel = 0
-                };
-                await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+                TenantId = warehouse.TenantId,
+                WarehouseId = warehouse.Id,
+                ProductBarcodeId = bcId,
+                Quantity = 0,
+                MinStockLevel = 0
+            }).ToList();
+
+            await _unitOfWork.StorgeStocks.AddRangeAsync(newStocks, ct);
+            if (newStocks.Count > 0)
+            {
+                await _unitOfWork.SaveChangesAsync(ct);
             }
-            await _unitOfWork.SaveChangesAsync(ct);
         }
         else if (warehouse.Type == WarehouseType.Show)
         {
-            var allProducts = await _unitOfWork.Products.GetAllAsync(ct);
-            foreach (var p in allProducts)
+            var allProductIds = await _unitOfWork.Products.SelectAsync(p => p.Id, ct);
+            var newStocks = allProductIds.Select(pId => new ShowroomStock
             {
-                var showStock = new ShowroomStock
-                {
-                    TenantId = warehouse.TenantId,
-                    WarehouseId = warehouse.Id,
-                    ProductId = p.Id,
-                    Quantity = 0,
-                    MinStockLevel = 0
-                };
-                await _unitOfWork.ShowroomStocks.AddAsync(showStock, ct);
+                TenantId = warehouse.TenantId,
+                WarehouseId = warehouse.Id,
+                ProductId = pId,
+                Quantity = 0,
+                MinStockLevel = 0
+            }).ToList();
+
+            await _unitOfWork.ShowroomStocks.AddRangeAsync(newStocks, ct);
+            if (newStocks.Count > 0)
+            {
+                await _unitOfWork.SaveChangesAsync(ct);
             }
-            await _unitOfWork.SaveChangesAsync(ct);
         }
 
         var created = await _unitOfWork.Warehouses.FirstOrDefaultAsync(new WarehouseWithDetailsSpec(warehouse.Id), ct) ?? warehouse;
@@ -122,6 +131,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult<WarehouseResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<WarehouseResponseDto>> UpdateAsync(Guid id, UpdateWarehouseDto dto, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.FirstOrDefaultAsync(new WarehouseWithDetailsSpec(id), ct);
@@ -148,6 +158,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult<WarehouseResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id, ct);
@@ -170,6 +181,7 @@ public class WarehouseService : IWarehouseService
         return ServiceResult.Success();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id, ct);

@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Purchase;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبنود فواتير المشتريات المجمعة (PurchaseInvoiceItems).
+/// </summary>
 public class PurchaseInvoiceItemConfiguration : IEntityTypeConfiguration<PurchaseInvoiceItem>
 {
     public void Configure(EntityTypeBuilder<PurchaseInvoiceItem> builder)

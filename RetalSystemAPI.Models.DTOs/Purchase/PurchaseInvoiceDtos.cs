@@ -65,6 +65,18 @@ public class PurchaseInvoiceItemResponseDto : BaseDto
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal LineTotal { get; set; }
+    public List<PurchaseInvoiceItemBreakdownResponseDto> Breakdowns { get; set; } = new();
+}
+
+public class PurchaseInvoiceItemBreakdownResponseDto : BaseDto
+{
+    public Guid ProductBarCodeId { get; set; }
+    public string? BarCode { get; set; }
+    public string? Title { get; set; }
+    public decimal PackageQuantity { get; set; }
+    public int UnitsPerPackage { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }
 
 public class CreatePurchaseInvoiceDto
@@ -93,6 +105,16 @@ public class CreatePurchaseInvoiceItemDto
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
+    public List<CreatePurchaseInvoiceItemBreakdownDto>? Breakdowns { get; set; }
+}
+
+public class CreatePurchaseInvoiceItemBreakdownDto
+{
+    public Guid ProductBarCodeId { get; set; }
+    public decimal PackageQuantity { get; set; } = 1;
+    public int UnitsPerPackage { get; set; } = 1;
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }
 
 public class UpdatePurchaseInvoiceDto

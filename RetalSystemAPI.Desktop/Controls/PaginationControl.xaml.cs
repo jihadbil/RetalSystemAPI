@@ -102,12 +102,12 @@ public partial class PaginationControl : UserControl, INotifyPropertyChanged
 
     private void Prev_Click(object sender, RoutedEventArgs e)
     {
-        PrevPageCommand?.Execute(null);
+        if (CanGoPrev && PrevPageCommand?.CanExecute(null) == true) PrevPageCommand.Execute(null);
     }
 
     private void Next_Click(object sender, RoutedEventArgs e)
     {
-        NextPageCommand?.Execute(null);
+        if (CanGoNext && NextPageCommand?.CanExecute(null) == true) NextPageCommand.Execute(null);
     }
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

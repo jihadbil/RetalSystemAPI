@@ -26,7 +26,7 @@ public interface IProductApiService
     // Excel Operations
     Task<byte[]?> ExportExcelAsync(CancellationToken ct = default);
     Task<byte[]?> DownloadTemplateAsync(CancellationToken ct = default);
-    Task<ApiResponse<bool>> ImportExcelAsync(Stream fileStream, string fileName, CancellationToken ct = default);
+    Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(Stream fileStream, string fileName, CancellationToken ct = default);
 
     // Product Units
     Task<ApiResponse<List<ProductUnitResponseDto>>> GetProductUnitsAsync(Guid productId, CancellationToken ct = default);
@@ -106,13 +106,13 @@ public class ProductApiService : IProductApiService
         return _apiClient.GetByteArrayAsync("api/catalog/products/excel-template", ct);
     }
 
-    public Task<ApiResponse<bool>> ImportExcelAsync(Stream fileStream, string fileName, CancellationToken ct = default)
+    public Task<ApiResponse<ProductImportResultDto>> ImportExcelAsync(Stream fileStream, string fileName, CancellationToken ct = default)
     {
         using var content = new MultipartFormDataContent();
         using var streamContent = new StreamContent(fileStream);
         content.Add(streamContent, "file", fileName);
 
-        return _apiClient.PostMultipartAsync<bool>("api/catalog/products/import-excel", content, ct);
+        return _apiClient.PostMultipartAsync<ProductImportResultDto>("api/catalog/products/import-excel", content, ct);
     }
 
     // Units

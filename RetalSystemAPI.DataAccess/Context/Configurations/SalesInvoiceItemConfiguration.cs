@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Sales;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبنود فواتير المبيعات (SalesInvoiceItems) وتكاليف وهوامش ربح المبيعات.
+/// </summary>
 public class SalesInvoiceItemConfiguration : IEntityTypeConfiguration<SalesInvoiceItem>
 {
     public void Configure(EntityTypeBuilder<SalesInvoiceItem> builder)

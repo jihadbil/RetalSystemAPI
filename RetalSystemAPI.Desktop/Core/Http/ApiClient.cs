@@ -149,6 +149,22 @@ public class ApiClient
         }
     }
 
+    public async Task<ApiResponse> PutAsync(string endpoint, object body, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(body, _jsonOptions);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var request = CreateRequest(HttpMethod.Put, endpoint, content);
+            using var response = await _httpClient.SendAsync(request, ct);
+            return await HandleVoidResponseAsync(response, ct);
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { Success = false, Message = ex.Message, ErrorCode = "NETWORK_ERROR" };
+        }
+    }
+
     public async Task<ApiResponse> DeleteAsync(string endpoint, CancellationToken ct = default)
     {
         try
@@ -229,6 +245,27 @@ public class ApiClient
             return new ApiResponse<T> { Success = false, Message = "انتهت الجلسة أو غير مصرح به", ErrorCode = "UNAUTHORIZED" };
         }
 
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            var forbiddenJson = await response.Content.ReadAsStringAsync(ct);
+            if (!string.IsNullOrWhiteSpace(forbiddenJson))
+            {
+                try
+                {
+                    var res = JsonSerializer.Deserialize<ApiResponse<T>>(forbiddenJson, _jsonOptions);
+                    if (res != null)
+                    {
+                        res.Success = false;
+                        if (string.IsNullOrWhiteSpace(res.Message))
+                            res.Message = "ليس لديك الصلاحية لتنفيذ هذا الإجراء";
+                        return res;
+                    }
+                }
+                catch { }
+            }
+            return new ApiResponse<T> { Success = false, Message = "ليس لديك الصلاحية لتنفيذ هذا الإجراء", ErrorCode = "FORBIDDEN" };
+        }
+
         var json = await response.Content.ReadAsStringAsync(ct);
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -267,6 +304,27 @@ public class ApiClient
         {
             _authState.ClearToken();
             return new ApiResponse { Success = false, Message = "انتهت الجلسة أو غير مصرح به", ErrorCode = "UNAUTHORIZED" };
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            var forbiddenJson = await response.Content.ReadAsStringAsync(ct);
+            if (!string.IsNullOrWhiteSpace(forbiddenJson))
+            {
+                try
+                {
+                    var res = JsonSerializer.Deserialize<ApiResponse>(forbiddenJson, _jsonOptions);
+                    if (res != null)
+                    {
+                        res.Success = false;
+                        if (string.IsNullOrWhiteSpace(res.Message))
+                            res.Message = "ليس لديك الصلاحية لتنفيذ هذا الإجراء";
+                        return res;
+                    }
+                }
+                catch { }
+            }
+            return new ApiResponse { Success = false, Message = "ليس لديك الصلاحية لتنفيذ هذا الإجراء", ErrorCode = "FORBIDDEN" };
         }
 
         var json = await response.Content.ReadAsStringAsync(ct);

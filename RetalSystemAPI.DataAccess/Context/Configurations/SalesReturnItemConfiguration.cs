@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Sales;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لبنود فواتير مردودات المبيعات (SalesReturnItems).
+/// </summary>
 public class SalesReturnItemConfiguration : IEntityTypeConfiguration<SalesReturnItem>
 {
     public void Configure(EntityTypeBuilder<SalesReturnItem> builder)

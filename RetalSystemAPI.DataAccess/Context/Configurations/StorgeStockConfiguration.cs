@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Warehouses;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لأرصدة المستودعات الرئيسية (StorgeStocks) لكل باركود ونكهة ومخزن.
+/// </summary>
 public class StorgeStockConfiguration : IEntityTypeConfiguration<StorgeStock>
 {
     public void Configure(EntityTypeBuilder<StorgeStock> builder)

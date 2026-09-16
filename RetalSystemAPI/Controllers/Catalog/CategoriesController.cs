@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Catalog.Category;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -28,6 +30,7 @@ public class CategoriesController : BaseApiController
     /// الحصول على جميع التصنيفات.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Categories.View)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var result = await _categoryService.GetAllAsync(ct);
@@ -38,6 +41,7 @@ public class CategoriesController : BaseApiController
     /// الحصول على التصنيفات الجذرية (بدون تصنيف أب).
     /// </summary>
     [HttpGet("roots")]
+    [HasPermission(Permissions.Categories.View)]
     public async Task<IActionResult> GetRoots(CancellationToken ct)
     {
         var result = await _categoryService.GetRootCategoriesAsync(ct);
@@ -48,6 +52,7 @@ public class CategoriesController : BaseApiController
     /// الحصول على التصنيفات الفرعية لتصنيف محدد.
     /// </summary>
     [HttpGet("{parentId:guid}/children")]
+    [HasPermission(Permissions.Categories.View)]
     public async Task<IActionResult> GetChildren([FromRoute] Guid parentId, CancellationToken ct)
     {
         var result = await _categoryService.GetSubCategoriesAsync(parentId, ct);
@@ -58,6 +63,7 @@ public class CategoriesController : BaseApiController
     /// الحصول على قائمة صفحية بالتصنيفات.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.Categories.View)]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
     {
         var result = await _categoryService.GetPagedAsync(pageNumber, pageSize, ct);
@@ -68,6 +74,7 @@ public class CategoriesController : BaseApiController
     /// الحصول على تفاصيل تصنيف محدد بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.Categories.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _categoryService.GetByIdAsync(id, ct);
@@ -78,6 +85,7 @@ public class CategoriesController : BaseApiController
     /// إنشاء تصنيف جديد.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Categories.Create)]
     public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto, CancellationToken ct)
     {
         var result = await _categoryService.CreateAsync(dto, ct);
@@ -93,6 +101,7 @@ public class CategoriesController : BaseApiController
     /// تعديل تصنيف موجود.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.Categories.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateCategoryDto dto, CancellationToken ct)
     {
         var result = await _categoryService.UpdateAsync(id, dto, ct);
@@ -103,6 +112,7 @@ public class CategoriesController : BaseApiController
     /// حذف تصنيف.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.Categories.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _categoryService.DeleteAsync(id, ct);
@@ -113,6 +123,7 @@ public class CategoriesController : BaseApiController
     /// تبديل حالة النشاط للتصنيف (تفعيل / تعطيل).
     /// </summary>
     [HttpPatch("{id:guid}/toggle-active")]
+    [HasPermission(Permissions.Categories.Edit)]
     public async Task<IActionResult> ToggleActiveStatus([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _categoryService.ToggleActiveStatusAsync(id, ct);

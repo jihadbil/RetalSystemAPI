@@ -16,8 +16,12 @@ public partial class StockViewModel : BaseViewModel
     private readonly IStockApiService _stockApiService;
     private readonly IWarehouseApiService _warehouseApiService;
 
+    // القائمتان المفلترتان حسب النوع، والكومبو يعرض المناسب للتبويب الحالي عبر FilteredWarehouses
     [ObservableProperty]
-    private ObservableCollection<WarehouseSummaryDto> _warehouses = new();
+    private ObservableCollection<WarehouseSummaryDto> _storgeWarehouses = new();
+
+    [ObservableProperty]
+    private ObservableCollection<WarehouseSummaryDto> _showroomWarehouses = new();
 
     [ObservableProperty]
     private WarehouseSummaryDto? _selectedWarehouse;
@@ -45,6 +49,28 @@ public partial class StockViewModel : BaseViewModel
     [ObservableProperty] private bool _hasPreviousPage = false;
     [ObservableProperty] private bool _hasNextPage = false;
 
+    /// <summary>مطابقة الباركود تماماً — يقتصر البحث على التطابق التام مع الباركود بدلاً من الاحتواء</summary>
+    [ObservableProperty] private bool _exactBarcodeMatch = false;
+
+    partial void OnExactBarcodeMatchChanged(bool value)
+    {
+        PageNumber = 1;
+        _ = RefreshCurrentTabAsync();
+    }
+
+    /// <summary>
+    /// مصدر الكومبو الحالي حسب التبويب: تبويب المخزن يعرض المخازن فقط
+    /// وتبويب الصالة يعرض الصالات فقط (تبويب التنبيهات يعرض المخازن).
+    /// </summary>
+    public ObservableCollection<WarehouseSummaryDto> FilteredWarehouses =>
+        SelectedTabIndex == 1 ? ShowroomWarehouses : StorgeWarehouses;
+
+    partial void OnStorgeWarehousesChanged(ObservableCollection<WarehouseSummaryDto> value)
+        => OnPropertyChanged(nameof(FilteredWarehouses));
+
+    partial void OnShowroomWarehousesChanged(ObservableCollection<WarehouseSummaryDto> value)
+        => OnPropertyChanged(nameof(FilteredWarehouses));
+
     partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
     {
         PageNumber = 1;
@@ -54,7 +80,18 @@ public partial class StockViewModel : BaseViewModel
     partial void OnSelectedTabIndexChanged(int value)
     {
         PageNumber = 1;
-        _ = RefreshCurrentTabAsync();
+        // تبديل مصدر الكومبو حسب التبويب مع اختيار أول عنصر مناسب؛
+        // تغيّر المحدد يُطلق التحديث تلقائياً، وإلا نحدّث يدوياً
+        OnPropertyChanged(nameof(FilteredWarehouses));
+        var first = FilteredWarehouses.FirstOrDefault();
+        if (!ReferenceEquals(SelectedWarehouse, first))
+        {
+            SelectedWarehouse = first;
+        }
+        else
+        {
+            _ = RefreshCurrentTabAsync();
+        }
     }
 
     partial void OnPageSizeChanged(int value)
@@ -78,17 +115,57 @@ public partial class StockViewModel : BaseViewModel
         await RefreshCurrentTabAsync();
     }
 
-    private async Task LoadWarehousesAsync()
+    /// <summary>
+    /// إعادة تحميل قائمة المخازن/الصالات عند كل ظهور للشاشة،
+    /// بحيث تظهر المخازن والصالات المضافة حديثاً دون الحاجة لإعادة تشغيل التطبيق.
+    /// يُحافظ على المستودع المحدد إن كان لا يزال موجوداً بنفس النوع.
+    /// </summary>
+    public async Task RefreshOnNavigatedAsync()
     {
-        var res = await _warehouseApiService.GetAllAsync();
-        if (res.Success && res.Data != null)
+        var previouslySelectedId = SelectedWarehouse?.Id;
+        await LoadWarehousesAsync(previouslySelectedId);
+        await RefreshCurrentTabAsync();
+    }
+
+    private async Task LoadWarehousesAsync(Guid? preferredWarehouseId = null)
+    {
+        // تحميل قائمتين مفلترتين: مخازن التخزين وصالات العرض
+        var storgeRes = await _warehouseApiService.GetAllAsync(type: WarehouseType.Storge);
+        if (storgeRes.Success && storgeRes.Data != null)
         {
-            Warehouses = new ObservableCollection<WarehouseSummaryDto>(res.Data);
-            if (Warehouses.Count > 0)
+            StorgeWarehouses = new ObservableCollection<WarehouseSummaryDto>(storgeRes.Data);
+        }
+
+        var showRes = await _warehouseApiService.GetAllAsync(type: WarehouseType.Show);
+        if (showRes.Success && showRes.Data != null)
+        {
+            ShowroomWarehouses = new ObservableCollection<WarehouseSummaryDto>(showRes.Data);
+        }
+
+        // إن لم تتوفر قوائم مفلترة (بيانات قديمة بلا نوع) نرجع لكل المخازن
+        if (StorgeWarehouses.Count == 0 && ShowroomWarehouses.Count == 0)
+        {
+            var allRes = await _warehouseApiService.GetAllAsync();
+            if (allRes.Success && allRes.Data != null)
             {
-                SelectedWarehouse = Warehouses[0];
+                StorgeWarehouses = new ObservableCollection<WarehouseSummaryDto>(allRes.Data);
+                if (StorgeWarehouses.Count > 0) SelectedWarehouse = StorgeWarehouses[0];
+                return;
             }
         }
+
+
+        var preferred = preferredWarehouseId.HasValue
+            ? FilteredWarehouses.FirstOrDefault(w => w.Id == preferredWarehouseId.Value)
+            : null;
+
+        // الحفاظ على المحدد الحالي إن كان ما يزال ضمن قائمة التبويب الحالي
+        if (SelectedWarehouse != null && FilteredWarehouses.Any(w => w.Id == SelectedWarehouse.Id))
+        {
+            return;
+        }
+
+        SelectedWarehouse = preferred ?? FilteredWarehouses.FirstOrDefault();
     }
 
     [RelayCommand]
@@ -127,7 +204,7 @@ public partial class StockViewModel : BaseViewModel
             {
                 if (SelectedWarehouse != null)
                 {
-                    var res = await _stockApiService.GetPagedStorgeStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm);
+                    var res = await _stockApiService.GetPagedStorgeStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm, ExactBarcodeMatch);
                     if (res.Success && res.Data != null)
                     {
                         StorgeStocks = new ObservableCollection<StorgeStockDto>(res.Data.Items);
@@ -143,7 +220,7 @@ public partial class StockViewModel : BaseViewModel
             {
                 if (SelectedWarehouse != null)
                 {
-                    var res = await _stockApiService.GetPagedShowroomStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm);
+                    var res = await _stockApiService.GetPagedShowroomStocksByWarehouseAsync(SelectedWarehouse.Id, PageNumber, PageSize, SearchTerm, ExactBarcodeMatch);
                     if (res.Success && res.Data != null)
                     {
                         ShowroomStocks = new ObservableCollection<ShowroomStockDto>(res.Data.Items);

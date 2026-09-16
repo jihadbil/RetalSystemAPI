@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Warehouses.StockAdjustment;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Responses;
@@ -29,6 +31,7 @@ public class StockAdjustmentsController : BaseApiController
     /// الحصول على جميع التسويات الجردية مع إمكانية الفلترة بالمستودع أو سبب التسوية والتواريخ.
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.StockAdjustments.View)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? warehouseId = null,
         [FromQuery] StockAdjustmentReason? reason = null,
@@ -45,6 +48,7 @@ public class StockAdjustmentsController : BaseApiController
     /// الحصول على قائمة صفحية للتسويات الجردية.
     /// </summary>
     [HttpGet("paged")]
+    [HasPermission(Permissions.StockAdjustments.View)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -63,6 +67,7 @@ public class StockAdjustmentsController : BaseApiController
     /// الحصول على تفاصيل تسوية جردية محددة بالمعرف.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.StockAdjustments.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _stockAdjustmentService.GetByIdAsync(id, ct);
@@ -73,6 +78,7 @@ public class StockAdjustmentsController : BaseApiController
     /// البحث عن تسوية جردية برقم التسوية.
     /// </summary>
     [HttpGet("number/{adjustmentNumber}")]
+    [HasPermission(Permissions.StockAdjustments.View)]
     public async Task<IActionResult> GetByAdjustmentNumber([FromRoute] string adjustmentNumber, CancellationToken ct)
     {
         var result = await _stockAdjustmentService.GetByAdjustmentNumberAsync(adjustmentNumber, ct);
@@ -83,6 +89,7 @@ public class StockAdjustmentsController : BaseApiController
     /// إنشاء تسوية جردية جديدة وتعديل الأرصدة الفعلية في المخزون فورياً.
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.StockAdjustments.Create)]
     public async Task<IActionResult> Create([FromBody] CreateStockAdjustmentDto dto, CancellationToken ct)
     {
         var result = await _stockAdjustmentService.CreateAsync(dto, ct);
@@ -98,6 +105,7 @@ public class StockAdjustmentsController : BaseApiController
     /// حذف/أرشفة تسوية جردية.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.StockAdjustments.Delete)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _stockAdjustmentService.DeleteAsync(id, ct);

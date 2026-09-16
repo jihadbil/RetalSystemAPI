@@ -15,19 +15,23 @@ using RetalSystemAPI.Services.Warehouses.Specifications;
 namespace RetalSystemAPI.Services.Warehouses.Implementations;
 
 /// <summary>
-/// تنفيذ خدمة إدارة التسويات الجردية وضبط أرصدة المخزون الفعلية.
+/// تنفيذ خدمة إدارة التسويات الجردية وضبط كميات المخزون الفعلية ومعالجة الفوارق المحاسبية.
 /// </summary>
 public class StockAdjustmentService : IStockAdjustmentService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// تهيئة خدمة التسويات الجردية مع حقن وحدة العمل والمحول.
+    /// </summary>
     public StockAdjustmentService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockAdjustmentResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(id), ct);
@@ -40,6 +44,7 @@ public class StockAdjustmentService : IStockAdjustmentService
         return ServiceResult<StockAdjustmentResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockAdjustmentResponseDto>> GetByAdjustmentNumberAsync(string adjustmentNumber, CancellationToken ct = default)
     {
         var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(adjustmentNumber), ct);
@@ -52,6 +57,7 @@ public class StockAdjustmentService : IStockAdjustmentService
         return ServiceResult<StockAdjustmentResponseDto>.Success(dto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<IReadOnlyList<StockAdjustmentSummaryDto>>> GetAllAsync(
         Guid? warehouseId = null,
         StockAdjustmentReason? reason = null,
@@ -67,6 +73,7 @@ public class StockAdjustmentService : IStockAdjustmentService
         return ServiceResult<IReadOnlyList<StockAdjustmentSummaryDto>>.Success(dtos);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<PagedResult<StockAdjustmentSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -86,6 +93,7 @@ public class StockAdjustmentService : IStockAdjustmentService
         return ServiceResult<PagedResult<StockAdjustmentSummaryDto>>.Success(pagedResult);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<StockAdjustmentResponseDto>> CreateAsync(CreateStockAdjustmentDto dto, CancellationToken ct = default)
     {
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(dto.WarehouseId, ct);
@@ -115,20 +123,26 @@ public class StockAdjustmentService : IStockAdjustmentService
             SystemQuantity = item.SystemQuantity,
             ActualQuantity = item.ActualQuantity,
             DifferenceQuantity = item.ActualQuantity - item.SystemQuantity,
-            UnitCost = item.UnitCost
+            UnitCost = item.UnitCost,
+            // سبب البند إن حُدد، وإلا سبب التسوية العام
+            Reason = item.Reason ?? adjustment.Reason
         }).ToList();
 
-        // تحديث أرصدة المخزون بناءً على الكميات الفعلية للجرد
-        foreach (var item in adjustment.Items)
+        // تحديث أرصدة المخزون بناءً على الكميات الفعلية للجرد — دفعة أرصدة واحدة لكل نوع مستودع
+        if (warehouse.Type == WarehouseType.Show)
         {
-            if (warehouse.Type == WarehouseType.Show)
+            var productIds = adjustment.Items.Select(i => i.ProductId).Distinct().ToList();
+            var stocksByProduct = productIds.Count > 0
+                ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
+                    .ToDictionary(s => s.ProductId)
+                : new Dictionary<Guid, ShowroomStock>();
+
+            foreach (var item in adjustment.Items)
             {
-                var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductId == item.ProductId, ct);
-                if (stock != null)
+                if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
                 {
                     stock.Quantity = item.ActualQuantity;
-                    _unitOfWork.ShowroomStocks.Update(stock);
                 }
                 else
                 {
@@ -141,16 +155,31 @@ public class StockAdjustmentService : IStockAdjustmentService
                         MinStockLevel = 0
                     };
                     await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                    stocksByProduct[item.ProductId] = newStock;
                 }
             }
-            else if (warehouse.Type == WarehouseType.Storge && item.ProductBarCodeId.HasValue)
+        }
+        else if (warehouse.Type == WarehouseType.Storge)
+        {
+            var barcodeIds = adjustment.Items
+                .Where(i => i.ProductBarCodeId.HasValue)
+                .Select(i => i.ProductBarCodeId!.Value)
+                .Distinct()
+                .ToList();
+
+            var stocksByBarcode = barcodeIds.Count > 0
+                ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                    s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
+                    .ToDictionary(s => s.ProductBarcodeId)
+                : new Dictionary<Guid, StorgeStock>();
+
+            foreach (var item in adjustment.Items)
             {
-                var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
-                    s => s.WarehouseId == warehouse.Id && s.ProductBarcodeId == item.ProductBarCodeId.Value, ct);
-                if (stock != null)
+                if (!item.ProductBarCodeId.HasValue) continue;
+
+                if (stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
                 {
                     stock.Quantity = item.ActualQuantity;
-                    _unitOfWork.StorgeStocks.Update(stock);
                 }
                 else
                 {
@@ -163,6 +192,7 @@ public class StockAdjustmentService : IStockAdjustmentService
                         MinStockLevel = 0
                     };
                     await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                    stocksByBarcode[item.ProductBarCodeId.Value] = newStock;
                 }
             }
         }
@@ -176,9 +206,11 @@ public class StockAdjustmentService : IStockAdjustmentService
         return ServiceResult<StockAdjustmentResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(id), ct);
+        // تحميل متتبع لتفادي تضارب النسخ المكررة عند تكرار الصنف في البنود أثناء SoftDelete
+        var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultTrackedAsync(new StockAdjustmentWithDetailsSpec(id), ct);
         if (adjustment is null)
         {
             return ServiceResult.Failure("التسوية الجردية غير موجودة", ErrorCodes.StockAdjustmentNotFound);

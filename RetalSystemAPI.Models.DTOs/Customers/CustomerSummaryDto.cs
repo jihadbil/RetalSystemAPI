@@ -12,4 +12,5 @@ public class CustomerSummaryDto : BaseDto
     public decimal CreditLimit { get; set; }
     public bool IsActive { get; set; }
     public int PhoneCount { get; set; }
+    public string? PrimaryPhone { get; set; }
 }

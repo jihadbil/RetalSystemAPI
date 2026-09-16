@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource ModernDialogWindowStyle}"
         AllowsTransparency="True" WindowStartupLocation="CenterOwner"
-        Title="بيانات الفرع" Height="460" Width="450">
+        Title="بيانات الفرع" Height="460" Width="450" Foreground="{DynamicResource TextPrimaryBrush}">
     <Border Style="{StaticResource DialogCardBorderStyle}">
         <Grid Margin="24">
             <Grid.RowDefinitions>
@@ -20,7 +20,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
+                <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
                     <TextBlock Text="🏢" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
@@ -34,16 +34,16 @@
 
             <!-- Form Body -->
             <StackPanel Grid.Row="1">
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" FontFamily="{StaticResource AppFontFamily}" FontSize="12" Margin="0,0,0,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontFamily="{StaticResource AppFontFamily}" FontSize="12" Margin="0,0,0,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
 
                 <TextBlock Text="اسم الفرع *" Style="{StaticResource FormLabelStyle}" />
-                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,12" />
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,12" />
 
                 <TextBlock Text="العنوان" Style="{StaticResource FormLabelStyle}" />
-                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,12" />
+                <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,12" />
 
                 <TextBlock Text="رقم الهاتف" Style="{StaticResource FormLabelStyle}" />
-                <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,16" />
+                <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Margin="0,0,0,16" />
             </StackPanel>
 
             <!-- Dialog Footer -->

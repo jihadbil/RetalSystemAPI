@@ -4,6 +4,9 @@ using RetalSystemAPI.Models.Catalog;
 
 namespace RetalSystemAPI.DataAccess.Context.Configurations;
 
+/// <summary>
+/// تكوين Fluent API لوحدات قياس الأصناف (ProductUnits) والربط مع الوحدة الأساسية.
+/// </summary>
 public class ProductUnitConfiguration : IEntityTypeConfiguration<ProductUnit>
 {
     public void Configure(EntityTypeBuilder<ProductUnit> builder)

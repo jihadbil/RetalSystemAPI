@@ -21,8 +21,8 @@ public partial class DashboardPage : ContentPage
         }
     }
 
-    private async void NavigateToProducts(object sender, EventArgs e) => await Shell.Current.GoToAsync("//ProductsPage");
-    private async void NavigateToCategories(object sender, EventArgs e) => await Shell.Current.GoToAsync("//CategoriesPage");
-    private async void NavigateToBranches(object sender, EventArgs e) => await Shell.Current.GoToAsync("//BranchesPage");
-    private async void NavigateToTenants(object sender, EventArgs e) => await Shell.Current.GoToAsync("//TenantsPage");
+    private async void NavigateToProducts(object? sender, EventArgs e) => await Shell.Current.GoToAsync("//ProductsPage");
+    private async void NavigateToCategories(object? sender, EventArgs e) => await Shell.Current.GoToAsync("//CategoriesPage");
+    private async void NavigateToBranches(object? sender, EventArgs e) => await Shell.Current.GoToAsync("//BranchesPage");
+    private async void NavigateToTenants(object? sender, EventArgs e) => await Shell.Current.GoToAsync("//TenantsPage");
 }
