@@ -33,18 +33,23 @@ public class PagedResult<T>
     /// <summary>
     /// إنشاء كائن جديد يمثل صفحة نتائج مع حساب الترقيم تلقائياً.
     /// </summary>
-    /// <param name="items">عناصر الصفحة</param>
-    /// <param name="totalCount">العدد الإجمالي</param>
-    /// <param name="pageNumber">رقم الصفحة</param>
-    /// <param name="pageSize">حجم الصفحة</param>
-    /// <returns>كائن PagedResult مهيأ</returns>
+    /// <param name="items">عناصر الصفحة المعادة</param>
+    /// <param name="totalCount">العدد الإجمالي لكافة السجلات</param>
+    /// <param name="pageNumber">رقم الصفحة الحالية</param>
+    /// <param name="pageSize">عدد العناصر في الصفحة</param>
+    /// <returns>كائن PagedResult مهيأ بالبيانات والترقيم</returns>
     public static PagedResult<T> Create(IReadOnlyList<T> items, int totalCount, int pageNumber, int pageSize)
     {
+        // بناء كائن صفحة النتائج وتعيين خصائص الترقيم والعناصر
         return new PagedResult<T>
         {
+            // إسناد قائمة العناصر
             Items = items,
+            // إسناد العدد الإجمالي
             TotalCount = totalCount,
+            // تعيين رقم الصفحة
             PageNumber = pageNumber,
+            // تعيين حجم الصفحة
             PageSize = pageSize
         };
     }

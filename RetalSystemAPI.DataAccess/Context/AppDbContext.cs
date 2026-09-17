@@ -135,92 +135,135 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     /// <summary>جدول بنود تسويات الجرد المخزني</summary>
     public DbSet<StockAdjustmentItem> StockAdjustmentItems => Set<StockAdjustmentItem>();
 
+    /// <summary>
+    /// تكوين العلاقات، ومفاتيح الجداول، وتطبيق مرشحات الاستعلام العامة للعزل المتعدد للمستأجرين والحذف الناعم.
+    /// </summary>
+    /// <param name="builder">منشئ نماذج كيانات قاعدة البيانات ModelBuilder</param>
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        // استدعاء البنية الأساسية لـ IdentityDbContext لتهيئة جداول المستخدمين والصلاحيات
         base.OnModelCreating(builder);
 
-        // تطبيق جميع إعدادات Fluent API تلقائياً من التجميع الحالية
+        // اكتشاف وتطبيق كافة فئات التكوين (IEntityTypeConfiguration) في هذا التجميع تلقائياً
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // ── Global Query Filters (Soft Delete + Multi-Tenancy) ───────
+        // المرور على كافة الكيانات المسجلة في النموذج لفحص شجرة وراثتها وتطبيق مرشحات الأمان
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
+            // فحص إذا كان الكيان هو جدول المستأجرين نفسه (Tenant)
             if (entityType.ClrType == typeof(Tenant))
             {
+                // إنشاء معامل التعبير البرمجي للكيان (e => ...)
                 var parameter = Expression.Parameter(entityType.ClrType, "e");
                 
-                // Soft Delete Filter: !e.IsDeleted
+                // استخراج خاصية الحذف الناعم IsDeleted من الكيان
                 var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                // بناء شرط استبعاد المحذوفات: e.IsDeleted == false
                 var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
 
+                // بناء دالة Lambda للشرط: e => e.IsDeleted == false
                 var lambda = Expression.Lambda(compareIsDeleted, parameter);
+                // تطبيق مرشح الاستعلام العام على جدول المستأجرين
                 builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
+            // فحص إذا كان الكيان يتبع مستأجراً معيناً ويرث من TenantBaseEntity
             else if (typeof(TenantBaseEntity).IsAssignableFrom(entityType.ClrType))
             {
+                // إنشاء معامل التعبير البرمجي للكيان (e => ...)
                 var parameter = Expression.Parameter(entityType.ClrType, "e");
                 
-                // 1. Soft Delete Filter: !e.IsDeleted
+                // 1. استخراج خاصية الحذف الناعم وبناء شرط الفلترة: e.IsDeleted == false
                 var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
                 var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
                 
-                // 2. Multi-Tenant Filter: e.TenantId == CurrentTenantId
+                // 2. استخراج خاصية معرف المستأجر من الكيان ومعرف المستأجر الحالي من السياق
                 var tenantIdProperty = Expression.Property(parameter, nameof(TenantBaseEntity.TenantId));
                 var currentTenantIdProperty = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
+                // بناء شرط تطابق المستأجر: e.TenantId == CurrentTenantId
                 var compareTenantId = Expression.Equal(tenantIdProperty, currentTenantIdProperty);
 
+                // دمج الشرطين معاً منطقياً: !e.IsDeleted && e.TenantId == CurrentTenantId
                 var filterExpression = Expression.AndAlso(compareIsDeleted, compareTenantId);
 
+                // بناء دالة Lambda المركبة
                 var lambda = Expression.Lambda(filterExpression, parameter);
+                // تطبيق مرشح الاستعلام المزدوج للعزل التام والأمان على الكيان
                 builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
+            // فحص إذا كان الكيان مشتركاً أو عاماً ويرث فقط من BaseEntity دون تخصيص مستأجر
             else if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
+                // إنشاء معامل التعبير البرمجي للكيان (e => ...)
                 var parameter = Expression.Parameter(entityType.ClrType, "e");
                 
-                // Soft Delete Filter: !e.IsDeleted
+                // استخراج خاصية الحذف الناعم وبناء شرط الاستبعاد: e.IsDeleted == false
                 var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
                 var compareIsDeleted = Expression.Equal(isDeletedProperty, Expression.Constant(false));
 
+                // بناء دالة Lambda وتطبيق مرشح الحذف الناعم على الكيان العام
                 var lambda = Expression.Lambda(compareIsDeleted, parameter);
                 builder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
         }
     }
 
+    /// <summary>
+    /// حفظ كافة التغييرات المعلقة في سياق البيانات بشكل غير متزامن مع تطبيق بيانات التدقيق وتعيين المستأجر.
+    /// </summary>
+    /// <param name="cancellationToken">رمز إلغاء العملية غير المتزامنة</param>
+    /// <returns>عدد السجلات التي تأثرت بعملية الحفظ في قاعدة البيانات</returns>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // استدعاء دالة حقن معلومات التدقيق والتواريخ ومعرف المستأجر
         ApplyAuditAndTenantInfo();
+        // تمرير الحفظ لمحرك EF Core الأساسي
         return await base.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// حفظ كافة التغييرات المعلقة في سياق البيانات بشكل تزامني مع تطبيق بيانات التدقيق وتعيين المستأجر.
+    /// </summary>
+    /// <returns>عدد السجلات التي تأثرت بعملية الحفظ في قاعدة البيانات</returns>
     public override int SaveChanges()
     {
+        // استدعاء دالة حقن معلومات التدقيق والتواريخ ومعرف المستأجر
         ApplyAuditAndTenantInfo();
+        // تمرير الحفظ لمحرك EF Core الأساسي
         return base.SaveChanges();
     }
 
+    /// <summary>
+    /// فحص الكيانات المتتبعة وتحديث حقول التدقيق (تاريخ الإنشاء والتعديل) ومعرف المستأجر تلقائياً.
+    /// </summary>
     private void ApplyAuditAndTenantInfo()
     {
+        // جلب معرف المستأجر الحالي المرتبط بالجلسة الحالية
         var tenantId = CurrentTenantId;
+        // تحديد التوقيت الحالي بتوقيت جرينتش UTC لضمان الدقة
         var now = DateTime.UtcNow;
 
+        // المرور على كافة الكيانات المتتبعة في ChangeTracker والتي ترث من BaseEntity
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
+            // في حالة إضافة سجل جديد تماماً
             if (entry.State == EntityState.Added)
             {
+                // إذا كان الكيان يتبع لمستأجر وكان المعرف فارغاً، يتم تعيين معرف المستأجر الحالي تلقائياً
                 if (entry.Entity is TenantBaseEntity tenantEntity && tenantEntity.TenantId == Guid.Empty && tenantId != Guid.Empty)
                 {
                     tenantEntity.TenantId = tenantId;
                 }
 
+                // تعيين تاريخ الإنشاء إذا لم يتم تعيينه مسبقاً
                 if (entry.Entity.CreatedAt == default)
                 {
                     entry.Entity.CreatedAt = now;
                 }
             }
+            // في حالة تعديل سجل موجود مسبقاً
             else if (entry.State == EntityState.Modified)
             {
+                // تحديث تاريخ التعديل إلى الوقت الحالي
                 entry.Entity.UpdatedAt = now;
             }
         }

@@ -12,15 +12,36 @@ namespace RetalSystemAPI.Services.Catalog.Interfaces;
 /// </summary>
 public interface IProductUnitService
 {
-    /// <summary>جلب قائمة بكافة الوحدات المعرفة للمنتج مع معامل التحويل لكل منها</summary>
+    /// <summary>
+    /// جلب قائمة بكافة الوحدات المعرفة للمنتج مع معامل التحويل لكل منها.
+    /// </summary>
+    /// <param name="productId">معرف المنتج</param>
+    /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
+    /// <returns>قائمة وحدات المنتج</returns>
     Task<ServiceResult<IReadOnlyList<ProductUnitResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default);
 
-    /// <summary>إسناد وحدة قياس جديدة للمنتج مع معامل التحويل وتحديد ما إذا كانت افتراضية</summary>
+    /// <summary>
+    /// إسناد وحدة قياس جديدة للمنتج مع معامل التحويل وتحديد ما إذا كانت افتراضية.
+    /// </summary>
+    /// <param name="productId">معرف المنتج المراد إضافة الوحدة له</param>
+    /// <param name="dto">بيانات وحدة المنتج الجديدة</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>بيانات وحدة المنتج المضافة</returns>
     Task<ServiceResult<ProductUnitResponseDto>> AddUnitToProductAsync(Guid productId, CreateProductUnitDto dto, CancellationToken ct = default);
 
-    /// <summary>إزالة وحدة قياس مسندة للمنتج</summary>
+    /// <summary>
+    /// إزالة وحدة قياس مسندة للمنتج.
+    /// </summary>
+    /// <param name="productUnitId">معرف سجل وحدة المنتج المراد حذفه</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>نتيجة نجاح أو فشل العملية</returns>
     Task<ServiceResult> RemoveUnitFromProductAsync(Guid productUnitId, CancellationToken ct = default);
 
-    /// <summary>تعيين وحدة قياس كالوحدة الافتراضية للبيع والعرض للمنتج</summary>
+    /// <summary>
+    /// تعيين وحدة قياس كالوحدة الافتراضية للبيع والعرض للمنتج.
+    /// </summary>
+    /// <param name="productUnitId">معرف سجل وحدة المنتج المستهدفة</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>نتيجة نجاح أو فشل العملية</returns>
     Task<ServiceResult> SetDefaultUnitAsync(Guid productUnitId, CancellationToken ct = default);
 }

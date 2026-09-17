@@ -16,12 +16,19 @@ public class CurrentUserService : ICurrentUserService
     /// <param name="httpContextAccessor">مزود الوصول إلى سياق الـ HTTP</param>
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
     {
+        // حفظ مرجع مزود سياق الطلب لاستخراج بيانات المستخدم الحالي
         _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
     /// جلب معرف المستخدم المستخرج من ClaimTypes.NameIdentifier.
     /// </summary>
-    public string? UserId => _httpContextAccessor.HttpContext?
-        .User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    public string? UserId
+    {
+        get
+        {
+            // استخراج معرف المستخدم من مطالبة NameIdentifier في الـ Claims
+            return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+    }
 }

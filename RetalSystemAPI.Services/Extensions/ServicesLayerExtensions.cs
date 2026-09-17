@@ -32,16 +32,17 @@ namespace RetalSystemAPI.Services.Extensions;
 public static class ServicesLayerExtensions
 {
     /// <summary>
-    /// تسجيل كافة ملفات التحويل (AutoMapper Profiles) والخدمات الفرعية لطبقة الخدمات في حاوية الاعتمادية.
+    /// تسجيل كافة ملفات التحويل (AutoMapper Profiles) والخدمات التابعة لطبقة الخدمات في حاوية الاعتمادية.
     /// </summary>
-    /// <param name="services">مجموعة الخدمات</param>
-    /// <param name="configuration">إعدادات التطبيق</param>
-    /// <returns>نفس حاوية الخدمات لاستكمال بناء التكوين</returns>
+    /// <param name="services">مجموعة الخدمات المراد التسجيل فيها</param>
+    /// <param name="configuration">إعدادات وتكوينات التطبيق</param>
+    /// <returns>نفس حاوية الخدمات لاستكمال بناء سلسلة التكوين</returns>
     public static IServiceCollection AddServicesLayer(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         // ── AutoMapper Profiles ──────────────────────────────────
+        // تسجيل ملفات التحويل للكيانات والـ DTOs عبر كافة التجميعات المطلوبة
         services.AddAutoMapper(
             typeof(CatalogMappingProfile).Assembly,
             typeof(BranchMappingProfile).Assembly,
@@ -52,36 +53,82 @@ public static class ServicesLayerExtensions
         );
 
         // ── Services Registration ─────────────────────────────────
+        // تسجيل خدمة إدارة المستأجرين بنطاق Scoped
         services.AddScoped<ITenantService, TenantService>();
+
+        // تسجيل خدمة المصادقة وتوليد التوكن بنطاق Scoped
         services.AddScoped<IAuthService, AuthService>();
+
+        // تسجيل خدمة إدارة الفروع بنطاق Scoped
         services.AddScoped<IBranchService, BranchService>();
 
+        // تسجيل خدمة وحدات القياس للمنتجات بنطاق Scoped
         services.AddScoped<IUnitService, UnitService>();
+
+        // تسجيل خدمة تصنيفات الكتالوج بنطاق Scoped
         services.AddScoped<ICategoryService, CategoryService>();
+
+        // تسجيل خدمة إدارة المنتجات بنطاق Scoped
         services.AddScoped<IProductService, ProductService>();
+
+        // تسجيل خدمة استيراد وتصدير المنتجات عبر ملفات إكسيل بنطاق Scoped
         services.AddScoped<IProductExcelService, ProductExcelService>();
+
+        // تسجيل خدمة ربط المنتجات بوحدات القياس بنطاق Scoped
         services.AddScoped<IProductUnitService, ProductUnitService>();
+
+        // تسجيل خدمة إدارة باركودات المنتجات بنطاق Scoped
         services.AddScoped<IProductBarCodeService, ProductBarCodeService>();
+
+        // تسجيل خدمة إدارة صور المنتجات بنطاق Scoped
         services.AddScoped<IProductImageService, ProductImageService>();
 
+        // تسجيل خدمة إدارة بيانات العملاء بنطاق Scoped
         services.AddScoped<ICustomerService, CustomerService>();
+
+        // تسجيل خدمة فواتير المبيعات بنطاق Scoped
         services.AddScoped<ISalesInvoiceService, SalesInvoiceService>();
+
+        // تسجيل خدمة مرتجعات المبيعات بنطاق Scoped
         services.AddScoped<ISalesReturnService, SalesReturnService>();
 
+        // تسجيل خدمة إدارة الموردين بنطاق Scoped
         services.AddScoped<ISupplierService, SupplierService>();
+
+        // تسجيل خدمة إدارة المستودعات بنطاق Scoped
         services.AddScoped<IWarehouseService, WarehouseService>();
+
+        // تسجيل خدمة إدارة أرصدة المخزون وحركاته بنطاق Scoped
         services.AddScoped<IStockService, StockService>();
+
+        // تسجيل خدمة تحويلات المخزون بين المستودعات بنطاق Scoped
         services.AddScoped<IStockTransferService, StockTransferService>();
+
+        // تسجيل خدمة تسويات وجرد المخزون بنطاق Scoped
         services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
+
+        // تسجيل خدمة أوامر الشراء بنطاق Scoped
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+
+        // تسجيل خدمة فواتير الشراء بنطاق Scoped
         services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+
+        // تسجيل خدمة مرتجعات الشراء بنطاق Scoped
         services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
 
+        // تسجيل خدمة رفع وتخزين الملفات بنطاق Scoped
         services.AddScoped<IFileUploadService, FileUploadService>();
+
+        // تسجيل خدمة لوحة التحكم والإحصائيات بنطاق Scoped
         services.AddScoped<IDashboardService, DashboardService>();
+
+        // تسجيل خدمة إدارة حسابات المستخدمين وصلاحياتهم بنطاق Scoped
         services.AddScoped<RetalSystemAPI.Services.Users.Interfaces.IUserService, RetalSystemAPI.Services.Users.Implementations.UserService>();
+
+        // تسجيل خدمة التحقق من الصلاحيات للمستخدم الحالي بنطاق Scoped
         services.AddScoped<RetalSystemAPI.Services.Common.Interfaces.ICurrentPermissionService, RetalSystemAPI.Services.Common.Implementations.CurrentPermissionService>();
 
+        // إرجاع حاوية الخدمات بعد اكتمال التسجيل
         return services;
     }
 }

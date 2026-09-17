@@ -56,6 +56,7 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// <param name="includeExpression">تعبير خاصية التنقل</param>
     protected virtual void AddInclude(Expression<Func<T, object>> includeExpression)
     {
+        // إضافة التعبير إلى قائمة الـ Includes المنفذة على الاستعلام
         Includes.Add(includeExpression);
     }
 
@@ -65,6 +66,7 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// <param name="includeString">المسار النصي لخاصية التنقل</param>
     protected virtual void AddInclude(string includeString)
     {
+        // إضافة المسار النصي إلى قائمة السلاسل النصية للتضمين
         IncludeStrings.Add(includeString);
     }
 
@@ -74,6 +76,7 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// <param name="orderByExpression">تعبير الحقل المراد الترتيب بموجبه</param>
     protected virtual void ApplyOrderBy(Expression<Func<T, object>> orderByExpression)
     {
+        // حفظ تعبير الترتيب التصاعدي
         OrderBy = orderByExpression;
     }
 
@@ -83,6 +86,7 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// <param name="orderByDescendingExpression">تعبير الحقل المراد الترتيب بموجبه تنازلياً</param>
     protected virtual void ApplyOrderByDescending(Expression<Func<T, object>> orderByDescendingExpression)
     {
+        // حفظ تعبير الترتيب التنازلي
         OrderByDescending = orderByDescendingExpression;
     }
 
@@ -93,8 +97,11 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// <param name="take">عدد السجلات المطلوب جلبها في الصفحة</param>
     protected virtual void ApplyPaging(int skip, int take)
     {
+        // تحديد عدد السجلات المطلوب تخطيها
         Skip = skip;
+        // تحديد عدد السجلات المراد جلبها في الصفحة الحالية
         Take = take;
+        // تفعيل علامة ترقيم الصفحات للاستعلام
         IsPagingEnabled = true;
     }
 }

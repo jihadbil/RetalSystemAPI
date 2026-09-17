@@ -17,6 +17,7 @@ public class CurrentTenantService : ICurrentTenantService
     /// <param name="httpContextAccessor">مزود الوصول إلى سياق الـ HTTP</param>
     public CurrentTenantService(IHttpContextAccessor httpContextAccessor)
     {
+        // حفظ مرجع مزود سياق الطلب لاستخدامه لاحقاً في استخراج المطالبات
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -27,18 +28,24 @@ public class CurrentTenantService : ICurrentTenantService
     {
         get
         {
+            // استخراج كائن المستخدم الرئيسي ClaimsPrincipal من سياق الطلب الحالي
             var user = _httpContextAccessor.HttpContext?.User;
+            // إذا لم يكن هناك مستخدم أو سياق طلب، يتم إرجاع Guid.Empty فوراً
             if (user == null) return Guid.Empty;
 
+            // البحث عن مطالبة TenantId بصيغها المختلفة الشائعة (حساسية الأحرف)
             var tenantClaim = user.FindFirst("TenantId")?.Value
                               ?? user.FindFirst("tenantid")?.Value
                               ?? user.FindFirst("tenant_id")?.Value;
 
+            // محاولة تحويل قيمة المطالبة النصية إلى Guid صحيح
             if (Guid.TryParse(tenantClaim, out var tenantId))
             {
+                // إرجاع المعرف بعد نجاح التحويل
                 return tenantId;
             }
 
+            // في حال عدم وجود المطالبة أو عدم صلاحية تنسيقها يتم إرجاع المعرف الفارغ
             return Guid.Empty;
         }
     }

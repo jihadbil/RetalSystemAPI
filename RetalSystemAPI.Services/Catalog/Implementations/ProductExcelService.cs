@@ -157,11 +157,14 @@ public class ProductExcelService : IProductExcelService
         return ms.ToArray();
     }
 
+    /// <inheritdoc />
     public async Task<byte[]> DownloadTemplateAsync(bool singleSheetFormat = true, CancellationToken ct = default)
     {
-        // صف واحد فقط بدل تحميل جدول التصنيفات كاملاً
+        // صف واحد فقط بدل تحميل جدول التصنيفات كاملاً كعينة توضيحية
         var sampleCategory = await _unitOfWork.Categories.FirstOrDefaultAsync(c => true, ct);
+        // اسم التصنيف النموذجي
         string sampleCatName = sampleCategory?.Name ?? "مواد غذائية";
+        // معرف التصنيف النموذجي
         Guid sampleCatId = sampleCategory?.Id ?? Guid.NewGuid();
 
         using var workbook = new XLWorkbook();
@@ -244,17 +247,23 @@ public class ProductExcelService : IProductExcelService
         return ms.ToArray();
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductExcelValidationResultDto>> ValidateExcelAsync(
         Stream excelStream,
         ProductExcelImportOptionsDto? options = null,
         CancellationToken ct = default)
     {
+        // تهيئة كائن الخيارات بالقيم الافتراضية في حال عدم تمريره
         options ??= new ProductExcelImportOptionsDto();
+        // تهيئة كائن نتائج المعاينة والفحص
         var result = new ProductExcelValidationResultDto();
 
+        // التحقق من صلاحية دفق الملف
         if (excelStream == null || excelStream.Length == 0)
         {
+            // تسجيل خطأ الملف الفارغ
             result.Errors.Add("ملف Excel فارغ أو غير صالح");
+            // إرجاع نتيجة الفشل
             return ServiceResult<ProductExcelValidationResultDto>.Failure("ملف Excel فارغ أو غير صالح", ErrorCodes.ValidationError);
         }
 
@@ -610,17 +619,23 @@ public class ProductExcelService : IProductExcelService
         }
     }
 
+    /// <inheritdoc />
     public async Task<ServiceResult<ProductImportResultDto>> ImportProductsFromExcelAsync(
         Stream excelStream,
         ProductExcelImportOptionsDto? options = null,
         CancellationToken ct = default)
     {
+        // تهيئة كائن خيارات الاستيراد بالقيم الافتراضية
         options ??= new ProductExcelImportOptionsDto();
+        // تهيئة كائن نتائج الاستيراد
         var result = new ProductImportResultDto();
 
+        // التحقق من صحة وصلاحية دفق ملف إكسيل
         if (excelStream == null || excelStream.Length == 0)
         {
+            // تسجيل الخطأ
             result.Errors.Add("ملف Excel غير صالح أو فارغ");
+            // إرجاع نتيجة الفشل
             return ServiceResult<ProductImportResultDto>.Failure("ملف Excel غير صالح أو فارغ", ErrorCodes.ValidationError);
         }
 
@@ -677,12 +692,17 @@ public class ProductExcelService : IProductExcelService
         }
     }
 
+    /// <inheritdoc />
     public async Task<byte[]> GenerateFailedRowsExcelAsync(List<FailedRowDetailsDto> failedRows, CancellationToken ct = default)
     {
+        // إنشاء مصنف إكسيل لملف الأسطر المرفوضة
         using var workbook = new XLWorkbook();
+        // ضبط اتجاه المصنف من اليمين لليسار
         workbook.RightToLeft = true;
 
+        // إضافة ورقة عمل مخصصة للأسطر المرفوضة
         var ws = workbook.Worksheets.Add("الأسطر المرفوضة");
+        // ضبط اتجاه ورقة العمل
         ws.RightToLeft = true;
 
         SetupHeader(ws, new[]

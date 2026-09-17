@@ -159,86 +159,112 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<SalesReturnItem> SalesReturnItems => _salesReturnItems ??= new Repository<SalesReturnItem>(_context);
 
     /// <summary>
-    /// حفظ جميع التغييرات المعلقة في سياق قاعدة البيانات.
+    /// حفظ جميع التغييرات المعلقة في سياق قاعدة البيانات بصورة غير متزامنة.
     /// </summary>
+    /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
+    /// <returns>عدد السجلات المتأثرة بعملية الحفظ</returns>
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
+        // تمرير أمر حفظ التغييرات لسياق قاعدة البيانات AppDbContext
         return await _context.SaveChangesAsync(ct);
     }
 
     /// <summary>
-    /// جلب مدخلات الكيانات المتتبعة في ChangeTracker.
+    /// جلب مدخلات الكيانات المتتبعة في ChangeTracker لمراقبة حالات الكيانات.
     /// </summary>
+    /// <returns>قائمة مدخلات الكيانات المتتبعة</returns>
     public System.Collections.Generic.IEnumerable<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry> ChangeTrackerEntries()
     {
+        // استرجاع كافة مدخلات الكيانات الخاضعة للتتبع حالياً في الذاكرة
         return _context.ChangeTracker.Entries();
     }
 
     /// <summary>
-    /// بدء معاملة ذرية صريحة (Database Transaction).
+    /// بدء معاملة ذرية صريحة (Database Transaction) لتنفيذ عدة عمليات كوحدة لا تتجزأ.
     /// </summary>
+    /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
+        // فتح معاملة جديدة على مستوى محرك قاعدة البيانات وتخزين مرجعها
         _transaction = await _context.Database.BeginTransactionAsync(ct);
     }
 
     /// <summary>
-    /// اعتماد وتثبيت التغييرات داخل المعاملة الحالية في قاعدة البيانات.
+    /// اعتماد وتثبيت التغييرات داخل المعاملة الحالية في قاعدة البيانات مع التراجع التلقائي عند الخطأ.
     /// </summary>
+    /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     public async Task CommitTransactionAsync(CancellationToken ct = default)
     {
+        // التحقق من وجود معاملة نشطة قبل محاولة الاعتماد
         if (_transaction is null)
         {
+            // إطلاق استثناء في حال عدم وجود معاملة مفتوحة
             throw new InvalidOperationException("لا توجد معاملة مفعلة حالياً ليتم اعتمادها (Commit).");
         }
 
         try
         {
+            // حفظ كافة التغييرات المعلقة في السياق أولاً داخل نطاق المعاملة
             await _context.SaveChangesAsync(ct);
+            // تثبيت واعتماد المعاملة نهائياً في قاعدة البيانات
             await _transaction.CommitAsync(ct);
         }
         catch
         {
+            // التراجع عن أي تعديلات طرأت أثناء المعاملة عند حدوث أي استثناء
             await RollbackTransactionAsync(ct);
+            // إعادة إطلاق الاستثناء لمعالجته في الطبقات الأعلى
             throw;
         }
         finally
         {
+            // تحرير موارد كائن المعاملة
             await _transaction.DisposeAsync();
+            // تصفير مرجع المعاملة للإشارة إلى انتهائها
             _transaction = null;
         }
     }
 
     /// <summary>
-    /// التراجع عن التغييرات المنفذة داخل المعاملة الحالية.
+    /// التراجع عن التغييرات المنفذة داخل المعاملة الحالية وإلغاء تأثيرها.
     /// </summary>
+    /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     public async Task RollbackTransactionAsync(CancellationToken ct = default)
     {
+        // إذا لم تكن هناك معاملة نشطة يتم الخروج فوراً
         if (_transaction is null) return;
 
         try
         {
+            // تنفيذ أمر التراجع Rollback على المعاملة
             await _transaction.RollbackAsync(ct);
         }
         finally
         {
+            // تحرير موارد المعاملة
             await _transaction.DisposeAsync();
+            // تصفير مرجع المعاملة
             _transaction = null;
         }
     }
 
     /// <summary>
-    /// تحرير موارد المعاملة وسياق قاعدة البيانات بشكل غير متزامن.
+    /// تحرير موارد المعاملة وسياق قاعدة البيانات بشكل غير متزامن لمنع تسريب الاتصالات.
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        // التحقق من وجود أي معاملة متبقية لم يتم إغلاقها
         if (_transaction is not null)
         {
+            // تحرير موارد المعاملة المعلقة
             await _transaction.DisposeAsync();
+            // تصفير المرجع
             _transaction = null;
         }
 
+        // تحرير موارد سياق قاعدة البيانات AppDbContext
         await _context.DisposeAsync();
+        // إبلاغ جامع المهملات بعدم الحاجة لاستدعاء Finalizer
         GC.SuppressFinalize(this);
     }
 }

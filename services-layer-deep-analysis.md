@@ -1,10 +1,10 @@
 # تقرير التحليل المعمق لطبقة الخدمات (Services Layer)
 
-**المشروع:** RetalSystemAPI
-**تاريخ التحليل:** 2026-09-11
-**النطاق:** مشروع `RetalSystemAPI.Services` بالكامل، مع فحص حدودي لطبقة DataAccess (UnitOfWork، Repository، AppDbContext، Configurations) وطبقة DTOs وControllers حيثما يلزم لفهم سلوك الخدمات.
-**الحالة التقنية:** المشروع يُبنى بنجاح — 0 أخطاء، 0 تحذيرات (net10.0).
-**ملاحظة:** يوجد تقرير سابق باسم `services-report.md`؛ هذا التقرير تحليل مستقل جديد ومبني على قراءة سطر-بسطر للخدمات والبنية التحتية المحيطة.
+**المشروع:** RetalSystemAPI  
+**تاريخ التحليل:** 2026-09-17  
+**النطاق:** مشروع `RetalSystemAPI.Services` بالكامل (68 ملف C#)، مع فحص حدودي لطبقة DataAccess (UnitOfWork، Repository، AppDbContext، Configurations) وطبقة DTOs وControllers حيثما يلزم لفهم سلوك الخدمات.  
+**الحالة التقنية:** المشروع يُبنى بنجاح — 0 أخطاء، 0 تحذيرات (.NET 10).  
+**ملاحظة:** يوجد تقرير سابق باسم `services-report.md`؛ هذا التقرير تحليل مستقل محدّث ومبني على قراءة سطر-بسطر للخدمات والبنية التحتية المحيطة.
 
 ---
 
@@ -29,10 +29,10 @@
 
 ### 2.1 الإحصائيات
 
-- **~10,208 سطرًا** موزعة على **66 ملف C#**
-- **24 خدمة** + **24 واجهة** + **14 ملف Specifications** + نماذج مشتركة (`ServiceResult`, `PagedResult`, `ErrorCodes`) + ملف تسجيل DI واحد
-- أضخم ملف: `ProductExcelService.cs` (**1,645 سطرًا** — God Class)
-- أضخم الخدمات: `ProductExcelService` (1645)، `UserService` (628)، `SalesInvoiceService` (526)، `PurchaseInvoiceService` (493)
+- **~9,659 سطرًا** موزعة على **68 ملف C#**
+- **24 خدمة** + **25 واجهة** + **14 ملف Specifications** + نماذج مشتركة (`ServiceResult`, `PagedResult`, `ErrorCodes`) + ملف تسجيل DI واحد
+- أضخم ملف: `ProductExcelService.cs` (**1,689 سطرًا** — God Class)
+- أضخم الخدمات: `ProductExcelService` (1689)، `UserService` (566)، `SalesInvoiceService` (538)، `ProductService` (471)، `PurchaseInvoiceService` (477)
 
 ### 2.2 التقنيات والتبعيات
 
