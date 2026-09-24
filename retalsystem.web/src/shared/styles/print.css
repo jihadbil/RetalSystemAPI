@@ -1,0 +1,72 @@
+/* قواعد الطباعة الحرارية (80mm / 58mm) وفواتير A4 */
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  /* إخفاء واجهة الموقع والشريط الجانبي والأزرار عند الطباعة */
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print,
+  nav,
+  header,
+  aside,
+  button,
+  .toast-container {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* تنسيق الإيصال الحراري 80mm */
+  .receipt-80mm {
+    width: 78mm !important;
+    max-width: 78mm !important;
+    padding: 2mm !important;
+    margin: 0 auto !important;
+    font-family: 'Cairo', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    color: black !important;
+  }
+
+  .receipt-80mm table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .receipt-80mm th,
+  .receipt-80mm td {
+    padding: 2px 0 !important;
+  }
+
+  .receipt-divider {
+    border-top: 1px dashed black !important;
+    margin: 4px 0 !important;
+  }
+
+  /* تنسيق فاتورة A4 */
+  .invoice-a4 {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 15mm !important;
+    margin: 0 auto !important;
+    font-family: 'Cairo', sans-serif !important;
+    color: #1e293b !important;
+  }
+
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
