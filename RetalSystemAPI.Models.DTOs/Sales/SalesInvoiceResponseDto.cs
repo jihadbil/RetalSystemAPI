@@ -51,6 +51,8 @@ public class SalesInvoiceResponseDto : BaseDto
     /// <summary>قيمة الخصم الممنوح</summary>
     public decimal DiscountAmount { get; set; }
 
+    public decimal TaxAmount { get; set; }
+
     /// <summary>المبلغ الإجمالي الصافي</summary>
     public decimal TotalAmount { get; set; }
 
@@ -59,6 +61,11 @@ public class SalesInvoiceResponseDto : BaseDto
 
     /// <summary>المبلغ المتبقي آجل على العميل</summary>
     public decimal RemainingAmount { get; set; }
+
+    /// <summary>معرف الخزينة المستلمة للدفعة.</summary>
+    public Guid? PaymentSafeId { get; set; }
+    public Guid? PosTerminalId { get; set; }
+    public Guid? CashSessionId { get; set; }
 
     /// <summary>ملاحظات إضافية</summary>
     public string? Notes { get; set; }

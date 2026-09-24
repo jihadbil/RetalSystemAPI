@@ -93,8 +93,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
     /// <returns>قائمة الكيانات المطابقة للمواصفة</returns>
     public async Task<IReadOnlyList<T>> FindAsync(ISpecification<T> spec, CancellationToken ct = default)
     {
-        // بناء الاستعلام وتطبيق المواصفة ثم تعطيل التتبع وإرجاع النتائج
-        return await ApplySpecification(spec).AsNoTracking().ToListAsync(ct);
+        // بناء الاستعلام وتطبيق المواصفة ثم تعطيل التتبع مع تقسيم الاستعلام لمنع الضرب الديكارتي وإرجاع النتائج
+        return await ApplySpecification(spec).AsNoTracking().AsSplitQuery().ToListAsync(ct);
     }
 
     /// <summary>
@@ -240,6 +240,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         bool ascending = true,
         CancellationToken ct = default)
     {
+        Pagination.Normalize(ref pageNumber, ref pageSize);
+
         // تجهيز استعلام بدون تتبع للقراءة السريعة
         IQueryable<T> query = _dbSet.AsNoTracking();
 
@@ -284,6 +286,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         int pageSize,
         CancellationToken ct = default)
     {
+        Pagination.Normalize(ref pageNumber, ref pageSize);
+
         // حساب إجمالي عدد السجلات المطابقة لمعايير المواصفة
         int totalCount = await CountAsync(spec, ct);
 

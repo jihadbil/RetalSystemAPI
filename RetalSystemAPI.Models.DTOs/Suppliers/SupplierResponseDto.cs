@@ -17,6 +17,9 @@ public class SupplierResponseDto : BaseDto
     /// <summary>الرصيد المالي الافتتاحي</summary>
     public decimal OpeningBalance { get; set; }
 
+    /// <summary>الرصيد الحالي المستحق للمورد</summary>
+    public decimal CurrentBalance { get; set; }
+
     /// <summary>قائمة أرقام هواتف المورد المسجلة</summary>
     public List<SupplierPhoneResponseDto> Phones { get; set; } = new();
 }

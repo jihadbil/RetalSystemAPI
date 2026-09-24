@@ -28,6 +28,7 @@ public interface IPurchaseInvoiceService
     /// <param name="searchTerm">مصطلح البحث برقم الفاتورة أو اسم المورد (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     /// <returns>صفحة نتائج تحتوي على ملخصات الفواتير والعدد الإجمالي</returns>
+    // جلب صفحة مجزأة ومفلترة لفواتير المشتريات
     Task<ServiceResult<PagedResult<PurchaseInvoiceSummaryDto>>> GetPagedAsync(
         int pageNumber = 1,
         int pageSize = 10,
@@ -47,6 +48,7 @@ public interface IPurchaseInvoiceService
     /// <param name="id">معرف فاتورة المشتريات</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>تفاصيل الفاتورة الكاملة</returns>
+    // جلب تفاصيل فاتورة المشتريات بالمعرف
     Task<ServiceResult<PurchaseInvoiceResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -55,6 +57,7 @@ public interface IPurchaseInvoiceService
     /// <param name="dto">بيانات فاتورة المشتريات وبنودها وتفريعاتها</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة المنشأة</returns>
+    // إنشاء فاتورة مشتريات جديدة وتغذية المخزون وترحيل الأرصدة
     Task<ServiceResult<PurchaseInvoiceResponseDto>> CreateAsync(CreatePurchaseInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -64,6 +67,7 @@ public interface IPurchaseInvoiceService
     /// <param name="dto">البيانات الجديدة للفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة بعد التحديث</returns>
+    // تحديث بيانات وبنود فاتورة المشتريات
     Task<ServiceResult<PurchaseInvoiceResponseDto>> UpdateAsync(Guid id, UpdatePurchaseInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -72,6 +76,7 @@ public interface IPurchaseInvoiceService
     /// <param name="id">معرف فاتورة المشتريات</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة نجاح أو فشل عملية الإلغاء</returns>
+    // إلغاء فاتورة المشتريات وخصم كمياتها من المخزون
     Task<ServiceResult> CancelAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -80,5 +85,6 @@ public interface IPurchaseInvoiceService
     /// <param name="id">معرف فاتورة المشتريات المراد حذفها</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة نجاح أو فشل عملية الحذف</returns>
+    // حذف فاتورة المشتريات ناعماً وعكس أثرها المالي والمخزني
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

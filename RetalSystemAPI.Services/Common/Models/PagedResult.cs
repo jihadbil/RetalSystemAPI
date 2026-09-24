@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RetalSystemAPI.Models.Common;
 
 namespace RetalSystemAPI.Services.Common.Models;
 
@@ -40,6 +41,8 @@ public class PagedResult<T>
     /// <returns>كائن PagedResult مهيأ بالبيانات والترقيم</returns>
     public static PagedResult<T> Create(IReadOnlyList<T> items, int totalCount, int pageNumber, int pageSize)
     {
+        Pagination.Normalize(ref pageNumber, ref pageSize);
+
         // بناء كائن صفحة النتائج وتعيين خصائص الترقيم والعناصر
         return new PagedResult<T>
         {

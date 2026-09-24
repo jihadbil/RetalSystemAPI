@@ -2,8 +2,11 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using RetalSystemAPI.Controllers.Base;
+using RetalSystemAPI.Filters;
+using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Auth;
 using RetalSystemAPI.Responses;
 using RetalSystemAPI.Services.Auth.Interfaces;
@@ -40,6 +43,7 @@ public class AuthController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لدعم التراجع غير المتزامن عن الطلب.</param>
     /// <returns>بيانات المستخدم ورمز التوثيق وتاريخ الانتهاء مغلفة في كائن استجابة موحد.</returns>
     [AllowAnonymous]
+    [EnableRateLimiting("authentication")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto, CancellationToken ct)
     {
@@ -57,7 +61,9 @@ public class AuthController : BaseApiController
     /// <param name="dto">بيانات التسجيل الجديد التي تشمل البريد، اسم المستخدم، كلمة المرور، والبيانات الشخصية.</param>
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات المستخدم المنشأ مصحوبة برمز التوثيق مع كود 201 Created عند النجاح.</returns>
-    [AllowAnonymous]
+    [Authorize]
+    [HasPermission(Permissions.Users.Create)]
+    [EnableRateLimiting("authentication")]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto, CancellationToken ct)
     {

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using RetalSystemAPI.Models.Accounting;
+using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Purchase;
@@ -11,6 +13,7 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Purchase;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
+using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Purchase.Interfaces;
 using RetalSystemAPI.Services.Purchase.Specifications;
 
@@ -25,18 +28,20 @@ public class PurchaseReturnService : IPurchaseReturnService
     private readonly IUnitOfWork _unitOfWork;
     // محول الكيانات لتحويل النماذج إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
+    private readonly IFinancialPostingService _financialPosting;
 
     /// <summary>
     /// تهيئة خدمة مرتجعات المشتريات مع حقن وحدة العمل ومحول الكيانات.
     /// </summary>
     /// <param name="unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
     /// <param name="mapper">خدمة تحويل النماذج</param>
-    public PurchaseReturnService(IUnitOfWork unitOfWork, IMapper mapper)
+    public PurchaseReturnService(IUnitOfWork unitOfWork, IMapper mapper, IFinancialPostingService financialPosting)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
         // تعيين مرجع محول البيانات
         _mapper = mapper;
+        _financialPosting = financialPosting;
     }
 
     /// <inheritdoc />
@@ -130,9 +135,9 @@ public class PurchaseReturnService : IPurchaseReturnService
     public async Task<ServiceResult<PurchaseReturnResponseDto>> CreateAsync(CreatePurchaseReturnDto dto, CancellationToken ct = default)
     {
         // 1. التحقق من وجود المورد المحدد
-        bool supplierExists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Id == dto.SupplierId, ct);
+        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(dto.SupplierId, ct);
         // في حال عدم وجود المورد
-        if (!supplierExists)
+        if (supplier is null)
         {
             // إرجاع خطأ عدم وجود المورد
             return ServiceResult<PurchaseReturnResponseDto>.Failure("المورد المحدد غير موجود", ErrorCodes.SupplierNotFound);
@@ -228,7 +233,7 @@ public class PurchaseReturnService : IPurchaseReturnService
 
         // جلب الباركودات الافتراضية دفعة واحدة
         var defaultBarcodeByProduct = fallbackProductIds.Count > 0
-            ? (await _unitOfWork.ProductBarCodes.FindAsync(
+            ? (await _unitOfWork.Products.FindBarCodesAsync(
                 b => fallbackProductIds.Contains(b.ProductId), ct))
                 .GroupBy(b => b.ProductId)
                 .ToDictionary(g => g.Key, g => g.First())
@@ -296,13 +301,16 @@ public class PurchaseReturnService : IPurchaseReturnService
                         ErrorCodes.ValidationError);
                 }
 
+                // سعر المرتجع يؤخذ من بند فاتورة الشراء الأصلية ولا يقبل من العميل.
+                item.UnitPrice = matchedInvoiceItem.UnitPrice;
+
                 // حساب إجمالي الكمية المشتراة لهذا الباركود
                 var purchasedQuantity = matchingInvoiceItems
                     .Where(i => i.ProductBarCodeId == barcodeId.Value)
                     .Sum(i => i.Quantity);
 
                 // حساب إجمالي الكميات المرتجعة سابقاً من هذه الفاتورة لنفس الباركود
-                var previouslyReturned = (await _unitOfWork.PurchaseReturnItems.FindAsync(
+                var previouslyReturned = (await _unitOfWork.PurchaseReturns.FindItemsAsync(
                     ri => ri.PurchaseReturn != null &&
                           ri.PurchaseReturn.PurchaseInvoiceId == originalInvoice.Id &&
                           ri.ProductBarCodeId == barcodeId.Value, ct))
@@ -319,23 +327,58 @@ public class PurchaseReturnService : IPurchaseReturnService
             }
 
             // إضافة البند المحقق لقائمة البنود الجاهزة
+            if (item.Quantity != decimal.Truncate(item.Quantity))
+                return ServiceResult<PurchaseReturnResponseDto>.Failure(
+                    "كمية مرتجع المخزون يجب أن تكون عدداً صحيحاً من الوحدات",
+                    ErrorCodes.PurchaseReturnInvalidQuantity);
             validatedItems.Add((item, barcodeId.Value));
+        }
+
+        if (originalInvoice is not null)
+        {
+            var returnBarcodeIds = validatedItems.Select(v => v.barcodeId).Distinct().ToList();
+            var previousByBarcode = (await _unitOfWork.PurchaseReturns.FindItemsAsync(
+                    ri => ri.PurchaseReturn != null &&
+                          ri.PurchaseReturn.PurchaseInvoiceId == originalInvoice.Id &&
+                          ri.ProductBarCodeId.HasValue && returnBarcodeIds.Contains(ri.ProductBarCodeId.Value), ct))
+                .GroupBy(ri => ri.ProductBarCodeId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
+
+            foreach (var requestedGroup in validatedItems.GroupBy(v => v.barcodeId))
+            {
+                var purchased = originalInvoice.Items
+                    .Where(i => i.ProductBarCodeId == requestedGroup.Key)
+                    .Sum(i => i.Quantity);
+                previousByBarcode.TryGetValue(requestedGroup.Key, out var previous);
+                if (previous + requestedGroup.Sum(v => v.dtoItem.Quantity) > purchased)
+                    return ServiceResult<PurchaseReturnResponseDto>.Failure(
+                        "إجمالي البنود المكررة في المرتجع يتجاوز الكمية المشتراة لنفس الباركود",
+                        ErrorCodes.PurchaseReturnInvalidQuantity);
+            }
+        }
+
+        if (originalInvoice is null)
+        {
+            foreach (var (dtoItem, _) in validatedItems)
+            {
+                var product = productsById[dtoItem.ProductId];
+                dtoItem.UnitPrice = product.AveragePrice > 0 ? product.AveragePrice : product.CostPrice;
+            }
         }
 
         // جلب أرصدة المخزن المعنية دفعة واحدة لتفادي استعلامات N+1
         var validatedBarcodeIds = validatedItems.Select(v => v.barcodeId).Distinct().ToList();
         // استعلام أرصدة المخزن المتتبعة
-        var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+        var stocksByBarcode = (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
             s => s.WarehouseId == warehouse.Id && validatedBarcodeIds.Contains(s.ProductBarcodeId), ct))
             .ToDictionary(s => s.ProductBarcodeId);
 
         // التحقق من كفاية الرصيد المخزني الفعلي لكل بند
-        foreach (var (dtoItem, barcodeId) in validatedItems)
+        foreach (var group in validatedItems.GroupBy(v => v.barcodeId))
         {
             // محاولة جلب رصيد الباركود
-            stocksByBarcode.TryGetValue(barcodeId, out var stock);
-            // تقريب كمية الإرجاع للأعلى
-            int returnQty = (int)Math.Ceiling(dtoItem.Quantity);
+            stocksByBarcode.TryGetValue(group.Key, out var stock);
+            var returnQty = group.Sum(v => (int)v.dtoItem.Quantity);
             // فحص كفاية الرصيد في المخزن
             if (stock is null || stock.Quantity < returnQty)
             {
@@ -343,7 +386,7 @@ public class PurchaseReturnService : IPurchaseReturnService
                 int available = stock?.Quantity ?? 0;
                 // إرجاع خطأ عدم كفاية الرصيد المخزني للإرجاع
                 return ServiceResult<PurchaseReturnResponseDto>.Failure(
-                    $"رصيد المخزون المتوفر في المخزن للصنف '{productsById[dtoItem.ProductId].Name}' ({available}) غير كافٍ لإتمام الإرجاع ({returnQty}).",
+                    $"رصيد المخزون المتوفر في المخزن للصنف '{productsById[group.First().dtoItem.ProductId].Name}' ({available}) غير كافٍ لإتمام الإرجاع ({returnQty}).",
                     ErrorCodes.InsufficientStock);
             }
         }
@@ -378,6 +421,21 @@ public class PurchaseReturnService : IPurchaseReturnService
         // احتساب إجمالي مبلغ المرتجع
         purchaseReturn.TotalAmount = purchaseReturn.Items.Sum(i => i.LineTotal);
 
+        Safe? refundSafe = null;
+        if (purchaseReturn.PaymentMethod != PaymentMethod.Credit)
+        {
+            var safeResult = await _financialPosting.ResolveSafeAsync(
+                purchaseReturn.BranchId, dto.RefundSafeId, purchaseReturn.TotalAmount, outbound: false, ct);
+            if (!safeResult.IsSuccess)
+                return ServiceResult<PurchaseReturnResponseDto>.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+            refundSafe = safeResult.Data;
+            purchaseReturn.RefundSafeId = refundSafe?.Id;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+
         // 10. خصم البضاعة المرتجعة من مخزون المستودع الرئيسي — على نفس الأرصدة المتتبعة أعلاه
         foreach (var item in purchaseReturn.Items)
         {
@@ -390,9 +448,33 @@ public class PurchaseReturnService : IPurchaseReturnService
         }
 
         // إضافة سجل المرتجع إلى المستودع
+        if (purchaseReturn.Id == Guid.Empty) purchaseReturn.Id = Guid.NewGuid();
         await _unitOfWork.PurchaseReturns.AddAsync(purchaseReturn, ct);
+
+        await _financialPosting.PostSupplierBalanceAsync(supplier, -purchaseReturn.TotalAmount,
+            SupplierTransactionType.PurchaseReturn, purchaseReturn.BranchId, FinancialDocumentType.PurchaseReturn,
+            purchaseReturn.Id, purchaseReturn.ReturnDate, purchaseReturn.PaymentMethod,
+            $"مرتجع مشتريات رقم {purchaseReturn.ReturnNumber}", ct);
+
+        if (refundSafe is not null)
+        {
+            await _financialPosting.PostSupplierBalanceAsync(supplier, purchaseReturn.TotalAmount,
+                SupplierTransactionType.Reversal, purchaseReturn.BranchId, FinancialDocumentType.PurchaseReturn,
+                purchaseReturn.Id, purchaseReturn.ReturnDate, purchaseReturn.PaymentMethod,
+                $"تحصيل نقدي لمرتجع مشتريات رقم {purchaseReturn.ReturnNumber}", ct);
+            await _financialPosting.PostSafeBalanceAsync(refundSafe, purchaseReturn.TotalAmount,
+                FinancialDocumentType.PurchaseReturn, purchaseReturn.Id, purchaseReturn.ReturnDate,
+                $"تحصيل قيمة مرتجع مشتريات رقم {purchaseReturn.ReturnNumber}", ct);
+        }
         // حفظ كافة التغييرات وحركات المخزون في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إعادة تحميل سجل المرتجع بكامل تفاصيله
         var createdReturn = await _unitOfWork.PurchaseReturns.FirstOrDefaultAsync(new PurchaseReturnWithDetailsSpec(purchaseReturn.Id), ct) ?? purchaseReturn;
@@ -416,6 +498,26 @@ public class PurchaseReturnService : IPurchaseReturnService
             return ServiceResult.Failure("مرتجع المشتريات غير موجود", ErrorCodes.PurchaseReturnNotFound);
         }
 
+        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(purchaseReturn.SupplierId, ct);
+        if (supplier is null)
+            return ServiceResult.Failure("المورد المرتبط بالمرتجع غير موجود", ErrorCodes.SupplierNotFound);
+
+        Safe? refundSafe = null;
+        if (purchaseReturn.PaymentMethod != PaymentMethod.Credit)
+        {
+            if (!purchaseReturn.RefundSafeId.HasValue)
+                return ServiceResult.Failure("لا يمكن عكس مرتجع نقدي قديم دون خزينة مرتبطة", ErrorCodes.ValidationError);
+            var safeResult = await _financialPosting.ResolveSafeAsync(
+                purchaseReturn.BranchId, purchaseReturn.RefundSafeId, purchaseReturn.TotalAmount, outbound: true, ct);
+            if (!safeResult.IsSuccess)
+                return ServiceResult.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+            refundSafe = safeResult.Data;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+
         // إعادة البضاعة المرتجعة إلى المخزن عند حذف أو إلغاء سجل المرتجع — دفعة أرصدة واحدة
         if (purchaseReturn.Items != null && purchaseReturn.Items.Any())
         {
@@ -430,7 +532,7 @@ public class PurchaseReturnService : IPurchaseReturnService
             if (barcodeIds.Count > 0)
             {
                 // استعلام أرصدة المخزن المتتبعة دفعة واحدة
-                var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                var stocksByBarcode = (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                     s => s.WarehouseId == purchaseReturn.WarehouseId && barcodeIds.Contains(s.ProductBarcodeId), ct))
                     .ToDictionary(s => s.ProductBarcodeId);
 
@@ -450,8 +552,30 @@ public class PurchaseReturnService : IPurchaseReturnService
 
         // تنفيذ الحذف المنطقي لسجل المرتجع
         _unitOfWork.PurchaseReturns.SoftDelete(purchaseReturn);
+
+        if (refundSafe is not null)
+        {
+            await _financialPosting.PostSupplierBalanceAsync(supplier, -purchaseReturn.TotalAmount,
+                SupplierTransactionType.Reversal, purchaseReturn.BranchId, FinancialDocumentType.PurchaseReturn,
+                purchaseReturn.Id, DateTime.UtcNow, purchaseReturn.PaymentMethod,
+                $"عكس التحصيل النقدي لمرتجع مشتريات محذوف رقم {purchaseReturn.ReturnNumber}", ct);
+            await _financialPosting.PostSafeBalanceAsync(refundSafe, -purchaseReturn.TotalAmount,
+                FinancialDocumentType.PurchaseReturn, purchaseReturn.Id, DateTime.UtcNow,
+                $"عكس تحصيل مرتجع مشتريات محذوف رقم {purchaseReturn.ReturnNumber}", ct);
+        }
+        await _financialPosting.PostSupplierBalanceAsync(supplier, purchaseReturn.TotalAmount,
+            SupplierTransactionType.Reversal, purchaseReturn.BranchId, FinancialDocumentType.PurchaseReturn,
+            purchaseReturn.Id, DateTime.UtcNow, purchaseReturn.PaymentMethod,
+            $"عكس مرتجع مشتريات محذوف رقم {purchaseReturn.ReturnNumber}", ct);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();

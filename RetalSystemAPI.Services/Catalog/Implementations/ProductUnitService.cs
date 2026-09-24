@@ -57,7 +57,7 @@ public class ProductUnitService : IProductUnitService
         // بناء مواصفة استعلام وحدات المنتج بالمعرف
         var spec = new ProductUnitsByProductSpec(productId);
         // جلب قائمة وحدات المنتج من المستودع
-        var productUnits = await _unitOfWork.ProductUnits.FindAsync(spec, ct);
+        var productUnits = await _unitOfWork.Products.FindUnitsAsync(spec, ct);
         // تحويل الكيانات إلى قائمة كائنات نقل البيانات DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductUnitResponseDto>>(productUnits);
 
@@ -90,7 +90,7 @@ public class ProductUnitService : IProductUnitService
         }
 
         // التحقق من عدم إضافة نفس الوحدة للمنتج مسبقاً
-        bool duplicate = await _unitOfWork.ProductUnits.ExistsAsync(pu => pu.ProductId == productId && pu.UnitId == dto.UnitId, ct);
+        bool duplicate = await _unitOfWork.Products.UnitExistsAsync(pu => pu.ProductId == productId && pu.UnitId == dto.UnitId, ct);
         // في حال كانت مضافة مسبقاً
         if (duplicate)
         {
@@ -106,7 +106,7 @@ public class ProductUnitService : IProductUnitService
         }
 
         // فحص ما إذا كان للمنتج أي وحدات قياس مسجلة مسبقاً
-        bool hasUnits = await _unitOfWork.ProductUnits.ExistsAsync(pu => pu.ProductId == productId, ct);
+        bool hasUnits = await _unitOfWork.Products.UnitExistsAsync(pu => pu.ProductId == productId, ct);
 
         // تحويل بيانات الإدخال إلى كيان ProductUnit
         var productUnit = _mapper.Map<ProductUnit>(dto);
@@ -116,7 +116,7 @@ public class ProductUnitService : IProductUnitService
         productUnit.IsDefault = dto.IsDefault || !hasUnits;
 
         // إضافة وحدة المنتج إلى المستودع
-        await _unitOfWork.ProductUnits.AddAsync(productUnit, ct);
+        await _unitOfWork.Products.AddUnitAsync(productUnit, ct);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -135,7 +135,7 @@ public class ProductUnitService : IProductUnitService
     public async Task<ServiceResult> RemoveUnitFromProductAsync(Guid productUnitId, CancellationToken ct = default)
     {
         // استعلام سجل وحدة المنتج بالمعرف
-        var productUnit = await _unitOfWork.ProductUnits.GetByIdAsync(productUnitId, ct);
+        var productUnit = await _unitOfWork.Products.GetUnitByIdAsync(productUnitId, ct);
         // التحقق من وجود السجل
         if (productUnit is null)
         {
@@ -144,7 +144,7 @@ public class ProductUnitService : IProductUnitService
         }
 
         // إجراء الحذف الصلب لارتباط وحدة المنتج
-        _unitOfWork.ProductUnits.HardDelete(productUnit);
+        _unitOfWork.Products.HardDeleteUnit(productUnit);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -156,7 +156,7 @@ public class ProductUnitService : IProductUnitService
     public async Task<ServiceResult> SetDefaultUnitAsync(Guid productUnitId, CancellationToken ct = default)
     {
         // استعلام وحدة المنتج المستهدفة
-        var targetUnit = await _unitOfWork.ProductUnits.GetByIdAsync(productUnitId, ct);
+        var targetUnit = await _unitOfWork.Products.GetUnitByIdAsync(productUnitId, ct);
         // التحقق من وجود وحدة المنتج
         if (targetUnit is null)
         {
@@ -169,14 +169,14 @@ public class ProductUnitService : IProductUnitService
         try
         {
             // جلب كافة الوحدات المرتبطة بنفس المنتج
-            var allUnits = await _unitOfWork.ProductUnits.FindAsync(pu => pu.ProductId == targetUnit.ProductId, ct);
+            var allUnits = await _unitOfWork.Products.FindUnitsAsync(pu => pu.ProductId == targetUnit.ProductId, ct);
             // تعديل الافتراضية: جعل الوحدة المستهدفة هي الافتراضية وتجريد البقية
             foreach (var pu in allUnits)
             {
                 // تعيين حالة الافتراضية
                 pu.IsDefault = (pu.Id == productUnitId);
                 // تحديث السجل في المستودع
-                _unitOfWork.ProductUnits.Update(pu);
+                _unitOfWork.Products.UpdateUnit(pu);
             }
 
             // تأكيد وحفظ المعاملة

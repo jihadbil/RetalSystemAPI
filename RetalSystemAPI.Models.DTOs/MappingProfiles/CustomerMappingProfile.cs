@@ -56,5 +56,29 @@ public class CustomerMappingProfile : Profile
         CreateMap<CustomerPhone, CustomerPhoneResponseDto>();
         // تكوين تحويل ناقل بيانات هاتف العميل إلى كيان هاتف العميل
         CreateMap<CustomerPhoneDto, CustomerPhone>();
+
+        // تكوين تحويل كيان حركة حساب العميل إلى ناقل بيانات الاستجابة
+        CreateMap<CustomerTransaction, CustomerTransactionResponseDto>()
+            .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : string.Empty))
+            .ForMember(dest => dest.TransactionTypeName, opt => opt.MapFrom(src =>
+                src.TransactionType == CustomerTransactionType.SalesInvoice ? "فاتورة بيع" :
+                src.TransactionType == CustomerTransactionType.Payment ? "سداد / دفعة" :
+                src.TransactionType == CustomerTransactionType.SalesReturn ? "مرتجع مبيعات" :
+                src.TransactionType == CustomerTransactionType.OpeningBalance ? "رصيد افتتاحي" :
+                src.TransactionType == CustomerTransactionType.Adjustment ? "تسوية حساب" :
+                src.TransactionType == CustomerTransactionType.Reversal ? "عكس قيد" : src.TransactionType.ToString()))
+            .ForMember(dest => dest.DocumentTypeName, opt => opt.MapFrom(src =>
+                src.DocumentType == FinancialDocumentType.SalesInvoice ? "فاتورة مبيعات" :
+                src.DocumentType == FinancialDocumentType.SalesReturn ? "مرتجع مبيعات" :
+                src.DocumentType == FinancialDocumentType.CustomerPayment ? "سند قبض / سداد" :
+                src.DocumentType == FinancialDocumentType.Adjustment ? "تسوية حساب" :
+                src.DocumentType == FinancialDocumentType.OpeningBalance ? "رصيد افتتاحي" : src.DocumentType.ToString()))
+            .ForMember(dest => dest.PaymentMethodName, opt => opt.MapFrom(src =>
+                src.PaymentMethod == null ? null :
+                src.PaymentMethod == PaymentMethod.Cash ? "نقدي" :
+                src.PaymentMethod == PaymentMethod.CreditCard ? "بطاقة مصرفية" :
+                src.PaymentMethod == PaymentMethod.BankTransfer ? "تحويل بنكي" :
+                src.PaymentMethod == PaymentMethod.Credit ? "آجل" :
+                src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod.ToString()));
     }
 }

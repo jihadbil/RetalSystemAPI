@@ -106,11 +106,12 @@ public class ProductService : IProductService
         // جلب المنتجات المطابقة للبحث
         var products = await _unitOfWork.Products.FindAsync(spec, ct);
 
-        // التطابق التام للباركود أولاً ثم الأسماء التي تبدأ بالكلمة ثم بقية النتائج
+        // التطابق التام للباركود أولاً ثم الأسماء التي تبدأ بالكلمة ثم بقية النتائج مع حد أقصى 100 نتيجة
         var ordered = products
             .OrderBy(p => p.ProductBarCodes.Any(b => b.BarCode == query) ? 0 : 1)
             .ThenBy(p => p.Name.StartsWith(query) ? 0 : 1)
             .ThenBy(p => p.Name)
+            .Take(100)
             .ToList();
 
         // تحويل النتائج المرتبة إلى DTOs
@@ -124,7 +125,7 @@ public class ProductService : IProductService
     public async Task<ServiceResult<ProductResponseDto>> GetByBarCodeAsync(string barCode, CancellationToken ct = default)
     {
         // الاستعلام عن سجل الباركود في جدول باركودات المنتجات
-        var barCodeEntry = await _unitOfWork.ProductBarCodes.FirstOrDefaultAsync(b => b.BarCode == barCode, ct);
+        var barCodeEntry = await _unitOfWork.Products.FirstOrDefaultBarCodeAsync(b => b.BarCode == barCode, ct);
         // التحقق من وجود الباركود
         if (barCodeEntry is null)
         {
@@ -188,7 +189,7 @@ public class ProductService : IProductService
             }
 
             // فحص ما إذا كان أي من الباركودات مسجلاً مسبقاً لصنف آخر في النظام
-            var existingBarcode = await _unitOfWork.ProductBarCodes.FirstOrDefaultAsync(
+            var existingBarcode = await _unitOfWork.Products.FirstOrDefaultBarCodeAsync(
                 b => barCodeStrings.Contains(b.BarCode), ct);
             // في حال وجود الباركود مسبقاً
             if (existingBarcode != null)
@@ -264,7 +265,7 @@ public class ProductService : IProductService
                 MinStockLevel = 0
             };
             // إضافة سجل رصيد الصالة
-            await _unitOfWork.ShowroomStocks.AddAsync(showStock, ct);
+            await _unitOfWork.Stock.AddShowroomStockAsync(showStock, ct);
         }
 
         // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم (مع التراجع لجلب كافة المخازن)
@@ -331,7 +332,7 @@ public class ProductService : IProductService
                         MinStockLevel = 0
                     };
                     // إضافة سجل رصيد المخزن
-                    await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+                    await _unitOfWork.Stock.AddStorgeStockAsync(storgeStock, ct);
                 }
             }
         }
@@ -396,7 +397,7 @@ public class ProductService : IProductService
             }
 
             // فحص ما إذا كان الباركود مستخدماً لصنف آخر غير الصنف الحالي
-            var existingWithOtherProduct = await _unitOfWork.ProductBarCodes.ExistsAsync(
+            var existingWithOtherProduct = await _unitOfWork.Products.BarCodeExistsAsync(
                 b => barCodeStrings.Contains(b.BarCode) && b.ProductId != id, ct);
             // في حال كان مستخدماً لمنتج آخر
             if (existingWithOtherProduct)
@@ -471,17 +472,17 @@ public class ProductService : IProductService
                 var removedBarcodeIds = barcodesToRemove.Select(b => b.Id).ToList();
 
                 // منع حذف باركود له حركة مخزنية أو فواتير أو صور مرتبطة
-                bool usedInSales = await _unitOfWork.SalesInvoiceItems.ExistsAsync(
+                bool usedInSales = await _unitOfWork.SalesInvoices.ItemExistsAsync(
                     i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInSalesReturns = await _unitOfWork.SalesReturnItems.ExistsAsync(
+                bool usedInSalesReturns = await _unitOfWork.SalesReturns.ItemExistsAsync(
                     i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInPurchases = await _unitOfWork.PurchaseInvoiceItems.ExistsAsync(
+                bool usedInPurchases = await _unitOfWork.PurchaseInvoices.ItemExistsAsync(
                     i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturnItems.ExistsAsync(
+                bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.ItemExistsAsync(
                     i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInOrders = await _unitOfWork.PurchaseOrderItems.ExistsAsync(
+                bool usedInOrders = await _unitOfWork.PurchaseOrders.ItemExistsAsync(
                     i => removedBarcodeIds.Contains(i.ProductBarCodeId), ct);
-                bool hasStock = await _unitOfWork.StorgeStocks.ExistsAsync(
+                bool hasStock = await _unitOfWork.Stock.StorgeStockExistsAsync(
                     s => removedBarcodeIds.Contains(s.ProductBarcodeId) && s.Quantity != 0, ct);
 
                 // في حال وجود أي استخدام سابق
@@ -495,27 +496,27 @@ public class ProductService : IProductService
                 }
 
                 // حذف منطقي متسلسل: الصور المرتبطة ثم أرصدة المخازن ثم الباركود نفسه
-                var linkedImages = await _unitOfWork.ProductImages.FindTrackedAsync(
+                var linkedImages = await _unitOfWork.Products.FindImagesTrackedAsync(
                     img => removedBarcodeIds.Contains(img.BarcodeId!.Value), ct);
                 // حذف الصور المرتبطة بالباركود منطقياً
                 foreach (var img in linkedImages)
                 {
-                    _unitOfWork.ProductImages.SoftDelete(img);
+                    _unitOfWork.Products.SoftDeleteImage(img);
                 }
 
                 // استعلام الأرصدة المرتبطة بالباركود في المخازن
-                var linkedStocks = await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                var linkedStocks = await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                     s => removedBarcodeIds.Contains(s.ProductBarcodeId), ct);
                 // حذف الأرصدة منطقياً
                 foreach (var stock in linkedStocks)
                 {
-                    _unitOfWork.StorgeStocks.SoftDelete(stock);
+                    _unitOfWork.Stock.SoftDeleteStorgeStock(stock);
                 }
 
                 // حذف الباركود نفسه منطقياً
                 foreach (var b in barcodesToRemove)
                 {
-                    _unitOfWork.ProductBarCodes.SoftDelete(b);
+                    _unitOfWork.Products.SoftDeleteBarCode(b);
                 }
             }
 
@@ -576,7 +577,7 @@ public class ProductService : IProductService
                             Quantity = 0,
                             MinStockLevel = 0
                         };
-                        await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+                        await _unitOfWork.Stock.AddStorgeStockAsync(storgeStock, ct);
                     }
                 }
             }
@@ -615,27 +616,27 @@ public class ProductService : IProductService
         }
 
         // منع حذف صنف له حركة مبيعات أو مشتريات أو أرصدة قائمة
-        bool usedInSalesInvoices = await _unitOfWork.SalesInvoiceItems.ExistsAsync(i => i.ProductId == id, ct);
-        bool usedInSalesReturns = await _unitOfWork.SalesReturnItems.ExistsAsync(i => i.ProductId == id, ct);
-        bool usedInPurchaseInvoices = await _unitOfWork.PurchaseInvoiceItems.ExistsAsync(i => i.ProductId == id, ct);
-        bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturnItems.ExistsAsync(i => i.ProductId == id, ct);
-        bool usedInStockTransfers = await _unitOfWork.StockTransferItems.ExistsAsync(i => i.ProductId == id, ct);
-        bool usedInStockAdjustments = await _unitOfWork.StockAdjustmentItems.ExistsAsync(i => i.ProductId == id, ct);
+        bool usedInSalesInvoices = await _unitOfWork.SalesInvoices.ItemExistsAsync(i => i.ProductId == id, ct);
+        bool usedInSalesReturns = await _unitOfWork.SalesReturns.ItemExistsAsync(i => i.ProductId == id, ct);
+        bool usedInPurchaseInvoices = await _unitOfWork.PurchaseInvoices.ItemExistsAsync(i => i.ProductId == id, ct);
+        bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.ItemExistsAsync(i => i.ProductId == id, ct);
+        bool usedInStockTransfers = await _unitOfWork.StockTransfers.ItemExistsAsync(i => i.ProductId == id, ct);
+        bool usedInStockAdjustments = await _unitOfWork.StockAdjustments.ItemExistsAsync(i => i.ProductId == id, ct);
 
         // جلب معرفات الباركودات المرتبطة بالمنتج
-        var barcodeIds = (await _unitOfWork.ProductBarCodes.FindAsync(b => b.ProductId == id, ct))
+        var barcodeIds = (await _unitOfWork.Products.FindBarCodesAsync(b => b.ProductId == id, ct))
             .Select(b => b.Id)
             .ToList();
 
         // فحص وجود الصنف في أوامر الشراء
-        bool usedInPurchaseOrders = barcodeIds.Count > 0 && await _unitOfWork.PurchaseOrderItems.ExistsAsync(
+        bool usedInPurchaseOrders = barcodeIds.Count > 0 && await _unitOfWork.PurchaseOrders.ItemExistsAsync(
             i => barcodeIds.Contains(i.ProductBarCodeId), ct);
 
         // فحص وجود أرصدة غير صفرية في مخازن التخزين
-        bool hasStorgeStock = barcodeIds.Count > 0 && await _unitOfWork.StorgeStocks.ExistsAsync(
+        bool hasStorgeStock = barcodeIds.Count > 0 && await _unitOfWork.Stock.StorgeStockExistsAsync(
             s => barcodeIds.Contains(s.ProductBarcodeId) && s.Quantity != 0, ct);
         // فحص وجود أرصدة غير صفرية في صالات العرض
-        bool hasShowroomStock = await _unitOfWork.ShowroomStocks.ExistsAsync(
+        bool hasShowroomStock = await _unitOfWork.Stock.ShowroomStockExistsAsync(
             s => s.ProductId == id && s.Quantity != 0, ct);
 
         // في حال وجود أي حركات سابقة أو رصيد غير صفري
@@ -651,31 +652,31 @@ public class ProductService : IProductService
         // حذف منطقي متسلسل للأبناء (الباركودات وصورها، الوحدات، صور المنتج، والأرصدة الصفرية)
 
         // جلب صور المنتج وحذفها منطقياً
-        var productImages = await _unitOfWork.ProductImages.FindTrackedAsync(img => img.ProductId == id, ct);
+        var productImages = await _unitOfWork.Products.FindImagesTrackedAsync(img => img.ProductId == id, ct);
         foreach (var img in productImages)
         {
-            _unitOfWork.ProductImages.SoftDelete(img);
+            _unitOfWork.Products.SoftDeleteImage(img);
         }
 
         // جلب باركودات المنتج وحذفها منطقياً
-        var productBarCodes = await _unitOfWork.ProductBarCodes.FindTrackedAsync(b => b.ProductId == id, ct);
+        var productBarCodes = await _unitOfWork.Products.FindBarCodesTrackedAsync(b => b.ProductId == id, ct);
         foreach (var bc in productBarCodes)
         {
-            _unitOfWork.ProductBarCodes.SoftDelete(bc);
+            _unitOfWork.Products.SoftDeleteBarCode(bc);
         }
 
         // جلب وحدات المنتج وحذفها منطقياً
-        var productUnits = await _unitOfWork.ProductUnits.FindTrackedAsync(u => u.ProductId == id, ct);
+        var productUnits = await _unitOfWork.Products.FindUnitsTrackedAsync(u => u.ProductId == id, ct);
         foreach (var unit in productUnits)
         {
-            _unitOfWork.ProductUnits.SoftDelete(unit);
+            _unitOfWork.Products.SoftDeleteUnit(unit);
         }
 
         // جلب أرصدة صالات العرض وحذفها منطقياً
-        var showroomStocks = await _unitOfWork.ShowroomStocks.FindTrackedAsync(s => s.ProductId == id, ct);
+        var showroomStocks = await _unitOfWork.Stock.FindShowroomStockTrackedAsync(s => s.ProductId == id, ct);
         foreach (var stock in showroomStocks)
         {
-            _unitOfWork.ShowroomStocks.SoftDelete(stock);
+            _unitOfWork.Stock.SoftDeleteShowroomStock(stock);
         }
 
         // حذف المنتج نفسه منطقياً

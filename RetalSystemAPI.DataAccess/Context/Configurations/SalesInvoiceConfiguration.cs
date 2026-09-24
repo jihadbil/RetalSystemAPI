@@ -16,7 +16,9 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
     public void Configure(EntityTypeBuilder<SalesInvoice> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "SalesInvoices"
-        builder.ToTable("SalesInvoices");
+        builder.ToTable("SalesInvoices", table => table.HasCheckConstraint(
+            "CK_SalesInvoices_Amounts",
+            "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]"));
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(si => si.Id);
 
@@ -44,6 +46,10 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
 
         // ضبط نوع قيمة الخصم بدقة مالية decimal(18,4) مع قيمة افتراضية صفر
         builder.Property(si => si.DiscountAmount)
+            .HasColumnType("decimal(18,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(si => si.TaxAmount)
             .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
 
@@ -90,6 +96,24 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(si => si.PaymentSafe)
+            .WithMany()
+            .HasForeignKey(si => si.PaymentSafeId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(si => si.PosTerminal)
+            .WithMany()
+            .HasForeignKey(si => si.PosTerminalId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(si => si.CashSession)
+            .WithMany()
+            .HasForeignKey(si => si.CashSessionId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // ربط الفاتورة بالمستأجر التابع له مع منع الحذف التلقائي Restrict
         builder.HasOne(si => si.Tenant)
             .WithMany()
@@ -110,5 +134,6 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
         builder.HasIndex(si => new { si.TenantId, si.IsDeleted });
         // إنشاء فهرس على تاريخ الفاتورة لتسريع التقارير المالية واليومية
         builder.HasIndex(si => si.InvoiceDate);
+        builder.HasIndex(si => new { si.TenantId, si.CashSessionId });
     }
 }

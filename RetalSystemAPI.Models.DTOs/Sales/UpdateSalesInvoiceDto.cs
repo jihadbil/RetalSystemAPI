@@ -22,6 +22,8 @@ public class UpdateSalesInvoiceDto
     [Range(0, double.MaxValue, ErrorMessage = "المبلغ المدفوع يجب أن يكون أكبر من أو يساوي 0")]
     public decimal PaidAmount { get; set; }
 
+    public decimal TaxAmount { get; set; }
+
     /// <summary>ملاحظات إضافية</summary>
     [MaxLength(500, ErrorMessage = "الملاحظات يجب أن لا تتجاوز 500 حرف")]
     public string? Notes { get; set; }

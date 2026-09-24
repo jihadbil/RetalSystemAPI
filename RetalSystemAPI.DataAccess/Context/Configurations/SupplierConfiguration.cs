@@ -34,6 +34,11 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
             .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
 
+        // ضبط نوع العمود للرصيد الحالي بدقة مالية decimal(18,4) مع قيمة افتراضية صفر
+        builder.Property(s => s.CurrentBalance)
+            .HasColumnType("decimal(18,4)")
+            .HasDefaultValue(0);
+
         // ضبط خاصية RowVersion كرمز لإدارة التزامن المتفائل
         builder.Property(s => s.RowVersion)
             .IsRowVersion()

@@ -26,6 +26,13 @@ public static class DataAccessServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var configuredConnectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(configuredConnectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is required. Configure it through a protected deployment setting.");
+        }
+
         // ── HttpContext & User/Tenant Services ────────────────
         // تسجيل IHttpContextAccessor للتمكن من قراءة بيانات الطلب والمستخدم الحالي من أي مكان
         services.AddHttpContextAccessor();
@@ -45,7 +52,7 @@ public static class DataAccessServiceExtensions
             // استخراج كائن AuditInterceptor المحقون من حاوية الخدمات
             var interceptor = sp.GetRequiredService<AuditInterceptor>();
             // جلب سلسلة الاتصال بقاعدة البيانات من ملف التكوين
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = configuredConnectionString;
 
             // تكوين خيارات الاتصال بمحرك SQL Server
             options
@@ -69,18 +76,16 @@ public static class DataAccessServiceExtensions
         // تسجيل الهوية الأساسية ApplicationUser مع ضبط سياسات كلمات المرور المخففة
         services.AddIdentityCore<ApplicationUser>(options =>
         {
-            // عدم إلزام وجود أرقام في كلمة المرور
-            options.Password.RequireDigit = false;
-            // عدم إلزام وجود أحرف صغيرة
-            options.Password.RequireLowercase = false;
-            // عدم إلزام وجود رموز خاصة
-            options.Password.RequireNonAlphanumeric = false;
-            // عدم إلزام وجود أحرف كبيرة
-            options.Password.RequireUppercase = false;
-            // تحديد الحد الأدنى لطول كلمة المرور بـ 6 خانات
-            options.Password.RequiredLength = 6;
-            // عدم إلزام فرادة البريد الإلكتروني لدعم أسماء المستخدمين المخصصة
-            options.User.RequireUniqueEmail = false;
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequiredLength = 10;
+            options.Password.RequiredUniqueChars = 4;
+            options.User.RequireUniqueEmail = true;
+            options.Lockout.AllowedForNewUsers = true;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         })
         // إضافة دعم إدارة الأدوار ومصفوفات الصلاحيات
         .AddRoles<IdentityRole>()
@@ -89,9 +94,30 @@ public static class DataAccessServiceExtensions
         // إضافة مزودي الرموز الافتراضية لاستعادة كلمات المرور وتأكيد الحسابات
         .AddDefaultTokenProviders();
 
-        // ── Generic Repository & Unit of Work ─────────────────
+        // ── Generic Repository ────────────────────────────────
         // تسجيل واجهة المستودع العام المفتوح IRepository<> مع تنفيذه Repository<>
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+        // ── Specialized Repositories ──────────────────────────
+        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IUnitRepository, UnitRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+        services.AddScoped<IStockRepository, StockRepository>();
+        services.AddScoped<IStockTransferRepository, StockTransferRepository>();
+        services.AddScoped<IStockAdjustmentRepository, StockAdjustmentRepository>();
+        services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
+        services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
+        services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+        services.AddScoped<IPurchaseInvoiceRepository, PurchaseInvoiceRepository>();
+        services.AddScoped<IPurchaseReturnRepository, PurchaseReturnRepository>();
+        services.AddScoped<IAccountingRepository, AccountingRepository>();
+
+        // ── Unit of Work ──────────────────────────────────────
         // تسجيل واجهة وحدة العمل IUnitOfWork مع تنفيذها UnitOfWork
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

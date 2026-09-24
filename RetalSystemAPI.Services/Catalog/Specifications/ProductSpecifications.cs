@@ -33,20 +33,18 @@ public class ProductWithDetailsSpec : BaseSpecification<Product>
 public class ProductSummarySpec : BaseSpecification<Product>
 {
     /// <summary>
-    /// تهيئة مواصفة ملخص الأصناف وترتيبها أبجدياً.
+    /// تهيئة مواصفة ملخص الأصناف وترتيبها أبجدياً مع تفعيل الفهرس المباشر.
     /// </summary>
     /// <param name="categoryId">معرف التصنيف الاختياري للفلترة</param>
     public ProductSummarySpec(Guid? categoryId = null) 
-        : base(p => !categoryId.HasValue || p.CategoryId == categoryId.Value)
+        : base(categoryId.HasValue ? p => p.CategoryId == categoryId.Value : null)
     {
         // تضمين التصنيف التابع له المنتج
         AddInclude(p => p.Category!);
         // تضمين الباركودات المرتبطة بالمنتج
         AddInclude(p => p.ProductBarCodes);
-        // تضمين الصور
+        // تضمين الصور لاستخراج الصورة الافتراضية
         AddInclude(p => p.ProductImages);
-        // تضمين الوحدات الأساسية
-        AddInclude("ProductUnits.Unit");
         // ترتيب المنتجات تصاعدياً حسب الاسم
         ApplyOrderBy(p => p.Name);
     }
@@ -70,8 +68,6 @@ public class ProductSearchSpec : BaseSpecification<Product>
         AddInclude(p => p.ProductBarCodes);
         // تضمين الصور
         AddInclude(p => p.ProductImages);
-        // تضمين الوحدات
-        AddInclude("ProductUnits.Unit");
         // ترتيب النتائج حسب الاسم
         ApplyOrderBy(p => p.Name);
     }

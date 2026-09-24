@@ -30,6 +30,9 @@ public class CustomerResponseDto : BaseDto
     /// <summary>الرصيد الافتتاحي</summary>
     public decimal OpeningBalance { get; set; }
 
+    /// <summary>الرصيد الحالي المستحق على العميل</summary>
+    public decimal CurrentBalance { get; set; }
+
     /// <summary>سقف الائتمان والمديونية المسموح به</summary>
     public decimal CreditLimit { get; set; }
 

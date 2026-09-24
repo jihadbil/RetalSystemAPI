@@ -5,12 +5,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
+using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.Models.DTOs.Customers;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Customers.Interfaces;
 using RetalSystemAPI.Services.Customers.Specifications;
+using RetalSystemAPI.Services.Accounting.Interfaces;
 
 namespace RetalSystemAPI.Services.Customers.Implementations;
 
@@ -24,19 +26,21 @@ public class CustomerService : ICustomerService
 
     // محول النماذج للتحويل بين الكيانات وDTOs
     private readonly IMapper _mapper;
+    private readonly IPosCashService _posCashService;
 
     /// <summary>
     /// تهيئة خدمة العملاء مع حقن وحدة العمل وAutoMapper.
     /// </summary>
     /// <param name="unitOfWork">وحدة العمل للمستودعات</param>
     /// <param name="mapper">محول الكيانات</param>
-    public CustomerService(IUnitOfWork unitOfWork, IMapper mapper)
+    public CustomerService(IUnitOfWork unitOfWork, IMapper mapper, IPosCashService posCashService)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
 
         // تعيين مرجع المحول
         _mapper = mapper;
+        _posCashService = posCashService;
     }
 
     /// <inheritdoc />
@@ -113,6 +117,7 @@ public class CustomerService : ICustomerService
 
         // تحويل كائن DTO إلى كيان العميل
         var customer = _mapper.Map<Customer>(dto);
+        customer.CurrentBalance = dto.OpeningBalance;
 
         // التحقق من وجود أرقام هواتف مرفقة
         if (dto.Phones != null && dto.Phones.Any())
@@ -203,7 +208,7 @@ public class CustomerService : ICustomerService
                 foreach (var phone in customer.CustomerPhones.ToList())
                 {
                     // حذف الهاتف فيزيائياً
-                    _unitOfWork.CustomerPhones.HardDelete(phone);
+                    _unitOfWork.Customers.HardDeletePhone(phone);
                 }
             }
 
@@ -311,7 +316,7 @@ public class CustomerService : ICustomerService
                 // إزالة علامة الافتراضي
                 p.IsDefault = false;
                 // وسم السجل للتحديث
-                _unitOfWork.CustomerPhones.Update(p);
+                _unitOfWork.Customers.UpdatePhone(p);
             }
         }
 
@@ -329,7 +334,7 @@ public class CustomerService : ICustomerService
         };
 
         // إضافة الهاتف للمستودع
-        await _unitOfWork.CustomerPhones.AddAsync(phone, ct);
+        await _unitOfWork.Customers.AddPhoneAsync(phone, ct);
 
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
@@ -348,7 +353,7 @@ public class CustomerService : ICustomerService
     public async Task<ServiceResult> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default)
     {
         // جلب سجل الهاتف بالمعرف
-        var phone = await _unitOfWork.CustomerPhones.GetByIdAsync(phoneId, ct);
+        var phone = await _unitOfWork.Customers.GetPhoneByIdAsync(phoneId, ct);
 
         // التحقق من وجود الهاتف وارتباطه بنفس العميل المحدد
         if (phone is null || phone.CustomerId != customerId)
@@ -358,12 +363,203 @@ public class CustomerService : ICustomerService
         }
 
         // تطبيق الحذف المنطقي لرقم الهاتف
-        _unitOfWork.CustomerPhones.SoftDelete(phone);
+        _unitOfWork.Customers.SoftDeletePhone(phone);
 
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
+    }
+
+    /// <inheritdoc />
+    public async Task<ServiceResult<CustomerStatementDto>> GetStatementAsync(CustomerStatementFilterDto filter, CancellationToken ct = default)
+    {
+        var customer = await _unitOfWork.Customers.GetByIdAsync(filter.CustomerId, ct);
+        if (customer == null)
+            return ServiceResult<CustomerStatementDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
+
+        // حساب الرصيد قبل بداية الفترة
+        decimal balanceBeforePeriod = filter.FromDate.HasValue
+            ? await _unitOfWork.Customers.GetBalanceBeforeDateAsync(customer.Id, filter.FromDate.Value, ct)
+            : customer.OpeningBalance;
+
+        // جلب الحركات خلال الفترة
+        var transactions = await _unitOfWork.Customers.GetTransactionsByDateRangeAsync(
+            customer.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
+
+        var transactionDtos = _mapper.Map<List<CustomerTransactionResponseDto>>(transactions);
+
+        var totalDebit = transactionDtos.Sum(t => t.DebitAmount);
+        var totalCredit = transactionDtos.Sum(t => t.CreditAmount);
+
+        var statement = new CustomerStatementDto
+        {
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            CustomerCode = customer.Code,
+            CreditLimit = customer.CreditLimit,
+            OpeningBalance = customer.OpeningBalance,
+            BalanceBeforePeriod = balanceBeforePeriod,
+            TotalDebit = totalDebit,
+            TotalCredit = totalCredit,
+            CurrentBalance = customer.CurrentBalance,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            Transactions = transactionDtos
+        };
+
+        return ServiceResult<CustomerStatementDto>.Success(statement);
+    }
+
+    /// <inheritdoc />
+    public async Task<ServiceResult<CustomerTransactionResponseDto>> AddPaymentAsync(CreateCustomerPaymentDto dto, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(dto.PaymentMethod) || dto.PaymentMethod == PaymentMethod.Credit)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("طريقة السداد غير صالحة", ErrorCodes.ValidationError);
+
+        if (!dto.SafeId.HasValue)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("يجب تحديد الخزينة المستلمة للمبلغ", ErrorCodes.ValidationError);
+
+        var customer = await _unitOfWork.Customers.GetByIdAsync(dto.CustomerId, ct);
+        if (customer == null)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
+
+        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        if (!branchExists)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
+
+        Safe? safe = null;
+        Guid? cashSessionId = null;
+        if (dto.SafeId.HasValue)
+        {
+            safe = await _unitOfWork.Accounting.GetSafeByIdAsync(dto.SafeId.Value, ct);
+            if (safe == null)
+                return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة المحددة غير موجودة", ErrorCodes.SafeNotFound);
+
+            if (!safe.IsActive)
+                return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة معطلة حالياً", ErrorCodes.SafeInactive);
+
+            if (safe.BranchId != dto.BranchId)
+                return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة المحددة لا تتبع فرع عملية السداد", ErrorCodes.ValidationError);
+
+            var sessionResult = await _posCashService.ResolveDrawerPostingSessionAsync(safe.Id, ct);
+            if (!sessionResult.IsSuccess)
+                return ServiceResult<CustomerTransactionResponseDto>.Failure(sessionResult.ErrorMessage!, sessionResult.ErrorCode);
+            cashSessionId = sessionResult.Data;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            customer.CurrentBalance -= dto.Amount;
+
+            var transaction = new CustomerTransaction
+            {
+                CustomerId = customer.Id,
+                TransactionType = CustomerTransactionType.Payment,
+                DebitAmount = 0,
+                CreditAmount = dto.Amount,
+                BalanceAfter = customer.CurrentBalance,
+                TransactionDate = dto.PaymentDate,
+                BranchId = dto.BranchId,
+                DocumentType = FinancialDocumentType.CustomerPayment,
+                PaymentMethod = dto.PaymentMethod,
+                Description = dto.Description ?? "سند قبض / سداد من العميل",
+                Notes = dto.Notes
+            };
+
+            await _unitOfWork.Customers.AddTransactionAsync(transaction, ct);
+            _unitOfWork.Customers.Update(customer);
+
+            if (safe != null)
+            {
+                safe.CurrentBalance += dto.Amount;
+                var safeTxNumber = await _unitOfWork.Accounting.GenerateSafeTransactionNumberAsync(ct);
+                var safeTx = new SafeTransaction
+                {
+                    TransactionNumber = safeTxNumber,
+                    SafeId = safe.Id,
+                    Direction = TransactionDirection.Inbound,
+                    Amount = dto.Amount,
+                    BalanceAfter = safe.CurrentBalance,
+                    TransactionDate = dto.PaymentDate,
+                    DocumentType = FinancialDocumentType.CustomerPayment,
+                    DocumentId = transaction.Id,
+                    Description = $"سند قبض عميل [{customer.Name}] - {(string.IsNullOrWhiteSpace(dto.Description) ? "سداد نقدي" : dto.Description)}",
+                    Notes = dto.Notes
+                };
+                safeTx.CashSessionId = cashSessionId;
+
+                await _unitOfWork.Accounting.AddSafeTransactionAsync(safeTx, ct);
+                _unitOfWork.Accounting.UpdateSafe(safe);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
+
+            var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+            transaction.Branch = branch!;
+            transaction.Customer = customer;
+
+            return ServiceResult<CustomerTransactionResponseDto>.Success(_mapper.Map<CustomerTransactionResponseDto>(transaction));
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ServiceResult<CustomerTransactionResponseDto>> AddAdjustmentAsync(CreateCustomerAdjustmentDto dto, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(dto.Direction))
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("اتجاه التسوية غير صالح", ErrorCodes.ValidationError);
+
+        var customer = await _unitOfWork.Customers.GetByIdAsync(dto.CustomerId, ct);
+        if (customer == null)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
+
+        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        if (!branchExists)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
+
+        decimal debit = 0;
+        decimal credit = 0;
+        if (dto.Direction == TransactionDirection.Inbound)
+        {
+            customer.CurrentBalance += dto.Amount;
+            debit = dto.Amount;
+        }
+        else
+        {
+            customer.CurrentBalance -= dto.Amount;
+            credit = dto.Amount;
+        }
+
+        var transaction = new CustomerTransaction
+        {
+            CustomerId = customer.Id,
+            TransactionType = CustomerTransactionType.Adjustment,
+            DebitAmount = debit,
+            CreditAmount = credit,
+            BalanceAfter = customer.CurrentBalance,
+            TransactionDate = DateTime.UtcNow,
+            BranchId = dto.BranchId,
+            DocumentType = FinancialDocumentType.Adjustment,
+            Description = dto.Reason,
+            Notes = dto.Notes
+        };
+
+        await _unitOfWork.Customers.AddTransactionAsync(transaction, ct);
+        _unitOfWork.Customers.Update(customer);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+        transaction.Branch = branch!;
+        transaction.Customer = customer;
+
+        return ServiceResult<CustomerTransactionResponseDto>.Success(_mapper.Map<CustomerTransactionResponseDto>(transaction));
     }
 }

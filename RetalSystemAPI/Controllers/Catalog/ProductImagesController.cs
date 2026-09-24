@@ -125,7 +125,16 @@ public class ProductImagesController : BaseApiController
         };
 
         // استدعاء خدمة صور المنتجات لحفظ سجل الصورة وربطه بالمنتج في قاعدة البيانات
-        var addResult = await _productImageService.AddImageAsync(productId, dto, ct);
+        ServiceResult<ProductImageResponseDto> addResult;
+        try
+        {
+            addResult = await _productImageService.AddImageAsync(productId, dto, ct);
+        }
+        catch
+        {
+            await _fileUploadService.DeleteAsync(uploadResult.Data!, CancellationToken.None);
+            throw;
+        }
 
         // التحقق من نجاح عملية الحفظ والربط
         if (addResult.IsSuccess)
@@ -133,6 +142,9 @@ public class ProductImagesController : BaseApiController
             // إرجاع كود الاستجابة القياسي 201 Created مصحوباً ببيانات الصورة ورسالة التأكيد
             return StatusCode(201, ApiResponse<ProductImageResponseDto>.Ok(addResult.Data!, "تم رفع ورابط الصورة بنجاح"));
         }
+
+        // لا تترك ملفاً يتيماً إذا فشل ربط الصورة بسجل المنتج.
+        await _fileUploadService.DeleteAsync(uploadResult.Data!, CancellationToken.None);
 
         // تحويل كود ورسالة الخطأ إلى استجابة HTTP ملائمة في حال الفشل
         return ToActionResult(addResult);

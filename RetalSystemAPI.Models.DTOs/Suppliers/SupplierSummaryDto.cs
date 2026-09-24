@@ -17,6 +17,9 @@ public class SupplierSummaryDto : BaseDto
     /// <summary>الرصيد المالي الافتتاحي</summary>
     public decimal OpeningBalance { get; set; }
 
+    /// <summary>الرصيد الحالي المستحق للمورد</summary>
+    public decimal CurrentBalance { get; set; }
+
     /// <summary>إجمالي عدد الهواتف المسجلة للمورد</summary>
     public int PhoneCount { get; set; }
 }

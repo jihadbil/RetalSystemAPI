@@ -16,7 +16,9 @@ public class PurchaseReturnConfiguration : IEntityTypeConfiguration<PurchaseRetu
     public void Configure(EntityTypeBuilder<PurchaseReturn> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "PurchaseReturns"
-        builder.ToTable("PurchaseReturns");
+        builder.ToTable("PurchaseReturns", table => table.HasCheckConstraint(
+            "CK_PurchaseReturns_TotalAmount",
+            "[TotalAmount] >= 0"));
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(pr => pr.Id);
 
@@ -74,6 +76,12 @@ public class PurchaseReturnConfiguration : IEntityTypeConfiguration<PurchaseRetu
         builder.HasOne(pr => pr.Warehouse)
             .WithMany()
             .HasForeignKey(pr => pr.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(pr => pr.RefundSafe)
+            .WithMany()
+            .HasForeignKey(pr => pr.RefundSafeId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // ربط المرتجع بالمستأجر مع منع الإجراء NoAction لتفادي المسارات المتعددة

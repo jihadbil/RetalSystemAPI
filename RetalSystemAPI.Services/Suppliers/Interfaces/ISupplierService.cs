@@ -79,4 +79,28 @@ public interface ISupplierService
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة إتمام العملية</returns>
     Task<ServiceResult> DeletePhoneAsync(Guid supplierId, Guid phoneId, CancellationToken ct = default);
+
+    /// <summary>
+    /// توليد كشف حساب تفصيلي للمورد خلال فترة محددة مع حساب الأرصدة السابقة ومجاميع المدين والدائن.
+    /// </summary>
+    /// <param name="filter">معايير فلترة كشف الحساب</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>تقرير كشف الحساب المالي للمورد</returns>
+    Task<ServiceResult<SupplierStatementDto>> GetStatementAsync(SupplierStatementFilterDto filter, CancellationToken ct = default);
+
+    /// <summary>
+    /// تسجيل سند صرف وسداد دفعة للمورد مع تحديث رصيد الخزينة المسحوب منها ورصيد المورد ذرّياً.
+    /// </summary>
+    /// <param name="dto">بيانات سداد المورد</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>بيانات حركة السداد المسجلة</returns>
+    Task<ServiceResult<SupplierTransactionResponseDto>> AddPaymentAsync(CreateSupplierPaymentDto dto, CancellationToken ct = default);
+
+    /// <summary>
+    /// تسجيل تسوية رصيد حساب المورد مع تحديث رصيده الحالي.
+    /// </summary>
+    /// <param name="dto">بيانات تسوية حساب المورد</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>بيانات حركة التسوية المسجلة</returns>
+    Task<ServiceResult<SupplierTransactionResponseDto>> AddAdjustmentAsync(CreateSupplierAdjustmentDto dto, CancellationToken ct = default);
 }

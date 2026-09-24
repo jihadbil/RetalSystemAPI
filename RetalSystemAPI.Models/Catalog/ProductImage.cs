@@ -1,34 +1,47 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 using RetalSystemAPI.Models.Common;
+
 namespace RetalSystemAPI.Models.Catalog;
+
 /// <summary>
-/// يمتل صور المنتج ايضا تم تصميمه بحيث يدعم صورة لكل نكهة على حدى او بشكل عام
+/// يمثل ملفات وصور المنتج في النظام، ويدعم تعيين صورة افتراضية عامة للصنف أو تخصيص صورة لكل عبوة أو باركود على حدة.
 /// </summary>
+// كلاس كيان صورة المنتج
 public class ProductImage : TenantBaseEntity    
 {
     /// <summary>
-    /// عنوان مسار الصورة على السيرفر او رابط خارجي للصورة  
+    /// مسار تخزين ملف الصورة على الخادم أو رابط خارجي معتمد للصورة.
     /// </summary>
+    // خاصية مسار أو رابط الصورة الإلزامي
     public required string ImageUrl { get; set; }
+
     /// <summary>
-    /// يمتل ان كانت الصورة الأفتراضية للصنف التي تظهر بشكل عام
+    /// يحدد ما إذا كانت هذه هي الصورة الافتراضية الرئيسية التي تظهر للصنف في الواجهات ونقاط البيع.
     /// </summary>
+    // خاصية مؤشر الصورة الافتراضية الرئيسية
     public bool IsDefault { get; set; } = false;
 
-
     /// <summary>
-    /// معرف الصنف الدي تنتمي اليه مجموعة الصور
+    /// معرّف المنتج الأساسي الذي تتبع له هذه الصورة.
     /// </summary>
+    // خاصية المفتاح الأجنبي لمعرف المنتج
     public Guid ProductId { get; set; } 
-    public Product? Product { get; set; }   
-
 
     /// <summary>
-    /// باركود الصنف الدي تنتمي اليه لاصورة الواحدة
+    /// كائن المنتج الأساسي المرتبط بالصورة (خاصية التنقل).
     /// </summary>
+    // خاصية الملاحة لكيان المنتج
+    public Product? Product { get; set; }
+
+    /// <summary>
+    /// معرّف الباركود المحدد في حال كانت الصورة مخصصة لعبوة أو متغير معين (اختياري).
+    /// </summary>
+    // خاصية المفتاح الأجنبي لمعرف الباركود
     public Guid? BarcodeId { get; set; }
 
+    /// <summary>
+    /// كائن الباركود المرتبط بالصورة المخصصة (خاصية التنقل).
+    /// </summary>
+    // خاصية الملاحة لكيان الباركود
     public ProductBarCode? BarcodeCode { get; set; }
 }

@@ -62,6 +62,9 @@ public class PurchaseInvoiceSummaryDto : BaseDto
     /// <summary>المبلغ المدفوع للمورد</summary>
     public decimal PaidAmount { get; set; }
 
+    /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
+    public Guid? PaymentSafeId { get; set; }
+
     /// <summary>المبلغ المتبقي لصالح المورد</summary>
     public decimal RemainingAmount { get; set; }
 
@@ -125,6 +128,9 @@ public class PurchaseInvoiceResponseDto : BaseDto
 
     /// <summary>المبلغ المدفوع</summary>
     public decimal PaidAmount { get; set; }
+
+    /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
+    public Guid? PaymentSafeId { get; set; }
 
     /// <summary>المبلغ المتبقي</summary>
     public decimal RemainingAmount { get; set; }
@@ -246,6 +252,9 @@ public class CreatePurchaseInvoiceDto
     /// <summary>المبلغ المدفوع للمورد</summary>
     public decimal PaidAmount { get; set; }
 
+    /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
+    public Guid? PaymentSafeId { get; set; }
+
     /// <summary>معرف أمر الشراء المرتبط إن وجد</summary>
     public Guid? PurchaseOrderId { get; set; }
 
@@ -341,6 +350,9 @@ public class UpdatePurchaseInvoiceDto
 
     /// <summary>المبلغ المدفوع</summary>
     public decimal PaidAmount { get; set; }
+
+    /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
+    public Guid? PaymentSafeId { get; set; }
 
     /// <summary>ملاحظات</summary>
     public string? Notes { get; set; }

@@ -5,19 +5,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-RetalSystemAPI-bb628dee-3c19-4d38-aaa1-c613c5f736a6</UserSecretsId>
-    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" NoWarn="NU1605" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

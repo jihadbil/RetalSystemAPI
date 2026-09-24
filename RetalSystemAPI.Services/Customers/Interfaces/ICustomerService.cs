@@ -93,4 +93,28 @@ public interface ICustomerService
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة إتمام العملية</returns>
     Task<ServiceResult> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default);
+
+    /// <summary>
+    /// توليد كشف حساب تفصيلي للعميل خلال فترة محددة مع حساب الأرصدة السابقة ومجاميع المدين والدائن.
+    /// </summary>
+    /// <param name="filter">معايير فلترة كشف الحساب</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>تقرير كشف الحساب المالي للعميل</returns>
+    Task<ServiceResult<CustomerStatementDto>> GetStatementAsync(CustomerStatementFilterDto filter, CancellationToken ct = default);
+
+    /// <summary>
+    /// تسجيل سند قبض وسداد دفعة من العميل مع تحديث رصيد الخزينة المستلمة ورصيد العميل ذرّياً.
+    /// </summary>
+    /// <param name="dto">بيانات سداد العميل</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>بيانات حركة السداد المسجلة</returns>
+    Task<ServiceResult<CustomerTransactionResponseDto>> AddPaymentAsync(CreateCustomerPaymentDto dto, CancellationToken ct = default);
+
+    /// <summary>
+    /// تسجيل تسوية رصيد حساب العميل مع تحديث رصيده الحالي.
+    /// </summary>
+    /// <param name="dto">بيانات تسوية حساب العميل</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>بيانات حركة التسوية المسجلة</returns>
+    Task<ServiceResult<CustomerTransactionResponseDto>> AddAdjustmentAsync(CreateCustomerAdjustmentDto dto, CancellationToken ct = default);
 }

@@ -49,7 +49,7 @@ public class StockService : IStockService
         var spec = new StorgeStockWithDetailsSpec(warehouseId, productBarcodeId);
 
         // جلب سجل الرصيد من المستودع
-        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(spec, ct);
+        var stock = await _unitOfWork.Stock.FirstOrDefaultStorgeStockAsync(spec, ct);
 
         // التحقق من وجود سجل الرصيد
         if (stock is null)
@@ -69,10 +69,10 @@ public class StockService : IStockService
     public async Task<ServiceResult<IReadOnlyList<StorgeStockResponseDto>>> GetStorgeStocksByWarehouseAsync(Guid warehouseId, CancellationToken ct = default)
     {
         // 1. استخراج معرفات الباركودات والمستأجر فقط لتحسين الأداء وتجنب تحميل الكيانات الثقيلة
-        var allBarCodeIdsWithTenants = await _unitOfWork.ProductBarCodes.SelectAsync(bc => new { bc.Id, bc.TenantId }, ct);
+        var allBarCodeIdsWithTenants = await _unitOfWork.Products.SelectBarCodesAsync(bc => new { bc.Id, bc.TenantId }, ct);
 
         // استخراج معرفات الباركودات المسجلة فعلياً في مخزون هذا المستودع
-        var existingBarcodeIds = (await _unitOfWork.StorgeStocks.SelectAsync(
+        var existingBarcodeIds = (await _unitOfWork.Stock.SelectStorgeStocksAsync(
             s => new { s.WarehouseId, s.ProductBarcodeId }, ct))
             .Where(s => s.WarehouseId == warehouseId)
             .Select(s => s.ProductBarcodeId)
@@ -95,7 +95,7 @@ public class StockService : IStockService
             }).ToList();
 
             // إدراج السجلات الجديدة دفعة واحدة
-            await _unitOfWork.StorgeStocks.AddRangeAsync(newStocks, ct);
+            await _unitOfWork.Stock.AddStorgeStocksAsync(newStocks, ct);
 
             // حفظ التغييرات في قاعدة البيانات
             await _unitOfWork.SaveChangesAsync(ct);
@@ -105,7 +105,7 @@ public class StockService : IStockService
         var spec = new StorgeStockWithDetailsSpec(warehouseId);
 
         // جلب قائمة الأرصدة
-        var stocks = await _unitOfWork.StorgeStocks.FindAsync(spec, ct);
+        var stocks = await _unitOfWork.Stock.FindStorgeStocksAsync(spec, ct);
 
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
@@ -136,13 +136,13 @@ public class StockService : IStockService
         var countSpec = new StorgeStockCountSpec(warehouseId, searchTerm, exactBarcode);
 
         // حساب إجمالي السجلات
-        int totalCount = await _unitOfWork.StorgeStocks.CountAsync(countSpec, ct);
+        int totalCount = await _unitOfWork.Stock.CountStorgeStockAsync(countSpec, ct);
 
         // تجهيز مواصفة استعلام الصفحة مع الفلترة والتجزئة
         var pagedSpec = new StorgeStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, exactBarcode, isPaged: true);
 
         // جلب عناصر الصفحة
-        var stocks = await _unitOfWork.StorgeStocks.FindAsync(pagedSpec, ct);
+        var stocks = await _unitOfWork.Stock.FindStorgeStocksAsync(pagedSpec, ct);
 
         // تحويل العناصر إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
@@ -168,7 +168,7 @@ public class StockService : IStockService
         }
 
         // التحقق من وجود الباركود في قاعدة البيانات
-        bool barcodeExists = await _unitOfWork.ProductBarCodes.ExistsAsync(b => b.Id == dto.ProductBarcodeId, ct);
+        bool barcodeExists = await _unitOfWork.Products.BarCodeExistsAsync(b => b.Id == dto.ProductBarcodeId, ct);
 
         // إذا لم يتم العثور على الباركود
         if (!barcodeExists)
@@ -178,7 +178,7 @@ public class StockService : IStockService
         }
 
         // البحث عن سجل الرصيد الحالي
-        var stock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(
+        var stock = await _unitOfWork.Stock.FirstOrDefaultStorgeStockAsync(
             s => s.WarehouseId == dto.WarehouseId && s.ProductBarcodeId == dto.ProductBarcodeId, ct);
 
         // في حال عدم وجود سجل رصيد مسبق
@@ -195,7 +195,7 @@ public class StockService : IStockService
             };
 
             // إضافة السجل الجديد
-            await _unitOfWork.StorgeStocks.AddAsync(stock, ct);
+            await _unitOfWork.Stock.AddStorgeStockAsync(stock, ct);
         }
         else
         {
@@ -206,14 +206,14 @@ public class StockService : IStockService
             stock.MinStockLevel = dto.MinStockLevel;
 
             // وسم السجل للتحديث
-            _unitOfWork.StorgeStocks.Update(stock);
+            _unitOfWork.Stock.UpdateStorgeStock(stock);
         }
 
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
         // إعادة جلب السجل مع تفاصيل المنتج والباركود
-        var updatedStock = await _unitOfWork.StorgeStocks.FirstOrDefaultAsync(new StorgeStockWithDetailsSpec(stock.WarehouseId, stock.ProductBarcodeId), ct) ?? stock;
+        var updatedStock = await _unitOfWork.Stock.FirstOrDefaultStorgeStockAsync(new StorgeStockWithDetailsSpec(stock.WarehouseId, stock.ProductBarcodeId), ct) ?? stock;
 
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<StorgeStockResponseDto>(updatedStock);
@@ -229,7 +229,7 @@ public class StockService : IStockService
         var spec = new LowStorgeStockSpec(warehouseId);
 
         // استرجاع سجلات النواقص المطابقة
-        var stocks = await _unitOfWork.StorgeStocks.FindAsync(spec, ct);
+        var stocks = await _unitOfWork.Stock.FindStorgeStocksAsync(spec, ct);
 
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
@@ -247,7 +247,7 @@ public class StockService : IStockService
         var spec = new ShowroomStockWithDetailsSpec(warehouseId, productId);
 
         // جلب سجل الرصيد
-        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(spec, ct);
+        var stock = await _unitOfWork.Stock.FirstOrDefaultShowroomStockAsync(spec, ct);
 
         // التحقق من وجود السجل
         if (stock is null)
@@ -270,7 +270,7 @@ public class StockService : IStockService
         var allProductIdsWithTenants = await _unitOfWork.Products.SelectAsync(p => new { p.Id, p.TenantId }, ct);
 
         // استخراج معرفات المنتجات المسجلة في صالة العرض حالياً
-        var existingProductIds = (await _unitOfWork.ShowroomStocks.SelectAsync(
+        var existingProductIds = (await _unitOfWork.Stock.SelectShowroomStocksAsync(
             s => new { s.WarehouseId, s.ProductId }, ct))
             .Where(s => s.WarehouseId == warehouseId)
             .Select(s => s.ProductId)
@@ -293,7 +293,7 @@ public class StockService : IStockService
             }).ToList();
 
             // إدراج السجلات الجديدة دفعة واحدة
-            await _unitOfWork.ShowroomStocks.AddRangeAsync(newStocks, ct);
+            await _unitOfWork.Stock.AddShowroomStocksAsync(newStocks, ct);
 
             // حفظ التغييرات
             await _unitOfWork.SaveChangesAsync(ct);
@@ -303,7 +303,7 @@ public class StockService : IStockService
         var spec = new ShowroomStockWithDetailsSpec(warehouseId);
 
         // جلب الأرصدة
-        var stocks = await _unitOfWork.ShowroomStocks.FindAsync(spec, ct);
+        var stocks = await _unitOfWork.Stock.FindShowroomStocksAsync(spec, ct);
 
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
@@ -334,13 +334,13 @@ public class StockService : IStockService
         var countSpec = new ShowroomStockCountSpec(warehouseId, searchTerm, exactBarcode);
 
         // حساب إجمالي السجلات المطابقة
-        int totalCount = await _unitOfWork.ShowroomStocks.CountAsync(countSpec, ct);
+        int totalCount = await _unitOfWork.Stock.CountShowroomStockAsync(countSpec, ct);
 
         // تجهيز مواصفة استعلام الصفحة مع التجزئة
         var pagedSpec = new ShowroomStockWithDetailsSpec(warehouseId, pageNumber, pageSize, searchTerm, exactBarcode, isPaged: true);
 
         // استرجاع عناصر الصفحة
-        var stocks = await _unitOfWork.ShowroomStocks.FindAsync(pagedSpec, ct);
+        var stocks = await _unitOfWork.Stock.FindShowroomStocksAsync(pagedSpec, ct);
 
         // تحويل العناصر إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
@@ -376,7 +376,7 @@ public class StockService : IStockService
         }
 
         // البحث عن سجل الرصيد الحالي
-        var stock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(
+        var stock = await _unitOfWork.Stock.FirstOrDefaultShowroomStockAsync(
             s => s.WarehouseId == dto.WarehouseId && s.ProductId == dto.ProductId, ct);
 
         // في حال عدم وجود سجل سابق
@@ -393,7 +393,7 @@ public class StockService : IStockService
             };
 
             // إضافة السجل
-            await _unitOfWork.ShowroomStocks.AddAsync(stock, ct);
+            await _unitOfWork.Stock.AddShowroomStockAsync(stock, ct);
         }
         else
         {
@@ -404,14 +404,14 @@ public class StockService : IStockService
             stock.MinStockLevel = dto.MinStockLevel;
 
             // وسم السجل للتحديث
-            _unitOfWork.ShowroomStocks.Update(stock);
+            _unitOfWork.Stock.UpdateShowroomStock(stock);
         }
 
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
         // إعادة جلب السجل مع تفاصيل المنتج
-        var updatedStock = await _unitOfWork.ShowroomStocks.FirstOrDefaultAsync(new ShowroomStockWithDetailsSpec(stock.WarehouseId, stock.ProductId), ct) ?? stock;
+        var updatedStock = await _unitOfWork.Stock.FirstOrDefaultShowroomStockAsync(new ShowroomStockWithDetailsSpec(stock.WarehouseId, stock.ProductId), ct) ?? stock;
 
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<ShowroomStockResponseDto>(updatedStock);
@@ -427,7 +427,7 @@ public class StockService : IStockService
         var spec = new LowShowroomStockSpec(warehouseId);
 
         // جلب سجلات النواقص المطابقة
-        var stocks = await _unitOfWork.ShowroomStocks.FindAsync(spec, ct);
+        var stocks = await _unitOfWork.Stock.FindShowroomStocksAsync(spec, ct);
 
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);

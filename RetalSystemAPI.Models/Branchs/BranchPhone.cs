@@ -1,31 +1,38 @@
-using RetalSystemAPI.Models.Branchs;
-using RetalSystemAPI.Models.Common;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
+using RetalSystemAPI.Models.Common;
 
 namespace RetalSystemAPI.Models.Branchs;
+
 /// <summary>
-/// يمثل الكيان الخاص بأرقام هواتف الفروع في النظام، ويحتوي على الخصائص المتعلقة برقم الهاتف مثل الاسم، رقم الهاتف، ومعرف الفرع المرتبط به.
+/// يمثل أرقام هواتف الاتصال المخصصة للفرع ومسؤولي التواصل داخله.
 /// </summary>
+// كلاس كيان رقم هاتف الفرع
 public class BranchPhone : TenantBaseEntity    
 {
-   
     /// <summary>
-    /// اسم الشخص أو الجهة المرتبطة برقم الهاتف.
+    /// اسم الشخص أو القسم أو المسمى الوظيفي المرتبط برقم الهاتف (مثال: الإدارة، المبيعات).
     /// </summary>
+    // خاصية اسم مسؤول الهاتف أو القسم
     public string? Name { get; set; }
+
     /// <summary>
-    /// رقم الهاتف.
+    /// رقم الهاتف المدخل وفق النمط الليبي المعتمد.
     /// </summary>
-    /// 
     [Required]
     [RegularExpression(ValidationConstants.LibyanPhonePattern, ErrorMessage = ValidationConstants.LibyanPhoneError)]
+    // خاصية رقم الهاتف الإلزامي
     public required string PhoneNumber { get; set; } 
+
     /// <summary>
-    /// معرف الفرع المرتبط برقم الهاتف، حيث يشير إلى الفرع الذي ينتمي إليه هذا الرقم.
+    /// معرّف الفرع الذي ينتمي إليه رقم الهاتف هذا.
     /// </summary>
+    // خاصية المفتاح الأجنبي لمعرف الفرع
     public Guid BranchId { get; set; }
+
+    /// <summary>
+    /// كائن الفرع المرتبط برقم الهاتف (خاصية التنقل).
+    /// </summary>
+    // خاصية الملاحة لكيان الفرع
     public Branch? Branch { get; set; }
 }

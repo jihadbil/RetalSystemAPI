@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Catalog.Product;
@@ -23,6 +25,9 @@ namespace RetalSystemAPI.Services.Catalog.Implementations;
 public class ProductExcelService : IProductExcelService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<ProductExcelService> _logger;
+    private readonly int _maxWorksheetCount;
+    private readonly int _maxTotalRows;
 
     private const string SheetProducts = "الأصناف";
     private const string SheetBarcodes = "الباركودات";
@@ -31,9 +36,15 @@ public class ProductExcelService : IProductExcelService
     /// <summary>
     /// تهيئة خدمة معالجة إكسيل مع حقن وحدة العمل.
     /// </summary>
-    public ProductExcelService(IUnitOfWork unitOfWork)
+    public ProductExcelService(
+        IUnitOfWork unitOfWork,
+        IConfiguration configuration,
+        ILogger<ProductExcelService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
+        _maxWorksheetCount = Math.Clamp(configuration.GetValue<int?>("ExcelImport:MaxWorksheetCount") ?? 10, 1, 100);
+        _maxTotalRows = Math.Clamp(configuration.GetValue<int?>("ExcelImport:MaxTotalRows") ?? 20_000, 100, 200_000);
     }
 
     /// <inheritdoc />
@@ -42,16 +53,16 @@ public class ProductExcelService : IProductExcelService
         // تحميل أعمدة نحيفة فقط (المفاتيح والأسماء والأسعار) بدل الجداول الكاملة في الذاكرة
         var products = await _unitOfWork.Products.SelectAsync(
             p => new { p.Id, p.Name, p.CostPrice, p.SalePrice, p.CategoryId, p.Description }, ct);
-        var barcodes = await _unitOfWork.ProductBarCodes.SelectAsync(
+        var barcodes = await _unitOfWork.Products.SelectBarCodesAsync(
             b => new { b.Id, b.ProductId, b.BarCode, b.Title }, ct);
         var categories = await _unitOfWork.Categories.SelectAsync(
             c => new { c.Id, c.Name }, ct);
         var units = await _unitOfWork.Units.SelectAsync(u => new { u.Id, u.Name }, ct);
-        var productUnits = await _unitOfWork.ProductUnits.SelectAsync(
+        var productUnits = await _unitOfWork.Products.SelectUnitsAsync(
             pu => new { pu.ProductId, pu.UnitId, pu.ConversionFactor, pu.IsDefault }, ct);
-        var showroomStocks = await _unitOfWork.ShowroomStocks.SelectAsync(
+        var showroomStocks = await _unitOfWork.Stock.SelectShowroomStocksAsync(
             s => new { s.ProductId, s.Quantity }, ct);
-        var storageStocks = await _unitOfWork.StorgeStocks.SelectAsync(
+        var storageStocks = await _unitOfWork.Stock.SelectStorgeStocksAsync(
             s => new { s.ProductBarcodeId, s.Quantity }, ct);
 
         using var workbook = new XLWorkbook();
@@ -259,7 +270,7 @@ public class ProductExcelService : IProductExcelService
         var result = new ProductExcelValidationResultDto();
 
         // التحقق من صلاحية دفق الملف
-        if (excelStream == null || excelStream.Length == 0)
+        if (excelStream == null || (excelStream.CanSeek && excelStream.Length == 0))
         {
             // تسجيل خطأ الملف الفارغ
             result.Errors.Add("ملف Excel فارغ أو غير صالح");
@@ -274,12 +285,19 @@ public class ProductExcelService : IProductExcelService
             ms.Position = 0;
 
             using var workbook = new XLWorkbook(ms);
+            var workbookLimitError = ValidateWorkbookLimits(workbook);
+            if (workbookLimitError is not null)
+            {
+                result.Errors.Add(workbookLimitError);
+                return ServiceResult<ProductExcelValidationResultDto>.Failure(workbookLimitError, ErrorCodes.ValidationError);
+            }
+
             bool isSingleSheet = DetectIfSingleSheet(workbook);
             result.IsSingleSheetFormat = isSingleSheet;
 
             // جلب البيانات الحالية من قاعدة البيانات للمقارنة — أعمدة نحيفة فقط بدل الجداول الكاملة
             var existingProducts = await _unitOfWork.Products.SelectAsync(p => new { p.Id, p.Name }, ct);
-            var existingBarcodes = await _unitOfWork.ProductBarCodes.SelectAsync(b => new { b.BarCode, b.ProductId }, ct);
+            var existingBarcodes = await _unitOfWork.Products.SelectBarCodesAsync(b => new { b.BarCode, b.ProductId }, ct);
             var existingCategories = await _unitOfWork.Categories.SelectAsync(c => new { c.Name }, ct);
 
             var existingProductIds = new HashSet<Guid>(existingProducts.Select(p => p.Id));
@@ -612,10 +630,16 @@ public class ProductExcelService : IProductExcelService
 
             return ServiceResult<ProductExcelValidationResultDto>.Success(result);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            result.Errors.Add($"خطأ أثناء فحص ملف Excel: {ex.Message}");
-            return ServiceResult<ProductExcelValidationResultDto>.Failure($"حدث خطأ أثناء فحص ملف Excel: {ex.Message}", ErrorCodes.ValidationError);
+            _logger.LogWarning(ex, "Failed to validate the uploaded product Excel workbook");
+            const string errorMessage = "تعذر فحص ملف Excel. تأكد من أن الملف صالح ومطابق للقالب المعتمد";
+            result.Errors.Add(errorMessage);
+            return ServiceResult<ProductExcelValidationResultDto>.Failure(errorMessage, ErrorCodes.ValidationError);
         }
     }
 
@@ -631,7 +655,7 @@ public class ProductExcelService : IProductExcelService
         var result = new ProductImportResultDto();
 
         // التحقق من صحة وصلاحية دفق ملف إكسيل
-        if (excelStream == null || excelStream.Length == 0)
+        if (excelStream == null || (excelStream.CanSeek && excelStream.Length == 0))
         {
             // تسجيل الخطأ
             result.Errors.Add("ملف Excel غير صالح أو فارغ");
@@ -646,6 +670,13 @@ public class ProductExcelService : IProductExcelService
             ms.Position = 0;
 
             using var workbook = new XLWorkbook(ms);
+            var workbookLimitError = ValidateWorkbookLimits(workbook);
+            if (workbookLimitError is not null)
+            {
+                result.Errors.Add(workbookLimitError);
+                return ServiceResult<ProductImportResultDto>.Failure(workbookLimitError, ErrorCodes.ValidationError);
+            }
+
             bool isSingleSheet = DetectIfSingleSheet(workbook);
 
             // جلب المخازن والصالات لتهيئة المخزون
@@ -684,12 +715,39 @@ public class ProductExcelService : IProductExcelService
 
             return ServiceResult<ProductImportResultDto>.Success(result);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            throw;
+        }
         catch (Exception ex)
         {
-            await _unitOfWork.RollbackTransactionAsync(ct);
-            result.Errors.Add($"حدث خطأ أثناء معالجة ملف Excel وتم التراجع عن كافة التغييرات: {ex.Message}");
-            return ServiceResult<ProductImportResultDto>.Failure($"فشلت عملية الاستيراد: {ex.Message}", ErrorCodes.UploadFailed);
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            _logger.LogError(ex, "Failed to import products from the uploaded Excel workbook; all changes were rolled back");
+            const string errorMessage = "فشلت عملية الاستيراد وتم التراجع عن جميع التغييرات";
+            result.Errors.Add(errorMessage);
+            return ServiceResult<ProductImportResultDto>.Failure(errorMessage, ErrorCodes.UploadFailed);
         }
+    }
+
+    private string? ValidateWorkbookLimits(XLWorkbook workbook)
+    {
+        if (workbook.Worksheets.Count > _maxWorksheetCount)
+        {
+            return $"عدد أوراق العمل يتجاوز الحد المسموح ({_maxWorksheetCount})";
+        }
+
+        long totalRows = 0;
+        foreach (var worksheet in workbook.Worksheets)
+        {
+            totalRows += worksheet.LastRowUsed()?.RowNumber() ?? 0;
+            if (totalRows > _maxTotalRows)
+            {
+                return $"إجمالي صفوف ملف Excel يتجاوز الحد المسموح ({_maxTotalRows})";
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc />
@@ -767,16 +825,16 @@ public class ProductExcelService : IProductExcelService
         var productNameMap = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
         var productIdMap = existingProducts.ToDictionary(p => p.Id, p => p);
 
-        var existingBarcodes = (await _unitOfWork.ProductBarCodes.GetAllTrackedAsync(ct)).ToList();
+        var existingBarcodes = (await _unitOfWork.Products.GetAllBarCodesTrackedAsync(ct)).ToList();
         var barcodeMap = existingBarcodes.ToDictionary(b => b.BarCode.Trim(), b => b, StringComparer.OrdinalIgnoreCase);
         var usedBarcodesSet = new HashSet<string>(existingBarcodes.Select(b => b.BarCode.Trim()), StringComparer.OrdinalIgnoreCase);
         long barcodeSequence = InitializeBarcodeSequence(usedBarcodesSet);
 
-        var existingShowroomStocks = (await _unitOfWork.ShowroomStocks.GetAllTrackedAsync(ct)).ToList();
-        var existingStorageStocks = (await _unitOfWork.StorgeStocks.GetAllTrackedAsync(ct)).ToList();
+        var existingShowroomStocks = (await _unitOfWork.Stock.GetAllShowroomStocksTrackedAsync(ct)).ToList();
+        var existingStorageStocks = (await _unitOfWork.Stock.GetAllStorgeStocksTrackedAsync(ct)).ToList();
 
         // فهرس وحدات الأصناف — استعلام واحد قبل الحلقة بدل استعلام جدول كامل لكل صف
-        var existingProdUnits = (await _unitOfWork.ProductUnits.GetAllTrackedAsync(ct)).ToList();
+        var existingProdUnits = (await _unitOfWork.Products.GetAllUnitsTrackedAsync(ct)).ToList();
         var existingProdUnitsByProduct = existingProdUnits.ToDictionary(u => (u.ProductId, u.UnitId), u => u);
 
         // فهارس قاموسية O(1) للأرصدة بدل مسح خطي لكل صف
@@ -965,7 +1023,7 @@ public class ProductExcelService : IProductExcelService
                     ConversionFactor = convFactor,
                     IsDefault = true
                 };
-                await _unitOfWork.ProductUnits.AddAsync(prodUnit, ct);
+                await _unitOfWork.Products.AddUnitAsync(prodUnit, ct);
                 existingProdUnits.Add(prodUnit);
                 existingProdUnitsByProduct[(targetProduct.Id, finalUnit.Id)] = prodUnit;
             }
@@ -1015,7 +1073,7 @@ public class ProductExcelService : IProductExcelService
                         BarCode = effectiveBarcode,
                         Title = name
                     };
-                    await _unitOfWork.ProductBarCodes.AddAsync(primaryBarcodeEntity, ct);
+                    await _unitOfWork.Products.AddBarCodeAsync(primaryBarcodeEntity, ct);
                     existingBarcodes.Add(primaryBarcodeEntity);
                     barcodeMap[effectiveBarcode] = primaryBarcodeEntity;
                     result.BarcodesImported++;
@@ -1047,7 +1105,7 @@ public class ProductExcelService : IProductExcelService
                         Quantity = showQty,
                         MinStockLevel = minStock
                     };
-                    await _unitOfWork.ShowroomStocks.AddAsync(sStock, ct);
+                    await _unitOfWork.Stock.AddShowroomStockAsync(sStock, ct);
                     existingShowroomStocks.Add(sStock);
                     showroomStocksByProductAndWarehouse[(targetShowroom.Id, targetProduct.Id)] = sStock;
                     result.StocksInitialized++;
@@ -1075,7 +1133,7 @@ public class ProductExcelService : IProductExcelService
                         Quantity = storeQty,
                         MinStockLevel = minStock
                     };
-                    await _unitOfWork.StorgeStocks.AddAsync(stStock, ct);
+                    await _unitOfWork.Stock.AddStorgeStockAsync(stStock, ct);
                     existingStorageStocks.Add(stStock);
                     storageStocksByBarcodeAndWarehouse[(targetStorageWh.Id, primaryBarcodeEntity.Id)] = stStock;
                     result.StocksInitialized++;
@@ -1183,7 +1241,7 @@ public class ProductExcelService : IProductExcelService
                 productNameMap[prod.Name.Trim()] = prod.Id;
         }
 
-        var existingShowroomStocks = (await _unitOfWork.ShowroomStocks.GetAllTrackedAsync(ct)).ToList();
+        var existingShowroomStocks = (await _unitOfWork.Stock.GetAllShowroomStocksTrackedAsync(ct)).ToList();
         var showroomStocksByProductAndWarehouse = existingShowroomStocks
             .ToDictionary(s => (s.WarehouseId, s.ProductId), s => s);
         var processedProductsList = new List<(Product Product, string? RawCode)>();
@@ -1280,7 +1338,7 @@ public class ProductExcelService : IProductExcelService
                             Quantity = 0,
                             MinStockLevel = 0
                         };
-                        await _unitOfWork.ShowroomStocks.AddAsync(sStock, ct);
+                        await _unitOfWork.Stock.AddShowroomStockAsync(sStock, ct);
                         existingShowroomStocks.Add(sStock);
                         showroomStocksByProductAndWarehouse[(targetShowroom.Id, targetProduct.Id)] = sStock;
                         result.StocksInitialized++;
@@ -1292,8 +1350,8 @@ public class ProductExcelService : IProductExcelService
         await SaveTrackedChangesAsync(ct);
 
         // 3. معالجة الباركودات المسجلة في ورقة الأكواد
-        var existingBarcodes = (await _unitOfWork.ProductBarCodes.GetAllTrackedAsync(ct)).ToList();
-        var existingStorageStocks = (await _unitOfWork.StorgeStocks.GetAllTrackedAsync(ct)).ToList();
+        var existingBarcodes = (await _unitOfWork.Products.GetAllBarCodesTrackedAsync(ct)).ToList();
+        var existingStorageStocks = (await _unitOfWork.Stock.GetAllStorgeStocksTrackedAsync(ct)).ToList();
         var productsWithBarcodes = new HashSet<Guid>(existingBarcodes.Select(b => b.ProductId));
         // فهارس قاموسية للباركودات وأرصدة التخزين بدل المسح الخطي لكل صف
         var barcodesByCode = existingBarcodes.ToDictionary(b => b.BarCode.Trim(), b => b, StringComparer.OrdinalIgnoreCase);
@@ -1358,7 +1416,7 @@ public class ProductExcelService : IProductExcelService
                         BarCode = barCode,
                         Title = finalTitle
                     };
-                    await _unitOfWork.ProductBarCodes.AddAsync(targetBarCode, ct);
+                    await _unitOfWork.Products.AddBarCodeAsync(targetBarCode, ct);
                     existingBarcodes.Add(targetBarCode);
                     barcodesByCode[targetBarCode.BarCode.Trim()] = targetBarCode;
                     productsWithBarcodes.Add(targetProductId);
@@ -1378,7 +1436,7 @@ public class ProductExcelService : IProductExcelService
                             Quantity = 0,
                             MinStockLevel = 0
                         };
-                        await _unitOfWork.StorgeStocks.AddAsync(stStock, ct);
+                        await _unitOfWork.Stock.AddStorgeStockAsync(stStock, ct);
                         existingStorageStocks.Add(stStock);
                         storageStocksByBarcodeAndWarehouse[(targetStorageWh.Id, targetBarCode.Id)] = stStock;
                         result.StocksInitialized++;
@@ -1412,7 +1470,7 @@ public class ProductExcelService : IProductExcelService
                         Title = product.Name
                     };
 
-                    await _unitOfWork.ProductBarCodes.AddAsync(newBarcodeEntity, ct);
+                    await _unitOfWork.Products.AddBarCodeAsync(newBarcodeEntity, ct);
                     existingBarcodes.Add(newBarcodeEntity);
                     productsWithBarcodes.Add(product.Id);
                     result.BarcodesImported++;
@@ -1431,7 +1489,7 @@ public class ProductExcelService : IProductExcelService
                                 Quantity = 0,
                                 MinStockLevel = 0
                             };
-                            await _unitOfWork.StorgeStocks.AddAsync(stStock, ct);
+                            await _unitOfWork.Stock.AddStorgeStockAsync(stStock, ct);
                             existingStorageStocks.Add(stStock);
                             storageStocksByBarcodeAndWarehouse[(targetStorageWh.Id, newBarcodeEntity.Id)] = stStock;
                             result.StocksInitialized++;

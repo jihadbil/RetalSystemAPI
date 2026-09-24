@@ -37,6 +37,9 @@ public class CreatePurchaseReturnDto
     /// <summary>طريقة التسوية أو استرداد القيمة</summary>
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
+    /// <summary>الخزينة التي تستلم قيمة المرتجع عند التسوية غير الآجلة.</summary>
+    public Guid? RefundSafeId { get; set; }
+
     /// <summary>سبب إرجاع المشتريات (تالف، مخالف للمواصفات، منتهي الصلاحية، إلخ)</summary>
     public PurchaseReturnReason Reason { get; set; } = PurchaseReturnReason.Defective;
 
@@ -122,6 +125,8 @@ public class PurchaseReturnSummaryDto
     /// <summary>المبلغ الإجمالي للمرتجع</summary>
     public decimal TotalAmount { get; set; }
 
+    public Guid? RefundSafeId { get; set; }
+
     /// <summary>سبب الإرجاع التعدادي</summary>
     public PurchaseReturnReason Reason { get; set; }
 
@@ -181,6 +186,8 @@ public class PurchaseReturnResponseDto
 
     /// <summary>المبلغ الإجمالي المسترد أو المخفض</summary>
     public decimal TotalAmount { get; set; }
+
+    public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع</summary>
     public PurchaseReturnReason Reason { get; set; }

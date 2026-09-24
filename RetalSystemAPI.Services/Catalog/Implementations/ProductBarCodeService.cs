@@ -84,7 +84,7 @@ public class ProductBarCodeService : IProductBarCodeService
         // بناء مواصفة استعلام الباركودات الشاملة مع البحث
         var spec = new AllProductBarCodesSpec(search);
         // جلب قائمة الباركودات المطابقة
-        var barCodes = await _unitOfWork.ProductBarCodes.FindAsync(spec, ct);
+        var barCodes = await _unitOfWork.Products.FindBarCodesAsync(spec, ct);
         // تحويل الكيانات إلى قائمة ملخصات DTO
         var dtos = _mapper.Map<IReadOnlyList<ProductBarCodeResponseDto>>(barCodes);
 
@@ -98,7 +98,7 @@ public class ProductBarCodeService : IProductBarCodeService
         // بناء مواصفة استعلام باركودات المنتج المحدد
         var spec = new ProductBarCodesByProductSpec(productId);
         // جلب باركودات ونكهات المنتج
-        var barCodes = await _unitOfWork.ProductBarCodes.FindAsync(spec, ct);
+        var barCodes = await _unitOfWork.Products.FindBarCodesAsync(spec, ct);
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductBarCodeResponseDto>>(barCodes);
 
@@ -122,7 +122,7 @@ public class ProductBarCodeService : IProductBarCodeService
         }
 
         // التحقق من عدم استخدام كود الباركود مسبقاً في النظام
-        bool barCodeExists = await _unitOfWork.ProductBarCodes.ExistsAsync(b => b.BarCode == dto.BarCode, ct);
+        bool barCodeExists = await _unitOfWork.Products.BarCodeExistsAsync(b => b.BarCode == dto.BarCode, ct);
         // في حال وجود الباركود
         if (barCodeExists)
         {
@@ -136,7 +136,7 @@ public class ProductBarCodeService : IProductBarCodeService
         barCodeEntity.ProductId = productId;
 
         // إضافة الباركود إلى المستودع
-        await _unitOfWork.ProductBarCodes.AddAsync(barCodeEntity, ct);
+        await _unitOfWork.Products.AddBarCodeAsync(barCodeEntity, ct);
         // حفظ التغييرات لتوليد معرف الباركود الجديد
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -154,7 +154,7 @@ public class ProductBarCodeService : IProductBarCodeService
                 MinStockLevel = 0
             };
             // إضافة سجل الرصيد المخزني
-            await _unitOfWork.StorgeStocks.AddAsync(storgeStock, ct);
+            await _unitOfWork.Stock.AddStorgeStockAsync(storgeStock, ct);
         }
         // حفظ سجلات الأرصدة المخزنية في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
@@ -172,7 +172,7 @@ public class ProductBarCodeService : IProductBarCodeService
         CancellationToken ct = default)
     {
         // استعلام الباركود المطلوب تعديله بالمعرف
-        var barCodeEntity = await _unitOfWork.ProductBarCodes.GetByIdAsync(barCodeId, ct);
+        var barCodeEntity = await _unitOfWork.Products.GetBarCodeByIdAsync(barCodeId, ct);
         // التحقق من وجود الباركود
         if (barCodeEntity is null)
         {
@@ -181,7 +181,7 @@ public class ProductBarCodeService : IProductBarCodeService
         }
 
         // التحقق من عدم استخدام كود الباركود الجديد لدى باركود آخر
-        bool barCodeExists = await _unitOfWork.ProductBarCodes.ExistsAsync(b => b.BarCode == dto.BarCode && b.Id != barCodeId, ct);
+        bool barCodeExists = await _unitOfWork.Products.BarCodeExistsAsync(b => b.BarCode == dto.BarCode && b.Id != barCodeId, ct);
         // في حال تكرار الباركود
         if (barCodeExists)
         {
@@ -197,7 +197,7 @@ public class ProductBarCodeService : IProductBarCodeService
         barCodeEntity.Description = dto.Description;
 
         // تحديث السجل في المستودع
-        _unitOfWork.ProductBarCodes.Update(barCodeEntity);
+        _unitOfWork.Products.UpdateBarCode(barCodeEntity);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -211,7 +211,7 @@ public class ProductBarCodeService : IProductBarCodeService
     public async Task<ServiceResult> RemoveBarCodeAsync(Guid barCodeId, CancellationToken ct = default)
     {
         // استعلام الباركود المراد حذفه
-        var barCodeEntity = await _unitOfWork.ProductBarCodes.GetByIdAsync(barCodeId, ct);
+        var barCodeEntity = await _unitOfWork.Products.GetBarCodeByIdAsync(barCodeId, ct);
         // التحقق من وجود الباركود
         if (barCodeEntity is null)
         {
@@ -220,7 +220,7 @@ public class ProductBarCodeService : IProductBarCodeService
         }
 
         // إجراء الحذف الصلب للباركود
-        _unitOfWork.ProductBarCodes.HardDelete(barCodeEntity);
+        _unitOfWork.Products.HardDeleteBarCode(barCodeEntity);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using RetalSystemAPI.DataAccess.Services;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.FileUpload.Interfaces;
@@ -21,22 +22,32 @@ public class FileUploadService : IFileUploadService
 
     // خدمة المستأجر الحالي لتحديد مجلد العزل الخاص بالمستأجر
     private readonly ICurrentTenantService _tenantService;
+    private readonly ILogger<FileUploadService> _logger;
 
     // قائمة الامتدادات المسموح بها لرفع الصور
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
+    private static readonly HashSet<string> AllowedSubfolders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "products",
+        "tenants/logos"
+    };
 
     /// <summary>
     /// تهيئة خدمة رفع الملفات مع حقن بيئة الاستضافة وخدمة المستأجر الحالي.
     /// </summary>
     /// <param name="environment">بيئة الاستضافة لتحديد المسارات الفيزيائية</param>
     /// <param name="tenantService">خدمة المستأجر الحالي لعزل مجلدات الملفات</param>
-    public FileUploadService(IWebHostEnvironment environment, ICurrentTenantService tenantService)
+    public FileUploadService(
+        IWebHostEnvironment environment,
+        ICurrentTenantService tenantService,
+        ILogger<FileUploadService> logger)
     {
         // تعيين مرجع بيئة الاستضافة
         _environment = environment;
 
         // تعيين مرجع خدمة المستأجر الحالي
         _tenantService = tenantService;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -56,11 +67,22 @@ public class FileUploadService : IFileUploadService
             return ServiceResult<string>.Failure("امتداد الملف غير مسموح به. الامتدادات المسموحة: jpg, jpeg, png, webp", ErrorCodes.InvalidFileType);
         }
 
+        if (!AllowedSubfolders.Contains(subfolder.Replace('\\', '/').Trim('/')))
+        {
+            return ServiceResult<string>.Failure("مجلد الرفع غير مسموح به", ErrorCodes.ValidationError);
+        }
+
         // التحقق من أن حجم الملف لا يتجاوز الحد المسموح
         if (!IsWithinSizeLimit(file.Length))
         {
             // إرجاع خطأ تجاوز الحد الأقصى للحجم
             return ServiceResult<string>.Failure("حجم الملف يتجاوز الحد الأقصى المسموح به (5 ميجابايت)", ErrorCodes.FileTooLarge);
+        }
+
+
+        if (!await HasValidImageSignatureAsync(file, ct))
+        {
+            return ServiceResult<string>.Failure("محتوى الملف لا يطابق صورة مدعومة", ErrorCodes.InvalidFileType);
         }
 
         try
@@ -112,8 +134,8 @@ public class FileUploadService : IFileUploadService
         }
         catch (Exception ex)
         {
-            // إرجاع نتيجة فشل في حال حدوث استثناء أثناء الحفظ
-            return ServiceResult<string>.Failure($"حدث خطأ أثناء رفع الملف: {ex.Message}", ErrorCodes.UploadFailed);
+            _logger.LogError(ex, "Failed to persist an uploaded image in {Subfolder}", subfolder);
+            return ServiceResult<string>.Failure("تعذر حفظ الصورة المرفوعة", ErrorCodes.UploadFailed);
         }
     }
 
@@ -143,7 +165,12 @@ public class FileUploadService : IFileUploadService
             var normalizedUrl = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
 
             // تكوين المسار الفيزيائي الكامل للملف
-            var fullPath = Path.Combine(webRootPath, normalizedUrl);
+            var uploadsRoot = Path.GetFullPath(Path.Combine(webRootPath, "uploads")) + Path.DirectorySeparatorChar;
+            var fullPath = Path.GetFullPath(Path.Combine(webRootPath, normalizedUrl));
+            if (!fullPath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(ServiceResult.Failure("مسار الملف غير صالح", ErrorCodes.ValidationError));
+            }
 
             // التحقق من وجود الملف فيزيائياً على القرص
             if (File.Exists(fullPath))
@@ -180,5 +207,26 @@ public class FileUploadService : IFileUploadService
     {
         // مقارنة حجم الملف بالحد الأقصى المسموح به
         return fileSizeBytes <= maxSizeBytes;
+    }
+
+    private static async Task<bool> HasValidImageSignatureAsync(IFormFile file, CancellationToken ct)
+    {
+        var header = new byte[12];
+        await using var stream = file.OpenReadStream();
+        var bytesRead = await stream.ReadAsync(header.AsMemory(0, header.Length), ct);
+        if (bytesRead < 3) return false;
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF,
+            ".png" => bytesRead >= 8 &&
+                      header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+                      header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A,
+            ".webp" => bytesRead >= 12 &&
+                       header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
+                       header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P',
+            _ => false
+        };
     }
 }

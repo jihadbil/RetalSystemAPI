@@ -311,7 +311,7 @@ public class StockTransferService : IStockTransferService
                         .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
 
                     // استرجاع أرصدة المصدر المتتبعة للباركودات
-                    var sourceStocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                    var sourceStocksByBarcode = (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                         s => s.WarehouseId == fromWh.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
                         .ToDictionary(s => s.ProductBarcodeId);
 
@@ -344,7 +344,7 @@ public class StockTransferService : IStockTransferService
                         .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
 
                     // استرجاع أرصدة الصالة المتتبعة
-                    var sourceStocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    var sourceStocksByProduct = (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                         s => s.WarehouseId == fromWh.Id && productIds.Contains(s.ProductId), ct))
                         .ToDictionary(s => s.ProductId);
 
@@ -375,7 +375,7 @@ public class StockTransferService : IStockTransferService
                 if (fromBarcodeIds.Count > 0)
                 {
                     // استرجاع قواميس أرصدة المصدر المتتبعة
-                    var sourceStocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                    var sourceStocksByBarcode = (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                         s => s.WarehouseId == fromWh.Id && fromBarcodeIds.Contains(s.ProductBarcodeId), ct))
                         .ToDictionary(s => s.ProductBarcodeId);
 
@@ -401,7 +401,7 @@ public class StockTransferService : IStockTransferService
                 if (fromProductIds.Count > 0)
                 {
                     // استرجاع أرصدة الصالة
-                    var sourceStocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    var sourceStocksByProduct = (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                         s => s.WarehouseId == fromWh.Id && fromProductIds.Contains(s.ProductId), ct))
                         .ToDictionary(s => s.ProductId);
 
@@ -430,7 +430,7 @@ public class StockTransferService : IStockTransferService
 
                 // استرجاع الأرصدة المتتبعة في مستودع الوجهة
                 var targetStocksByBarcode = toBarcodeIds.Count > 0
-                    ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                    ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                         s => s.WarehouseId == toWh.Id && toBarcodeIds.Contains(s.ProductBarcodeId), ct))
                         .ToDictionary(s => s.ProductBarcodeId)
                     : new Dictionary<Guid, StorgeStock>();
@@ -459,7 +459,7 @@ public class StockTransferService : IStockTransferService
                             MinStockLevel = 0
                         };
                         // إضافة السجل الجديد
-                        await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                        await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                         // حفظه بالقاموس
                         targetStocksByBarcode[item.ProductBarCodeId.Value] = newStock;
                     }
@@ -472,7 +472,7 @@ public class StockTransferService : IStockTransferService
 
                 // استرجاع أرصدة الصالة الوجهة
                 var targetStocksByProduct = toProductIds.Count > 0
-                    ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                         s => s.WarehouseId == toWh.Id && toProductIds.Contains(s.ProductId), ct))
                         .ToDictionary(s => s.ProductId)
                     : new Dictionary<Guid, ShowroomStock>();
@@ -498,7 +498,7 @@ public class StockTransferService : IStockTransferService
                             MinStockLevel = 0
                         };
                         // إضافة السجل الجديد
-                        await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                        await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
                         // حفظه بالقاموس
                         targetStocksByProduct[item.ProductId] = newStock;
                     }

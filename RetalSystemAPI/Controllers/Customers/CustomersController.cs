@@ -214,4 +214,61 @@ public class CustomersController : BaseApiController
         // تحويل وإرجاع النتيجة كاستجابة HTTP
         return ToActionResult(result);
     }
+
+    /// <summary>
+    /// توليد كشف حساب مالي تفصيلي للعميل خلال فترة محددة شاملاً الرصيد السابق وحركات الفترة والمجاميع.
+    /// </summary>
+    /// <param name="id">المعرف الفريد للعميل.</param>
+    /// <param name="fromDate">تاريخ بداية الفترة الاختياري.</param>
+    /// <param name="toDate">تاريخ نهاية الفترة الاختياري.</param>
+    /// <param name="branchId">معرف الفرع الاختياري للفلترة.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>تقرير كشف الحساب المالي للعميل.</returns>
+    [HttpGet("{id:guid}/statement")]
+    [HasPermission(Permissions.Customers.View)]
+    public async Task<IActionResult> GetStatement(
+        [FromRoute] Guid id,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] Guid? branchId = null,
+        CancellationToken ct = default)
+    {
+        var filter = new CustomerStatementFilterDto
+        {
+            CustomerId = id,
+            FromDate = fromDate,
+            ToDate = toDate,
+            BranchId = branchId
+        };
+        var result = await _customerService.GetStatementAsync(filter, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// تسجيل سند قبض وسداد دفعة من العميل مع تحديث رصيد الخزينة المودع بها ورصيد مديونية العميل ذرّياً.
+    /// </summary>
+    /// <param name="dto">بيانات سداد العميل.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>بيانات حركة السداد المسجلة.</returns>
+    [HttpPost("payments")]
+    [HasPermission(Permissions.Customers.Edit)]
+    public async Task<IActionResult> AddPayment([FromBody] CreateCustomerPaymentDto dto, CancellationToken ct = default)
+    {
+        var result = await _customerService.AddPaymentAsync(dto, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// تسجيل تسوية رصيد حساب العميل (تعديل مديونية مدين / دائن).
+    /// </summary>
+    /// <param name="dto">بيانات تسوية حساب العميل.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>بيانات حركة التسوية المسجلة.</returns>
+    [HttpPost("adjustments")]
+    [HasPermission(Permissions.Customers.Edit)]
+    public async Task<IActionResult> AddAdjustment([FromBody] CreateCustomerAdjustmentDto dto, CancellationToken ct = default)
+    {
+        var result = await _customerService.AddAdjustmentAsync(dto, ct);
+        return ToActionResult(result);
+    }
 }

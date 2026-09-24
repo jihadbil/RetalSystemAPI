@@ -172,7 +172,7 @@ public class BranchService : IBranchService
         foreach (var phone in branch.BranchPhones.ToList())
         {
             // حذف الهاتف فيزيائياً
-            _unitOfWork.BranchPhones.HardDelete(phone);
+            _unitOfWork.Branches.HardDeletePhone(phone);
         }
 
         // التحقق من وجود أرقام هواتف جديدة في الطلب
@@ -190,7 +190,7 @@ public class BranchService : IBranchService
             }).ToList();
 
             // إضافة الهواتف الجديدة كمجموعة إلى المستودع
-            await _unitOfWork.BranchPhones.AddRangeAsync(newPhones, ct);
+            await _unitOfWork.Branches.AddPhonesAsync(newPhones, ct);
         }
 
         // وسم الفرع للتحديث في المستودع

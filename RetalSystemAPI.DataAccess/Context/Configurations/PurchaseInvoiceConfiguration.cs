@@ -16,7 +16,9 @@ public class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<PurchaseInv
     public void Configure(EntityTypeBuilder<PurchaseInvoice> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "PurchaseInvoices"
-        builder.ToTable("PurchaseInvoices");
+        builder.ToTable("PurchaseInvoices", table => table.HasCheckConstraint(
+            "CK_PurchaseInvoices_Amounts",
+            "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]"));
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(p => p.Id);
 
@@ -82,6 +84,12 @@ public class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<PurchaseInv
             .WithMany()
             .HasForeignKey(p => p.PurchaseOrderId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(p => p.PaymentSafe)
+            .WithMany()
+            .HasForeignKey(p => p.PaymentSafeId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ربط فاتورة الشراء ببنودها مع تفعيل الحذف المتتالي Cascade لحذف البنود عند حذف الفاتورة
         builder.HasMany(p => p.Items)

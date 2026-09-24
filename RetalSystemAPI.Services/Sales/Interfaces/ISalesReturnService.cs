@@ -19,6 +19,7 @@ public interface ISalesReturnService
     /// <param name="id">المعرف الفريد للمرتجع</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة الخدمة متضمنة بيانات المرتجع</returns>
+    // استرجاع تفاصيل مرتجع المبيعات بالمعرف
     Task<ServiceResult<SalesReturnResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -27,6 +28,7 @@ public interface ISalesReturnService
     /// <param name="returnNumber">رقم المرتجع</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات المرتجع</returns>
+    // استرجاع مرتجع المبيعات بواسطة رقم المرتجع
     Task<ServiceResult<SalesReturnResponseDto>> GetByReturnNumberAsync(string returnNumber, CancellationToken ct = default);
 
     /// <summary>
@@ -41,6 +43,7 @@ public interface ISalesReturnService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>قائمة ملخصات المرتجعات</returns>
+    // جلب قائمة ملخصات مرتجعات المبيعات مع الفلاتر
     Task<ServiceResult<IReadOnlyList<SalesReturnSummaryDto>>> GetAllAsync(
         Guid? branchId = null,
         Guid? warehouseId = null,
@@ -65,6 +68,7 @@ public interface ISalesReturnService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة مجزأة تحتوي على ملخصات المرتجعات وإجمالي العدد</returns>
+    // استرجاع صفحة مجزأة ومفلترة لمرتجعات المبيعات
     Task<ServiceResult<PagedResult<SalesReturnSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -83,6 +87,7 @@ public interface ISalesReturnService
     /// <param name="dto">بيانات إنشاء المرتجع</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات المرتجع المنشأ</returns>
+    // إنشاء مرتجع مبيعات جديد وإعادة البضائع للمخزون
     Task<ServiceResult<SalesReturnResponseDto>> CreateAsync(CreateSalesReturnDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -91,5 +96,6 @@ public interface ISalesReturnService
     /// <param name="id">معرف المرتجع</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة إتمام العملية</returns>
+    // حذف مرتجع المبيعات ناعماً وعكس أثره المخزني
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

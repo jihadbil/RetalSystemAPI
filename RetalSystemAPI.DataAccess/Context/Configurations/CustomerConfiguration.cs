@@ -42,6 +42,11 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
 
+        // ضبط نوع العمود للرصيد الحالي بدقة مالية decimal(18,4) مع قيمة افتراضية صفر
+        builder.Property(c => c.CurrentBalance)
+            .HasColumnType("decimal(18,4)")
+            .HasDefaultValue(0);
+
         // ضبط نوع العمود للحد الائتماني المسموح به بدقة مالية decimal(18,4) مع قيمة افتراضية صفر
         builder.Property(c => c.CreditLimit)
             .HasColumnType("decimal(18,4)")

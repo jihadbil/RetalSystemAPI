@@ -8,6 +8,7 @@ using RetalSystemAPI.Filters;
 using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Tenant;
 using RetalSystemAPI.Responses;
+using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Tenant.Interfaces;
 
 namespace RetalSystemAPI.Controllers.Tenants;
@@ -143,6 +144,14 @@ public class TenantsController : BaseApiController
             return BadRequest(ApiResponse<TenantResponseDto>.Fail("حجم الصورة يتجاوز الحد المسموح به (5 ميجابايت)", "FILE_TOO_LARGE"));
         }
 
+        var currentTenantResult = await _tenantService.GetByIdAsync(tenantId, ct);
+        if (!currentTenantResult.IsSuccess)
+        {
+            return ToActionResult(currentTenantResult);
+        }
+
+        var previousLogoUrl = currentTenantResult.Data?.LogoUrl;
+
         // رفع الصورة وحفظها فعلياً على الخادم داخل مجلد شعارات المستأجرين
         var uploadResult = await _fileUploadService.UploadAsync(file, "tenants/logos", ct);
 
@@ -154,7 +163,28 @@ public class TenantsController : BaseApiController
         }
 
         // تحديث مسار الشعار الجديد في سجل المستأجر بقاعدة البيانات
-        var updateResult = await _tenantService.UpdateLogoAsync(tenantId, uploadResult.Data!, ct);
+        ServiceResult<TenantResponseDto> updateResult;
+        try
+        {
+            updateResult = await _tenantService.UpdateLogoAsync(tenantId, uploadResult.Data!, ct);
+        }
+        catch
+        {
+            await _fileUploadService.DeleteAsync(uploadResult.Data!, CancellationToken.None);
+            throw;
+        }
+
+        if (!updateResult.IsSuccess)
+        {
+            await _fileUploadService.DeleteAsync(uploadResult.Data!, CancellationToken.None);
+            return ToActionResult(updateResult);
+        }
+
+        if (!string.IsNullOrWhiteSpace(previousLogoUrl) &&
+            !string.Equals(previousLogoUrl, uploadResult.Data, StringComparison.OrdinalIgnoreCase))
+        {
+            await _fileUploadService.DeleteAsync(previousLogoUrl, CancellationToken.None);
+        }
 
         // إرجاع نتيجة عملية تحديث الشعار كاستجابة HTTP
         return ToActionResult(updateResult);
@@ -167,6 +197,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>قائمة بكل المستأجرين مغلفة في استجابة موحدة.</returns>
     [HttpGet]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.View)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
@@ -185,6 +216,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>قائمة مجزأة صفحاتياً تحتوي على بيانات المستأجرين وإجمالي العناصر والصفحات.</returns>
     [HttpGet("paged")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.View)]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
     {
@@ -202,6 +234,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات المستأجر المطابق أو كود 404 في حال عدم العثور عليه.</returns>
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.View)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
@@ -219,6 +252,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات المستأجر المنشأ مصحوبة بكود الاستجابة 201 Created عند النجاح.</returns>
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.Edit)]
     public async Task<IActionResult> Create([FromBody] CreateTenantDto dto, CancellationToken ct)
     {
@@ -244,6 +278,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات المستأجر بعد التحديث أو تفاصيل الخطأ.</returns>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.Edit)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateTenantDto dto, CancellationToken ct)
     {
@@ -261,6 +296,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>استجابة موحدة تؤكد نجاح الحذف أو تبين مانع الحذف.</returns>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.Edit)]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
@@ -278,6 +314,7 @@ public class TenantsController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات المستأجر بالوضعية المحدثة بعد تبديل حالته.</returns>
     [HttpPatch("{id:guid}/toggle-active")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Tenants.Edit)]
     public async Task<IActionResult> ToggleActiveStatus([FromRoute] Guid id, CancellationToken ct)
     {

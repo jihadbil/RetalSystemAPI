@@ -191,7 +191,7 @@ public class StockAdjustmentService : IStockAdjustmentService
 
             // استرجاع أرصدة الصالة المتتبعة في قاموس
             var stocksByProduct = productIds.Count > 0
-                ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                     s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
                     .ToDictionary(s => s.ProductId)
                 : new Dictionary<Guid, ShowroomStock>();
@@ -217,7 +217,7 @@ public class StockAdjustmentService : IStockAdjustmentService
                         MinStockLevel = 0
                     };
                     // إضافة السجل للمستودع
-                    await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                    await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
                     // حفظه بالقاموس
                     stocksByProduct[item.ProductId] = newStock;
                 }
@@ -234,7 +234,7 @@ public class StockAdjustmentService : IStockAdjustmentService
 
             // استرجاع أرصدة المخزن المتتبعة في قاموس
             var stocksByBarcode = barcodeIds.Count > 0
-                ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                     s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
                     .ToDictionary(s => s.ProductBarcodeId)
                 : new Dictionary<Guid, StorgeStock>();
@@ -263,7 +263,7 @@ public class StockAdjustmentService : IStockAdjustmentService
                         MinStockLevel = 0
                     };
                     // إضافة السجل للمستودع
-                    await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                    await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                     // حفظه بالقاموس
                     stocksByBarcode[item.ProductBarCodeId.Value] = newStock;
                 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Services;
 using RetalSystemAPI.Models;
+using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.Common;
@@ -134,6 +135,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>جدول بنود تسويات الجرد المخزني</summary>
     public DbSet<StockAdjustmentItem> StockAdjustmentItems => Set<StockAdjustmentItem>();
+
+    /// <summary>جدول الخزائن والبنوك وأدراج النقود</summary>
+    public DbSet<Safe> Safes => Set<Safe>();
+
+    /// <summary>جدول حركات الخزائن والبنوك وأدراج النقود</summary>
+    public DbSet<SafeTransaction> SafeTransactions => Set<SafeTransaction>();
+
+    /// <summary>جدول تصنيفات المصروفات</summary>
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+
+    /// <summary>جدول المصروفات</summary>
+    public DbSet<Expense> Expenses => Set<Expense>();
+
+    /// <summary>جدول حركات كشف حساب الموردين</summary>
+    public DbSet<SupplierTransaction> SupplierTransactions => Set<SupplierTransaction>();
+
+    /// <summary>جدول حركات كشف حساب الزبائن والعملاء</summary>
+    public DbSet<CustomerTransaction> CustomerTransactions => Set<CustomerTransaction>();
+
+    public DbSet<PosTerminal> PosTerminals => Set<PosTerminal>();
+    public DbSet<PosDeviceCredential> PosDeviceCredentials => Set<PosDeviceCredential>();
+    public DbSet<CashSession> CashSessions => Set<CashSession>();
 
     /// <summary>
     /// تكوين العلاقات، ومفاتيح الجداول، وتطبيق مرشحات الاستعلام العامة للعزل المتعدد للمستأجرين والحذف الناعم.

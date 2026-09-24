@@ -30,6 +30,10 @@ public class SalesReturnSummaryDto : BaseDto
     /// <summary>إجمالي قيمة المرتجع</summary>
     public decimal TotalAmount { get; set; }
 
+    public decimal RefundedAmount { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
+    public Guid? RefundSafeId { get; set; }
+
     /// <summary>سبب الإرجاع</summary>
     public SalesReturnReason Reason { get; set; }
 

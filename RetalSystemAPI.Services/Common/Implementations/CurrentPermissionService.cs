@@ -39,7 +39,7 @@ public class CurrentPermissionService : ICurrentPermissionService
         }
 
         // التحقق مما إذا كان المستخدم يملك دور مدير النظام أو المدير العام
-        if (user.IsInRole("Admin") || user.IsInRole("SuperAdmin"))
+        if (user.IsInRole("SuperAdmin"))
         {
             // مسؤولو النظام يملكون كافة الصلاحيات بصورة كاملة وتلقائية
             return true;

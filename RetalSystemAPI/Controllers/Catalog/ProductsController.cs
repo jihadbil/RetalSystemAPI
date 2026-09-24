@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Configuration;
 using RetalSystemAPI.Controllers.Base;
 using RetalSystemAPI.Filters;
 using RetalSystemAPI.Models.Constants;
@@ -31,17 +35,23 @@ public class ProductsController : BaseApiController
     /// </summary>
     private readonly IProductExcelService _productExcelService;
 
+    private readonly IConfiguration _configuration;
+
     /// <summary>
     /// تهيئة نسخة جديدة من متحكم المنتجات وحقن الخدمات المطلوبة.
     /// </summary>
     /// <param name="productService">واجهة خدمة المنتجات.</param>
     /// <param name="productExcelService">واجهة خدمة معالجة ملفات Excel للمنتجات.</param>
-    public ProductsController(IProductService productService, IProductExcelService productExcelService)
+    public ProductsController(
+        IProductService productService,
+        IProductExcelService productExcelService,
+        IConfiguration configuration)
     {
         // إسناد خدمة المنتجات المحقونة إلى الحقل الخاص
         _productService = productService;
         // إسناد خدمة إكسل المنتجات المحقونة إلى الحقل الخاص
         _productExcelService = productExcelService;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -202,6 +212,7 @@ public class ProductsController : BaseApiController
     /// <returns>ملف Excel يحتوي على كافة الأصناف بتنسيق احترافي وجاهز للتنزيل.</returns>
     [HttpGet("export-excel")]
     [HasPermission(Permissions.Products.ExportImport)]
+    [EnableRateLimiting("bulk-operations")]
     public async Task<IActionResult> ExportExcel([FromQuery] bool singleSheet = true, CancellationToken ct = default)
     {
         // استدعاء خدمة إكسل المنتجات لتوليد مصفوفة بايتات ملف الإكسل
@@ -219,6 +230,7 @@ public class ProductsController : BaseApiController
     /// <returns>ملف قالب الإكسل جاهز للتعبئة والتنزيل.</returns>
     [HttpGet("excel-template")]
     [HasPermission(Permissions.Products.ExportImport)]
+    [EnableRateLimiting("bulk-operations")]
     public async Task<IActionResult> DownloadTemplate([FromQuery] bool singleSheet = true, CancellationToken ct = default)
     {
         // استدعاء خدمة إكسل المنتجات لتوليد قالب الإكسل الإرشادي
@@ -240,6 +252,7 @@ public class ProductsController : BaseApiController
     /// <returns>تقرير مفصل بنتائج الفحص متضمناً عدد الأسطر السليمة والمرفوضة والتنبيهات.</returns>
     [HttpPost("validate-excel")]
     [HasPermission(Permissions.Products.ExportImport)]
+    [EnableRateLimiting("bulk-operations")]
     public async Task<IActionResult> ValidateExcel(Microsoft.AspNetCore.Http.IFormFile file, [FromQuery] ProductExcelImportOptionsDto? options, CancellationToken ct)
     {
         // التحقق من تزويد ملف غير فارغ في الطلب
@@ -247,6 +260,12 @@ public class ProductsController : BaseApiController
         {
             // إرجاع كود 400 في حال عدم وجود ملف الإكسل
             return BadRequest(ApiResponse<object>.Fail("يرجى تزويد ملف Excel مناسب للفحص", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
+        }
+
+        var validationError = await ValidateExcelUploadAsync(file, ct);
+        if (validationError is not null)
+        {
+            return BadRequest(ApiResponse<object>.Fail(validationError, RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
         }
 
         // فتح دفق قراءة الملف المرفوع في الذاكرة
@@ -268,6 +287,7 @@ public class ProductsController : BaseApiController
     /// <returns>تقرير شامل بنتيجة الاستيراد النهائي والأسطر المنشأة والمحدثة.</returns>
     [HttpPost("import-excel")]
     [HasPermission(Permissions.Products.ExportImport)]
+    [EnableRateLimiting("bulk-operations")]
     public async Task<IActionResult> ImportExcel(Microsoft.AspNetCore.Http.IFormFile file, [FromQuery] ProductExcelImportOptionsDto? options, CancellationToken ct)
     {
         // التحقق من صلاحية الملف وتوفره في الطلب
@@ -275,6 +295,13 @@ public class ProductsController : BaseApiController
         {
             // إرجاع كود 400 عند عدم وجود الملف
             return BadRequest(ApiResponse<object>.Fail("يرجى تزويد ملف Excel مناسب للاستيراد", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
+        }
+
+
+        var validationError = await ValidateExcelUploadAsync(file, ct);
+        if (validationError is not null)
+        {
+            return BadRequest(ApiResponse<object>.Fail(validationError, RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
         }
 
         // فتح دفق قراءة لملف الإكسل المرفوع
@@ -295,6 +322,7 @@ public class ProductsController : BaseApiController
     /// <returns>ملف Excel يحتوي على السجلات المتعثرة لتسهيل تعديلها وإعادة رفعها.</returns>
     [HttpPost("export-rejected-excel")]
     [HasPermission(Permissions.Products.ExportImport)]
+    [EnableRateLimiting("bulk-operations")]
     public async Task<IActionResult> ExportRejectedExcel([FromBody] List<FailedRowDetailsDto> failedRows, CancellationToken ct)
     {
         // التحقق من وجود أسطر مرفوضة في القائمة الممررة
@@ -304,10 +332,82 @@ public class ProductsController : BaseApiController
             return BadRequest(ApiResponse<object>.Fail("لا توجد أسطر مرفوضة لتصديرها", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
         }
 
+        if (failedRows.Count > 10_000)
+        {
+            return BadRequest(ApiResponse<object>.Fail("لا يمكن تصدير أكثر من 10000 سطر مرفوض في الطلب الواحد", RetalSystemAPI.Services.Common.Models.ErrorCodes.ValidationError));
+        }
+
         // استدعاء خدمة إكسل المنتجات لتوليد ملف الإكسل الخاص بالأسطر المرفوضة
         var fileBytes = await _productExcelService.GenerateFailedRowsExcelAsync(failedRows, ct);
 
         // إرجاع الملف للعميل للتنزيل المباشر
         return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Rejected_Products_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+    }
+
+    private async Task<string?> ValidateExcelUploadAsync(Microsoft.AspNetCore.Http.IFormFile file, CancellationToken ct)
+    {
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            return "نوع الملف غير مدعوم. يجب رفع ملف Excel بصيغة .xlsx";
+        }
+
+        var maxFileSizeMb = Math.Clamp(_configuration.GetValue<int?>("ExcelImport:MaxFileSizeMB") ?? 10, 1, 100);
+        var maxFileSizeBytes = maxFileSizeMb * 1024L * 1024L;
+        if (file.Length > maxFileSizeBytes)
+        {
+            return $"حجم ملف Excel يتجاوز الحد المسموح ({maxFileSizeMb} ميجابايت)";
+        }
+
+        var maxExpandedSizeMb = Math.Clamp(_configuration.GetValue<int?>("ExcelImport:MaxExpandedSizeMB") ?? 50, 1, 500);
+        var maxExpandedSizeBytes = maxExpandedSizeMb * 1024L * 1024L;
+        var maxArchiveEntries = Math.Clamp(_configuration.GetValue<int?>("ExcelImport:MaxArchiveEntries") ?? 1_000, 10, 10_000);
+        var maxCompressionRatio = Math.Clamp(_configuration.GetValue<int?>("ExcelImport:MaxCompressionRatio") ?? 200, 10, 1_000);
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+
+            if (archive.Entries.Count > maxArchiveEntries)
+            {
+                return "ملف Excel يحتوي على عدد غير مسموح من المكونات الداخلية";
+            }
+
+            long expandedSize = 0;
+            long compressedSize = 0;
+            foreach (var entry in archive.Entries)
+            {
+                ct.ThrowIfCancellationRequested();
+                expandedSize = checked(expandedSize + entry.Length);
+                compressedSize = checked(compressedSize + entry.CompressedLength);
+
+                if (expandedSize > maxExpandedSizeBytes)
+                {
+                    return $"حجم محتوى ملف Excel بعد فك الضغط يتجاوز الحد المسموح ({maxExpandedSizeMb} ميجابايت)";
+                }
+            }
+
+            if (compressedSize > 0 && expandedSize / (double)compressedSize > maxCompressionRatio)
+            {
+                return "تم رفض ملف Excel لأن نسبة الضغط غير طبيعية";
+            }
+
+            var hasContentTypes = archive.GetEntry("[Content_Types].xml") is not null;
+            var hasWorkbook = archive.GetEntry("xl/workbook.xml") is not null;
+            if (!hasContentTypes || !hasWorkbook)
+            {
+                return "الملف المرفوع ليس مصنف Excel صالحاً";
+            }
+        }
+        catch (InvalidDataException)
+        {
+            return "الملف المرفوع تالف أو ليس مصنف Excel صالحاً";
+        }
+        catch (OverflowException)
+        {
+            return "حجم محتوى ملف Excel غير صالح";
+        }
+
+        return null;
     }
 }

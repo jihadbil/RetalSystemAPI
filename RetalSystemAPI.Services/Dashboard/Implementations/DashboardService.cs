@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.Models.DTOs.Dashboard;
 using RetalSystemAPI.Models.Enums;
@@ -21,17 +22,23 @@ public class DashboardService : IDashboardService
     // سياق قاعدة البيانات لتنفيذ الاستعلامات والتجميعات المباشرة عالية الكفاءة
     private readonly AppDbContext _dbContext;
 
+    // خدمة التخزين المؤقت في الذاكرة لتفادي تكرار مسح الجداول الكبيرة للعدادات الثابتة نسبياً
+    private readonly IMemoryCache _cache;
+
     // ثقافة اللغة العربية لتنسيق أسماء الأيام والتواريخ
     private static readonly CultureInfo ArabicCulture = new CultureInfo("ar-SA");
 
     /// <summary>
-    /// تهيئة خدمة لوحة التحكم مع حقن سياق قاعدة البيانات.
+    /// تهيئة خدمة لوحة التحكم مع حقن سياق قاعدة البيانات والتخزين المؤقت.
     /// </summary>
     /// <param name="dbContext">سياق قاعدة البيانات الرئيسي</param>
-    public DashboardService(AppDbContext dbContext)
+    /// <param name="cache">خدمة التخزين المؤقت في الذاكرة</param>
+    public DashboardService(AppDbContext dbContext, IMemoryCache cache)
     {
         // تعيين مرجع سياق قاعدة البيانات
         _dbContext = dbContext;
+        // تعيين مرجع التخزين المؤقت
+        _cache = cache;
     }
 
     /// <inheritdoc />
@@ -152,24 +159,31 @@ public class DashboardService : IDashboardService
             TotalPayables = totalPayables
         };
 
-        // 3. استعلام أعداد الكيانات والمؤسسة
-        summary.Counts = new DashboardCountsDto
+        // 3. استعلام أعداد الكيانات والمؤسسة مع تخزين مؤقت خفيف (60 ثانية) لتفادي تكرار مسح الجداول الكبيرة
+        string cacheKey = $"DashboardCounts_{_dbContext.CurrentTenantId}";
+        if (!_cache.TryGetValue(cacheKey, out DashboardCountsDto? cachedCounts) || cachedCounts == null)
         {
-            // إجمالي عدد المنتجات
-            ProductsCount = await _dbContext.Products.CountAsync(ct),
-            // إجمالي عدد التصنيفات
-            CategoriesCount = await _dbContext.Categories.CountAsync(ct),
-            // إجمالي عدد الفروع
-            BranchesCount = await _dbContext.Branches.CountAsync(ct),
-            // إجمالي عدد المستودعات
-            WarehousesCount = await _dbContext.Warehouses.CountAsync(ct),
-            // إجمالي عدد العملاء
-            CustomersCount = await _dbContext.Customers.CountAsync(ct),
-            // إجمالي عدد الموردين
-            SuppliersCount = await _dbContext.Suppliers.CountAsync(ct),
-            // إجمالي عدد المستأجرين
-            TenantsCount = await _dbContext.Tenants.CountAsync(ct)
-        };
+            cachedCounts = new DashboardCountsDto
+            {
+                // إجمالي عدد المنتجات
+                ProductsCount = await _dbContext.Products.CountAsync(ct),
+                // إجمالي عدد التصنيفات
+                CategoriesCount = await _dbContext.Categories.CountAsync(ct),
+                // إجمالي عدد الفروع
+                BranchesCount = await _dbContext.Branches.CountAsync(ct),
+                // إجمالي عدد المستودعات
+                WarehousesCount = await _dbContext.Warehouses.CountAsync(ct),
+                // إجمالي عدد العملاء
+                CustomersCount = await _dbContext.Customers.CountAsync(ct),
+                // إجمالي عدد الموردين
+                SuppliersCount = await _dbContext.Suppliers.CountAsync(ct),
+                // إجمالي عدد المستأجرين
+                TenantsCount = await _dbContext.Tenants.CountAsync(ct)
+            };
+
+            _cache.Set(cacheKey, cachedCounts, TimeSpan.FromSeconds(60));
+        }
+        summary.Counts = cachedCounts;
 
         // 4. استخراج مسار حركة المبيعات لآخر 7 أيام
         var trendResult = await GetSalesTrendInternalAsync(7, branchId, ct);
@@ -424,56 +438,22 @@ public class DashboardService : IDashboardService
     /// <param name="ct">رمز الإلغاء</param>
     private async Task<List<LowStockItemDto>> GetLowStockAlertsInternalAsync(Guid? branchId, CancellationToken ct)
     {
-        // استعلام مخزون صالات العرض للأصناف التي تقل عن حد الأمان أو 5 وحدات
-        var showroomQuery = _dbContext.ShowroomStocks
-            .AsNoTracking()
-            .Include(s => s.Product)
-                .ThenInclude(p => p.Category)
-            .Include(s => s.Warehouse)
-            .Where(s => s.Quantity <= s.MinStockLevel || s.Quantity <= 5);
+        var showroomQuery = _dbContext.ShowroomStocks.AsNoTracking();
+        var storgeQuery = _dbContext.StorgeStocks.AsNoTracking();
 
-        // استعلام مخزون المستودعات الرئيسية لنفس معيار النواقص
-        var storgeQuery = _dbContext.StorgeStocks
-            .AsNoTracking()
-            .Include(s => s.ProductBarcode)
-                .ThenInclude(b => b.Product)
-                    .ThenInclude(p => p!.Category)
-            .Include(s => s.Warehouse)
-            .Where(s => s.Quantity <= s.MinStockLevel || s.Quantity <= 5);
-
-        // تطبيق فلترة الفرع إن وجدت
+        // تطبيق فلترة الفرع إن تم تحديده
         if (branchId.HasValue && branchId.Value != Guid.Empty)
         {
-            // تصفية صالات العرض بالفرع
             showroomQuery = showroomQuery.Where(s => s.Warehouse.BranchId == branchId.Value);
-
-            // تصفية مستودعات التخزين بالفرع
             storgeQuery = storgeQuery.Where(s => s.Warehouse.BranchId == branchId.Value);
         }
 
-        // جلب أعلى 10 أصناف منخفضة من صالة العرض
+        // جلب أعلى 10 أصناف منخفضة من صالة العرض بإسقاط SQL مباشر وخفيف
         var showroomRecords = await showroomQuery
+            .Where(s => s.Quantity <= s.MinStockLevel || s.Quantity <= 5)
             .OrderBy(s => s.Quantity)
             .Take(10)
-            .ToListAsync(ct);
-
-        // جلب أعلى 10 أصناف منخفضة من المستودعات
-        var storgeRecords = await storgeQuery
-            .OrderBy(s => s.Quantity)
-            .Take(10)
-            .ToListAsync(ct);
-
-        // تهيئة القائمة المجمعة لتنبيهات النواقص
-        var combinedList = new List<LowStockItemDto>();
-
-        // معالجة وإضافة سجلات صالة العرض
-        foreach (var s in showroomRecords)
-        {
-            // تقييم حالة المخزون (نفد، حرج، منخفض)
-            string status = s.Quantity <= 0 ? "نفد" : (s.Quantity <= Math.Max(1, s.MinStockLevel / 2) ? "حرج" : "منخفض");
-
-            // إضافة بيانات صنف الصالة
-            combinedList.Add(new LowStockItemDto
+            .Select(s => new LowStockItemDto
             {
                 ProductId = s.ProductId,
                 ProductName = s.Product.Name,
@@ -483,38 +463,34 @@ public class DashboardService : IDashboardService
                 MinStockLevel = s.MinStockLevel,
                 CostPrice = s.Product.CostPrice,
                 SalePrice = s.Product.SalePrice,
-                Status = status
-            });
-        }
+                Status = s.Quantity <= 0 ? "نفد" : (s.Quantity <= Math.Max(1, s.MinStockLevel / 2) ? "حرج" : "منخفض")
+            })
+            .ToListAsync(ct);
 
-        // معالجة وإضافة سجلات المستودع الرئيسي
-        foreach (var s in storgeRecords)
-        {
-            // التحقق من وجود بيانات المنتج
-            if (s.ProductBarcode?.Product == null) continue;
-
-            // قراءة كائن المنتج
-            var prod = s.ProductBarcode.Product;
-
-            // تقييم حالة المخزون
-            string status = s.Quantity <= 0 ? "نفد" : (s.Quantity <= Math.Max(1, s.MinStockLevel / 2) ? "حرج" : "منخفض");
-
-            // إضافة بيانات صنف المستودع
-            combinedList.Add(new LowStockItemDto
+        // جلب أعلى 10 أصناف منخفضة من المستودعات بإسقاط SQL مباشر وخفيف
+        var storgeRecords = await storgeQuery
+            .Where(s => s.ProductBarcode != null && s.ProductBarcode.Product != null && (s.Quantity <= s.MinStockLevel || s.Quantity <= 5))
+            .OrderBy(s => s.Quantity)
+            .Take(10)
+            .Select(s => new LowStockItemDto
             {
-                ProductId = prod.Id,
-                ProductName = $"{prod.Name} ({s.ProductBarcode.Title})",
-                CategoryName = prod.Category != null ? prod.Category.Name : "عام",
+                ProductId = s.ProductBarcode!.ProductId,
+                ProductName = s.ProductBarcode.Product!.Name + " (" + s.ProductBarcode.Title + ")",
+                CategoryName = s.ProductBarcode.Product.Category != null ? s.ProductBarcode.Product.Category.Name : "عام",
                 WarehouseName = s.Warehouse.Name + " (مخزن)",
                 CurrentQuantity = s.Quantity,
                 MinStockLevel = s.MinStockLevel,
-                CostPrice = prod.CostPrice,
-                SalePrice = prod.SalePrice,
-                Status = status
-            });
-        }
+                CostPrice = s.ProductBarcode.Product.CostPrice,
+                SalePrice = s.ProductBarcode.Product.SalePrice,
+                Status = s.Quantity <= 0 ? "نفد" : (s.Quantity <= Math.Max(1, s.MinStockLevel / 2) ? "حرج" : "منخفض")
+            })
+            .ToListAsync(ct);
 
-        // إرجاع أعلى 10 أصناف مرتبة تصاعدياً بحسب الرصيد المتوفر
-        return combinedList.OrderBy(x => x.CurrentQuantity).Take(10).ToList();
+        // دمج النتائج وترتيبها تصاعدياً واقتطاع أول 10 عناصر فقط
+        return showroomRecords
+            .Concat(storgeRecords)
+            .OrderBy(x => x.CurrentQuantity)
+            .Take(10)
+            .ToList();
     }
 }

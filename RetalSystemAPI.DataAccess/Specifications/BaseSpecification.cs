@@ -21,7 +21,7 @@ public abstract class BaseSpecification<T> : ISpecification<T>
     /// بناء مواصفة مع تحديد شرط الفلترة الأساسي (Criteria).
     /// </summary>
     /// <param name="criteria">تعبير الشرط المنطقي للفلترة</param>
-    public BaseSpecification(Expression<Func<T, bool>> criteria)
+    public BaseSpecification(Expression<Func<T, bool>>? criteria)
     {
         Criteria = criteria;
     }

@@ -42,6 +42,10 @@ public class CreateSalesInvoiceDto
     [Range(0, double.MaxValue, ErrorMessage = "قيمة الخصم يجب أن تكون أكبر من أو تساوي 0")]
     public decimal DiscountAmount { get; set; } = 0;
 
+    /// <summary>قيمة الضريبة على الفاتورة.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "قيمة الضريبة يجب أن تكون أكبر من أو تساوي 0")]
+    public decimal TaxAmount { get; set; } = 0;
+
     /// <summary>الإجمالي النهائي بعد الخصم</summary>
     [Range(0, double.MaxValue, ErrorMessage = "الإجمالي الصافي يجب أن يكون أكبر من أو يساوي 0")]
     public decimal TotalAmount { get; set; }
@@ -49,6 +53,12 @@ public class CreateSalesInvoiceDto
     /// <summary>المبلغ المسدد من قبل العميل</summary>
     [Range(0, double.MaxValue, ErrorMessage = "المبلغ المدفوع يجب أن يكون أكبر من أو يساوي 0")]
     public decimal PaidAmount { get; set; }
+
+    /// <summary>الخزينة المستلمة للمبلغ المدفوع. يمكن تركها فارغة عند عدم وجود دفعة.</summary>
+    public Guid? PaymentSafeId { get; set; }
+
+    /// <summary>وردية درج النقود المطلوبة للمبيعات النقدية من شاشة نقطة البيع.</summary>
+    public Guid? CashSessionId { get; set; }
 
     /// <summary>ملاحظات إضافية على الفاتورة</summary>
     [MaxLength(500, ErrorMessage = "الملاحظات يجب أن لا تتجاوز 500 حرف")]

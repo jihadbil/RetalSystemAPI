@@ -1,8 +1,26 @@
 namespace RetalSystemAPI.Models.Enums;
 
+/// <summary>
+/// يحدد تصنيف وطبيعة تعامل العميل التجاري في النظام.
+/// </summary>
+// تعريف تعداد أنواع وتصنيفات العملاء
 public enum CustomerType
 {
-    Retail = 1,     // زبون قطاعي
-    Wholesale = 2,  // زبون جملة
-    Corporate = 3   // شركات وجهات اعتبارية
+    /// <summary>
+    /// عميل قطاعي (تجزئة / أفراد).
+    /// </summary>
+    // عميل تجزئة قطاعي
+    Retail = 1,
+
+    /// <summary>
+    /// عميل جملة (تجار ومحلات تجارية).
+    /// </summary>
+    // عميل جملة
+    Wholesale = 2,
+
+    /// <summary>
+    /// شركات ومؤسسات وهيئات اعتبارية وحكومية.
+    /// </summary>
+    // عميل شركات وجهات اعتبارية
+    Corporate = 3
 }

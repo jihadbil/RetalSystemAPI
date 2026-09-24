@@ -16,7 +16,9 @@ public class SalesReturnConfiguration : IEntityTypeConfiguration<SalesReturn>
     public void Configure(EntityTypeBuilder<SalesReturn> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "SalesReturns"
-        builder.ToTable("SalesReturns");
+        builder.ToTable("SalesReturns", table => table.HasCheckConstraint(
+            "CK_SalesReturns_Amounts",
+            "[TotalAmount] >= 0 AND [RefundedAmount] >= 0 AND [RefundedAmount] <= [TotalAmount]"));
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(sr => sr.Id);
 
@@ -33,6 +35,13 @@ public class SalesReturnConfiguration : IEntityTypeConfiguration<SalesReturn>
         builder.Property(sr => sr.TotalAmount)
             .HasColumnType("decimal(18,4)")
             .HasDefaultValue(0);
+
+        builder.Property(sr => sr.RefundedAmount)
+            .HasColumnType("decimal(18,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(sr => sr.PaymentMethod)
+            .IsRequired();
 
         // تعيين سبب الإرجاع كحقل إجباري
         builder.Property(sr => sr.Reason)
@@ -70,6 +79,12 @@ public class SalesReturnConfiguration : IEntityTypeConfiguration<SalesReturn>
         builder.HasOne(sr => sr.Customer)
             .WithMany()
             .HasForeignKey(sr => sr.CustomerId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(sr => sr.RefundSafe)
+            .WithMany()
+            .HasForeignKey(sr => sr.RefundSafeId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 

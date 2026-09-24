@@ -250,7 +250,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                 foreach (var existingItem in order.Items.ToList())
                 {
                     // الحذف الصلب للبند من قاعدة البيانات
-                    _unitOfWork.PurchaseOrderItems.HardDelete(existingItem);
+                    _unitOfWork.PurchaseOrders.HardDeleteItem(existingItem);
                 }
             }
 
@@ -369,13 +369,13 @@ public class PurchaseOrderService : IPurchaseOrderService
 
                     // جلب كيانات الباركود دفعة واحدة وبناء قاموس البحث السريع بالمعرف
                     var barcodesById = barcodeIds.Count > 0
-                        ? (await _unitOfWork.ProductBarCodes.FindAsync(b => barcodeIds.Contains(b.Id), ct))
+                        ? (await _unitOfWork.Products.FindBarCodesAsync(b => barcodeIds.Contains(b.Id), ct))
                             .ToDictionary(b => b.Id)
                         : new Dictionary<Guid, ProductBarCode>();
 
                     // جلب أرصدة المخزن المتتبعة للباركودات المعنية دفعة واحدة
                     var stocksByBarcode = barcodeIds.Count > 0
-                        ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                             s => s.WarehouseId == order.WarehouseId.Value && barcodeIds.Contains(s.ProductBarcodeId), ct))
                             .ToDictionary(s => s.ProductBarcodeId)
                         : new Dictionary<Guid, StorgeStock>();
@@ -406,7 +406,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                                 MinStockLevel = 0
                             };
                             // إضافة سجل الرصيد المخزني الجديد للمستودع
-                            await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                            await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                             // حفظ السجل الجديد في القاموس لمنع التكرار في نفس الدفعة
                             stocksByBarcode[item.ProductBarCodeId] = newStock;
                         }
@@ -430,7 +430,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                     var barcodeIds = validItems.Select(i => i.ProductBarCodeId).Distinct().ToList();
                     // جلب الباركودات وبناء القاموس
                     var barcodesById = barcodeIds.Count > 0
-                        ? (await _unitOfWork.ProductBarCodes.FindAsync(b => barcodeIds.Contains(b.Id), ct))
+                        ? (await _unitOfWork.Products.FindBarCodesAsync(b => barcodeIds.Contains(b.Id), ct))
                             .ToDictionary(b => b.Id)
                         : new Dictionary<Guid, ProductBarCode>();
 
@@ -443,7 +443,7 @@ public class PurchaseOrderService : IPurchaseOrderService
 
                     // جلب أرصدة صالة العرض المتتبعة دفعة واحدة للأصناف المعنية
                     var stocksByProduct = productIds.Count > 0
-                        ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                        ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                             s => s.WarehouseId == order.WarehouseId.Value && productIds.Contains(s.ProductId), ct))
                             .ToDictionary(s => s.ProductId)
                         : new Dictionary<Guid, ShowroomStock>();
@@ -477,7 +477,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                                 MinStockLevel = 0
                             };
                             // إضافة سجل رصيد الصالة
-                            await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                            await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
                             // حفظ السجل في القاموس
                             stocksByProduct[bc.ProductId] = newStock;
                         }

@@ -178,6 +178,7 @@ public class UsersController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات الدور المنشأ مصحوبة بكود 201 Created عند النجاح.</returns>
     [HttpPost("roles")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Roles.Manage)]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request, CancellationToken ct = default)
     {
@@ -202,6 +203,7 @@ public class UsersController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>استجابة موحدة تؤكد نجاح حذف الدور أو توضح مانع الحذف.</returns>
     [HttpDelete("roles/{id}")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Roles.Manage)]
     public async Task<IActionResult> DeleteRole([FromRoute] string id, CancellationToken ct = default)
     {
@@ -253,6 +255,7 @@ public class UsersController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>استجابة موحدة تؤكد نجاح حفظ الصلاحيات للدور.</returns>
     [HttpPut("roles/{roleId}/permissions")]
+    [Authorize(Roles = "SuperAdmin")]
     [HasPermission(Permissions.Roles.Manage)]
     public async Task<IActionResult> UpdateRolePermissions([FromRoute] string roleId, [FromBody] UpdateRolePermissionsDto dto, CancellationToken ct = default)
     {

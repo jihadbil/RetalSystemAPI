@@ -19,6 +19,7 @@ public interface ISalesInvoiceService
     /// <param name="id">المعرف الفريد للفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة الخدمة متضمنة بيانات الفاتورة</returns>
+    // استرجاع تفاصيل فاتورة المبيعات بالمعرف الفريد
     Task<ServiceResult<SalesInvoiceResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -27,6 +28,7 @@ public interface ISalesInvoiceService
     /// <param name="invoiceNumber">رقم الفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة</returns>
+    // استرجاع فاتورة المبيعات بواسطة رقم الفاتورة
     Task<ServiceResult<SalesInvoiceResponseDto>> GetByInvoiceNumberAsync(string invoiceNumber, CancellationToken ct = default);
 
     /// <summary>
@@ -42,6 +44,7 @@ public interface ISalesInvoiceService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>قائمة ملخصات فواتير المبيعات</returns>
+    // جلب قائمة ملخصات فواتير المبيعات مع الفلاتر المتعددة
     Task<ServiceResult<IReadOnlyList<SalesInvoiceSummaryDto>>> GetAllAsync(
         Guid? branchId = null,
         Guid? warehouseId = null,
@@ -68,6 +71,7 @@ public interface ISalesInvoiceService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة مجزأة تحتوي على ملخصات الفواتير وإجمالي العدد</returns>
+    // جلب صفحة مجزأة ومفلترة لفواتير المبيعات
     Task<ServiceResult<PagedResult<SalesInvoiceSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -87,6 +91,7 @@ public interface ISalesInvoiceService
     /// <param name="dto">بيانات إنشاء الفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة المنشأة</returns>
+    // إنشاء فاتورة مبيعات جديدة وخصم المخزون وترحيل الأرصدة
     Task<ServiceResult<SalesInvoiceResponseDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -96,6 +101,7 @@ public interface ISalesInvoiceService
     /// <param name="dto">بيانات التحديث</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة المحدثة</returns>
+    // تحديث بيانات وبنود فاتورة المبيعات
     Task<ServiceResult<SalesInvoiceResponseDto>> UpdateAsync(Guid id, UpdateSalesInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -105,6 +111,7 @@ public interface ISalesInvoiceService
     /// <param name="status">الحالة الجديدة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة المحدثة</returns>
+    // تعديل حالة فاتورة المبيعات مع معالجة الآثار المخزنية والمالية
     Task<ServiceResult<SalesInvoiceResponseDto>> UpdateStatusAsync(Guid id, InvoiceStatus status, CancellationToken ct = default);
 
     /// <summary>
@@ -113,5 +120,6 @@ public interface ISalesInvoiceService
     /// <param name="id">معرف الفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة إتمام العملية</returns>
+    // حذف فاتورة المبيعات ناعماً وعكس حركاتها
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

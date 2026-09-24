@@ -133,7 +133,7 @@ public class WarehouseService : IWarehouseService
         if (warehouse.Type == WarehouseType.Storge)
         {
             // جلب معرفات كافة الباركودات المسجلة
-            var allBarCodeIds = await _unitOfWork.ProductBarCodes.SelectAsync(bc => bc.Id, ct);
+            var allBarCodeIds = await _unitOfWork.Products.SelectBarCodesAsync(bc => bc.Id, ct);
 
             // إنشاء سجل رصيد افتتاحي لكل باركود بكمية صفرية
             var newStocks = allBarCodeIds.Select(bcId => new StorgeStock
@@ -146,7 +146,7 @@ public class WarehouseService : IWarehouseService
             }).ToList();
 
             // إضافة سجلات الأرصدة كدفعة واحدة
-            await _unitOfWork.StorgeStocks.AddRangeAsync(newStocks, ct);
+            await _unitOfWork.Stock.AddStorgeStocksAsync(newStocks, ct);
 
             // حفظ التغييرات في حال وجود سجلات
             if (newStocks.Count > 0)
@@ -170,7 +170,7 @@ public class WarehouseService : IWarehouseService
             }).ToList();
 
             // إضافة سجلات الأرصدة كدفعة واحدة
-            await _unitOfWork.ShowroomStocks.AddRangeAsync(newStocks, ct);
+            await _unitOfWork.Stock.AddShowroomStocksAsync(newStocks, ct);
 
             // حفظ التغييرات في حال وجود سجلات
             if (newStocks.Count > 0)
@@ -248,10 +248,10 @@ public class WarehouseService : IWarehouseService
         }
 
         // فحص وجود كميات مخزنية في مخازن التخزين التابعة لهذا المستودع
-        bool hasStorgeStock = await _unitOfWork.StorgeStocks.ExistsAsync(s => s.WarehouseId == id && s.Quantity > 0, ct);
+        bool hasStorgeStock = await _unitOfWork.Stock.StorgeStockExistsAsync(s => s.WarehouseId == id && s.Quantity > 0, ct);
 
         // فحص وجود كميات مخزنية في صالات العرض التابعة لهذا المستودع
-        bool hasShowroomStock = await _unitOfWork.ShowroomStocks.ExistsAsync(s => s.WarehouseId == id && s.Quantity > 0, ct);
+        bool hasShowroomStock = await _unitOfWork.Stock.ShowroomStockExistsAsync(s => s.WarehouseId == id && s.Quantity > 0, ct);
 
         // منع الحذف في حال وجود أي أرصدة موجبة لحماية البيانات المالية
         if (hasStorgeStock || hasShowroomStock)

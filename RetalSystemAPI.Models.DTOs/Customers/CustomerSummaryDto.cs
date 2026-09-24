@@ -24,6 +24,9 @@ public class CustomerSummaryDto : BaseDto
     /// <summary>سقف الائتمان المسموح به</summary>
     public decimal CreditLimit { get; set; }
 
+    /// <summary>الرصيد الحالي المستحق على العميل</summary>
+    public decimal CurrentBalance { get; set; }
+
     /// <summary>حالة نشاط حساب العميل</summary>
     public bool IsActive { get; set; }
 

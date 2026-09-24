@@ -203,4 +203,43 @@ public static class ErrorCodes
 
     /// <summary>رقم سند تسوية المخزون مسجل مسبقاً.</summary>
     public const string StockAdjustmentNumberExists = "STOCK_ADJUSTMENT_NUMBER_EXISTS";
+
+    // ── Safes & Accounting (الخزائن والحسابات المالية) ────────
+    /// <summary>الخزينة أو الحساب المصرفي غير موجود.</summary>
+    public const string SafeNotFound = "SAFE_NOT_FOUND";
+
+    /// <summary>اسم الخزينة مسجل مسبقاً في نفس الفرع.</summary>
+    public const string SafeNameExists = "SAFE_NAME_EXISTS";
+
+    /// <summary>لا يمكن حذف الخزينة لاحتوائها على حركات مالية مسجلة.</summary>
+    public const string SafeHasTransactions = "SAFE_HAS_TRANSACTIONS";
+
+    /// <summary>رصيد الخزينة غير كافٍ لإتمام عملية الصرف أو السحب أو التحويل.</summary>
+    public const string InsufficientSafeBalance = "INSUFFICIENT_SAFE_BALANCE";
+
+    /// <summary>لا يمكن التحويل المالي بين نفس الخزينة.</summary>
+    public const string SafeSameTransfer = "SAFE_SAME_TRANSFER";
+
+    /// <summary>الخزينة معطلة أو غير نشطة حالياً.</summary>
+    public const string SafeInactive = "SAFE_INACTIVE";
+
+    /// <summary>الحركة المالية في الخزينة غير موجودة.</summary>
+    public const string SafeTransactionNotFound = "SAFE_TRANSACTION_NOT_FOUND";
+
+    // ── Expense Categories (تصنيفات المصروفات) ────────────────
+    /// <summary>تصنيف المصروفات غير موجود.</summary>
+    public const string ExpenseCategoryNotFound = "EXPENSE_CATEGORY_NOT_FOUND";
+
+    /// <summary>اسم تصنيف المصروفات مسجل مسبقاً.</summary>
+    public const string ExpenseCategoryNameExists = "EXPENSE_CATEGORY_NAME_EXISTS";
+
+    /// <summary>لا يمكن حذف تصنيف المصروفات لاحتوائه على سندات مصروفات مسجلة.</summary>
+    public const string ExpenseCategoryHasExpenses = "EXPENSE_CATEGORY_HAS_EXPENSES";
+
+    // ── Expenses (سندات المصروفات) ───────────────────────────
+    /// <summary>سند المصروف غير موجود.</summary>
+    public const string ExpenseNotFound = "EXPENSE_NOT_FOUND";
+
+    /// <summary>رقم سند المصروف مسجل مسبقاً.</summary>
+    public const string ExpenseNumberExists = "EXPENSE_NUMBER_EXISTS";
 }

@@ -7,9 +7,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
+using RetalSystemAPI.DataAccess.Services;
 using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Auth;
@@ -34,6 +37,8 @@ public class AuthService : IAuthService
 
     // وحدة العمل للوصول إلى مستودعات البيانات والتحقق من وجود المستأجر
     private readonly IUnitOfWork _unitOfWork;
+    private readonly AppDbContext _dbContext;
+    private readonly ICurrentTenantService _currentTenantService;
 
     /// <summary>
     /// تهيئة خدمة المصادقة مع حقن مدير المستخدمين ومدير الأدوار وإعدادات التكوين ووحدة العمل.
@@ -46,7 +51,9 @@ public class AuthService : IAuthService
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IConfiguration configuration,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        AppDbContext dbContext,
+        ICurrentTenantService currentTenantService)
     {
         // تعيين مرجع مدير المستخدمين
         _userManager = userManager;
@@ -59,18 +66,46 @@ public class AuthService : IAuthService
 
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
+        _currentTenantService = currentTenantService;
     }
 
     /// <inheritdoc />
     public async Task<ServiceResult<AuthResponseDto>> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
+        var currentTenantId = _currentTenantService.TenantId;
+        if (currentTenantId == Guid.Empty)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("المستخدم غير مصرح له", ErrorCodes.Unauthorized);
+        }
+
+        // Tenant membership is determined by the authenticated caller, never by
+        // a client supplied identifier.
+        if (dto.TenantId != Guid.Empty && dto.TenantId != currentTenantId)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("لا يمكن إنشاء مستخدم لدى مستأجر آخر", ErrorCodes.Forbidden);
+        }
+
         // 1. التحقق من وجود المستأجر في قاعدة البيانات
-        var tenant = await _unitOfWork.Tenants.GetByIdAsync(dto.TenantId, ct);
+        var tenant = await _unitOfWork.Tenants.GetByIdAsync(currentTenantId, ct);
         // إذا لم يتم العثور على المستأجر، يتم إرجاع نتيجة فشل
         if (tenant is null)
         {
             // إرجاع خطأ عدم وجود المستأجر
             return ServiceResult<AuthResponseDto>.Failure("المستأجر المحدد غير موجود", ErrorCodes.TenantNotFound);
+        }
+
+        if (!tenant.IsActive)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("حساب المستأجر غير نشط", ErrorCodes.Unauthorized);
+        }
+
+        var branchExists = await _unitOfWork.Branches.ExistsAsync(
+            b => b.Id == dto.BranchId && b.TenantId == currentTenantId && b.IsActive,
+            ct);
+        if (!branchExists)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("الفرع المحدد غير موجود أو غير نشط", ErrorCodes.BranchNotFound);
         }
 
         // 2. التحقق من عدم تكرار اسم المستخدم
@@ -99,9 +134,10 @@ public class AuthService : IAuthService
             // تعيين البريد الإلكتروني
             Email = dto.Email,
             // تعيين معرف المستأجر
-            TenantId = dto.TenantId,
+            TenantId = currentTenantId,
             // تعيين معرف الفرع
-            BranchId = dto.BranchId
+            BranchId = dto.BranchId,
+            LockoutEnabled = true
         };
 
         // حفظ وإنشاء المستخدم مع تشفير كلمة المرور عبر Identity
@@ -136,13 +172,50 @@ public class AuthService : IAuthService
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
         }
 
+        // Disabled and locked accounts must never receive a new token. This
+        // check is independent of LockoutEnabled so administratively disabled
+        // legacy accounts remain blocked as well.
+        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
+        }
+
+        var tenant = await _dbContext.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == user.TenantId, ct);
+        if (tenant is null || !tenant.IsActive)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
+        }
+
+        var branchIsActive = await _dbContext.Branches
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(b => b.Id == user.BranchId && b.TenantId == user.TenantId && b.IsActive && !b.IsDeleted, ct);
+        if (!branchIsActive)
+        {
+            return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
+        }
+
         // التحقق من صحة كلمة المرور المدخلة ومطابقتها للتجزئة المخزنة
         bool isPasswordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
         // إذا كانت كلمة المرور غير مطابقة
         if (!isPasswordValid)
         {
+            if (!user.LockoutEnabled)
+            {
+                user.LockoutEnabled = true;
+                await _userManager.UpdateAsync(user);
+            }
+            await _userManager.AccessFailedAsync(user);
+
             // إرجاع خطأ في بيانات الاعتماد
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
+        }
+
+        if (user.AccessFailedCount > 0)
+        {
+            await _userManager.ResetAccessFailedCountAsync(user);
         }
 
         // توليد رمز JWT وتجميع صلاحيات وأدوار المستخدم
@@ -153,10 +226,22 @@ public class AuthService : IAuthService
     }
 
     /// <inheritdoc />
-    public Task<ServiceResult> LogoutAsync(string userId, CancellationToken ct = default)
+    public async Task<ServiceResult> LogoutAsync(string userId, CancellationToken ct = default)
     {
-        // نظراً لأن توكن JWT غير متصل بحالة على الخادم (Stateless)، تكتمل العملية بنجاح تمهيداً لحذف التوكن لدى العميل
-        return Task.FromResult(ServiceResult.Success());
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return ServiceResult.Failure("المستخدم غير موجود", ErrorCodes.UserNotFound);
+        }
+
+        // تدوير SecurityStamp يبطل فوراً جميع رموز JWT الصادرة سابقاً لهذا المستخدم.
+        var result = await _userManager.UpdateSecurityStampAsync(user);
+        if (!result.Succeeded)
+        {
+            return ServiceResult.Failure("تعذر إنهاء جلسة المستخدم", ErrorCodes.Unauthorized);
+        }
+
+        return ServiceResult.Success();
     }
 
     /// <summary>
@@ -167,7 +252,8 @@ public class AuthService : IAuthService
     private async Task<AuthResponseDto> GenerateJwtTokenAsync(ApplicationUser user)
     {
         // قراءة المفتاح السري لتوقيع التوكن من ملف الإعدادات أو استخدام القيمة الافتراضية
-        var secretKey = _configuration["JwtSettings:Secret"] ?? "DefaultSuperSecretKeyForRetalSystemAPI123456789!";
+        var secretKey = _configuration["JwtSettings:Secret"]
+            ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
 
         // قراءة مصدر التوكن (Issuer)
         var issuer = _configuration["JwtSettings:Issuer"] ?? "RetalSystemAPI";
@@ -200,7 +286,9 @@ public class AuthService : IAuthService
             // إضافة معرف المستأجر
             new("TenantId", user.TenantId.ToString()),
             // إضافة معرف الفرع
-            new("BranchId", user.BranchId.ToString())
+            new("BranchId", user.BranchId.ToString()),
+            // نسخة الجلسة المستخدمة لإبطال الرموز عند الخروج أو تغيير الصلاحيات
+            new("SecurityStamp", user.SecurityStamp ?? string.Empty)
         };
 
         // إضافة كل دور من أدوار المستخدم كمطالبة منفصلة
@@ -221,14 +309,19 @@ public class AuthService : IAuthService
         var permissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // التحقق مما إذا كان المستخدم يملك دور مسؤول عام أو مسؤول نظام
-        bool isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isPlatformAdmin = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isTenantAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
         // فحص حالة المسؤول لمنحه كافة الصلاحيات مباشرة
-        if (isAdmin)
+        if (isPlatformAdmin || isTenantAdmin)
         {
             // إضافة كافة أكواد الصلاحيات المعرفة في النظام تلقائياً
             foreach (var perm in AppPermissions.GetAllPermissionCodes())
             {
+                if (isTenantAdmin && perm == Permissions.Roles.Manage)
+                {
+                    continue;
+                }
                 // إدراج الصلاحية في المجموعة
                 permissions.Add(perm);
             }

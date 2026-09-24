@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.Models;
@@ -31,6 +32,7 @@ public static class DbInitializer
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         // استخراج مدير الأدوار والصلاحيات RoleManager
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
         // 1. تطبيق جميع الهجرات التلقائية المعلقة (Pending Migrations) في قاعدة البيانات
         await context.Database.MigrateAsync();
@@ -98,73 +100,47 @@ public static class DbInitializer
         // 4. استدعاء بذر الأدوار الافتراضية ومصفوفة الصلاحيات
         await SeedRolesAndPermissionsAsync(roleManager);
 
-        // 5. البحث عن حساب المسؤول الأولي masoud
-        var existingUser = await userManager.FindByNameAsync("masoud");
-        // في حال عدم وجود المستخدم مسبقاً
-        if (existingUser == null)
+        // 5. إنشاء مسؤول المنصة الأولي هو إجراء اختياري وصريح. لا توجد
+        // بيانات اعتماد افتراضية داخل المصدر.
+        if (configuration.GetValue<bool>("DatabaseInitialization:SeedInitialAdmin"))
         {
-            // إنشاء كائن مستخدم جديد للمسؤول
-            var user = new ApplicationUser
-            {
-                // اسم المستخدم للدخول
-                UserName = "masoud",
-                // البريد الإلكتروني
-                Email = "masoud@retal.com",
-                // ربط المستخدم بالمستأجر الافتراضي
-                TenantId = defaultTenant.Id,
-                // ربط المستخدم بالفرع الافتراضي
-                BranchId = defaultBranch.Id,
-                // تأكيد البريد الإلكتروني تلقائياً
-                EmailConfirmed = true
-            };
+            var adminUserName = configuration["DatabaseInitialization:InitialAdmin:UserName"];
+            var adminEmail = configuration["DatabaseInitialization:InitialAdmin:Email"];
+            var adminPassword = configuration["DatabaseInitialization:InitialAdmin:Password"];
 
-            // إنشاء الحساب بكلمة المرور الافتراضية
-            var result = await userManager.CreateAsync(user, "Admin@123");
-            // التحقق من نجاح الإنشاء
-            if (!result.Succeeded)
+            if (string.IsNullOrWhiteSpace(adminUserName) ||
+                string.IsNullOrWhiteSpace(adminEmail) ||
+                string.IsNullOrWhiteSpace(adminPassword))
             {
-                // تجميع رسائل الأخطاء في حال الفشل
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                // إطلاق استثناء واضح بالخطأ
-                throw new Exception($"فشل إنشاء المستخدم المستهدف: {errors}");
+                throw new InvalidOperationException(
+                    "Initial admin seeding requires UserName, Email and Password in protected configuration.");
             }
 
-            // إسناد دور المسؤول Admin للمستخدم
-            await userManager.AddToRoleAsync(user, "Admin");
-        }
-        else
-        {
-            // في حال كان الحساب موجوداً بالفعل، يتم التأكد من اكتمال بياناته الأساسية
-            bool needsUpdate = false;
-            // فحص وتعيين TenantId إذا كان فارغاً
-            if (existingUser.TenantId == Guid.Empty)
+            var existingUser = await userManager.FindByNameAsync(adminUserName);
+            if (existingUser == null)
             {
-                // تعيين معرف المستأجر الافتراضي
-                existingUser.TenantId = defaultTenant.Id;
-                // تفعيل مؤشر الحاجة للتحديث
-                needsUpdate = true;
-            }
-            // فحص وتعيين BranchId إذا كان فارغاً
-            if (existingUser.BranchId == Guid.Empty)
-            {
-                // تعيين معرف الفرع الافتراضي
-                existingUser.BranchId = defaultBranch.Id;
-                // تفعيل مؤشر الحاجة للتحديث
-                needsUpdate = true;
-            }
+                var user = new ApplicationUser
+                {
+                    UserName = adminUserName,
+                    Email = adminEmail,
+                    TenantId = defaultTenant.Id,
+                    BranchId = defaultBranch.Id,
+                    EmailConfirmed = true,
+                    LockoutEnabled = true
+                };
 
-            // تنفيذ التحديث إذا طرأ تغيير على الحساب
-            if (needsUpdate)
-            {
-                // حفظ التعديلات في جدول المستخدمين
-                await userManager.UpdateAsync(existingUser);
-            }
+                var result = await userManager.CreateAsync(user, adminPassword);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"فشل إنشاء مسؤول المنصة الأولي: {errors}");
+                }
 
-            // التأكد من امتلاك المستخدم لدور Admin
-            if (!await userManager.IsInRoleAsync(existingUser, "Admin"))
+                await userManager.AddToRoleAsync(user, "SuperAdmin");
+            }
+            else if (!await userManager.IsInRoleAsync(existingUser, "SuperAdmin"))
             {
-                // إضافة دور المسؤول للمستخدم
-                await userManager.AddToRoleAsync(existingUser, "Admin");
+                await userManager.AddToRoleAsync(existingUser, "SuperAdmin");
             }
         }
     }
@@ -176,7 +152,7 @@ public static class DbInitializer
     private static async Task SeedRolesAndPermissionsAsync(RoleManager<IdentityRole> roleManager)
     {
         // مصفوفة بأسماء كافة الأدوار الوظيفية المعتمدة في النظام
-        var roles = new[] { "Admin", "Manager", "Cashier", "WarehouseKeeper", "Accountant", "User" };
+        var roles = new[] { "SuperAdmin", "Admin", "Manager", "Cashier", "WarehouseKeeper", "Accountant", "User" };
         // المرور على كل دور والتأكد من وجوده
         foreach (var r in roles)
         {
@@ -186,6 +162,21 @@ public static class DbInitializer
                 // إنشاء الدور الجديد وتخزينه في جدول الأدوار
                 await roleManager.CreateAsync(new IdentityRole(r));
             }
+        }
+
+        var superAdminRole = await roleManager.FindByNameAsync("SuperAdmin");
+        if (superAdminRole != null)
+        {
+            await EnsureRolePermissionsAsync(roleManager, superAdminRole, AppPermissions.GetAllPermissionCodes().ToArray());
+        }
+
+        var adminRole = await roleManager.FindByNameAsync("Admin");
+        if (adminRole != null)
+        {
+            var tenantAdminPermissions = AppPermissions.GetAllPermissionCodes()
+                .Where(p => p != Permissions.Roles.Manage)
+                .ToArray();
+            await EnsureRolePermissionsAsync(roleManager, adminRole, tenantAdminPermissions);
         }
 
         // صلاحيات الكاشير: قراءة وإنشاء المبيعات وفواتيرها ونقاط البيع والعملاء
@@ -200,6 +191,8 @@ public static class DbInitializer
                 Permissions.Pos.CreateSale,
                 Permissions.Pos.ApplyDiscount,
                 Permissions.Pos.Reprint,
+                Permissions.Pos.OpenSession,
+                Permissions.Pos.CloseSession,
                 Permissions.SalesInvoices.View,
                 Permissions.SalesInvoices.Create,
                 Permissions.SalesInvoices.Print,
@@ -252,7 +245,8 @@ public static class DbInitializer
                 Permissions.PurchaseOrders.View,
                 Permissions.Customers.View,
                 Permissions.Suppliers.View,
-                Permissions.Stock.View
+                Permissions.Stock.View,
+                Permissions.FinancialReconciliation.View
             };
             // تثبيت الصلاحيات على دور المحاسب
             await EnsureRolePermissionsAsync(roleManager, accountantRole, accPerms);

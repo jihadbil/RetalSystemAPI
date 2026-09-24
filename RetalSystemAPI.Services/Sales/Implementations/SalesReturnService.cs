@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using RetalSystemAPI.Models.Accounting;
+using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Sales;
@@ -11,6 +13,7 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Sales;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Interfaces;
+using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Sales.Interfaces;
 using RetalSystemAPI.Services.Sales.Specifications;
@@ -31,6 +34,7 @@ public class SalesReturnService : ISalesReturnService
 
     // مدقق الصلاحيات للتحقق من صلاحية الإرجاع بدون فاتورة أصلية
     private readonly ICurrentPermissionService _permissionHelper;
+    private readonly IFinancialPostingService _financialPosting;
 
     /// <summary>
     /// تهيئة خدمة مرتجعات المبيعات مع حقن وحدة العمل والمحول ومدقق الصلاحيات.
@@ -38,7 +42,8 @@ public class SalesReturnService : ISalesReturnService
     /// <param name="unitOfWork">وحدة العمل للمستودعات</param>
     /// <param name="mapper">محول الكيانات</param>
     /// <param name="permissionHelper">مدقق صلاحيات المستخدم الحالي</param>
-    public SalesReturnService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentPermissionService permissionHelper)
+    public SalesReturnService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentPermissionService permissionHelper,
+        IFinancialPostingService financialPosting)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
@@ -48,6 +53,7 @@ public class SalesReturnService : ISalesReturnService
 
         // تعيين مرجع مدقق الصلاحيات
         _permissionHelper = permissionHelper;
+        _financialPosting = financialPosting;
     }
 
     /// <inheritdoc />
@@ -198,11 +204,12 @@ public class SalesReturnService : ISalesReturnService
             return ServiceResult<SalesReturnResponseDto>.Failure("المستودع أو صالة العرض غير موجودة", ErrorCodes.WarehouseNotFound);
         }
 
+        Customer? customer = null;
         // التحقق من وجود العميل إن تم تحديده
         if (dto.CustomerId.HasValue)
         {
-            bool customerExists = await _unitOfWork.Customers.ExistsAsync(c => c.Id == dto.CustomerId.Value, ct);
-            if (!customerExists)
+            customer = await _unitOfWork.Customers.GetByIdAsync(dto.CustomerId.Value, ct);
+            if (customer is null)
             {
                 // إرجاع خطأ عدم وجود العميل
                 return ServiceResult<SalesReturnResponseDto>.Failure("العميل المحدد غير موجود", ErrorCodes.CustomerNotFound);
@@ -234,11 +241,11 @@ public class SalesReturnService : ISalesReturnService
 
             // حساب الكميات المرتجعة سابقاً على نفس الفاتورة لكل صنف
             var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
-            var previousReturnItems = (await _unitOfWork.SalesReturnItems.FindAsync(
+            var previousReturnItems = (await _unitOfWork.SalesReturns.FindItemsAsync(
                 ri => ri.SalesReturn != null &&
                       ri.SalesReturn.OriginalInvoiceId == originalInvoice.Id &&
                       productIds.Contains(ri.ProductId), ct))
-                .GroupBy(ri => ri.ProductId)
+                .GroupBy(ri => (ri.ProductId, ri.ProductBarCodeId))
                 .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
 
             // فحص كل بند مراد إرجاعه
@@ -264,8 +271,10 @@ public class SalesReturnService : ISalesReturnService
                 }
 
                 // حساب إجمالي الكمية المباعة للصنف
-                var soldQuantity = matchingInvoiceItems.Sum(i => i.Quantity);
-                previousReturnItems.TryGetValue(item.ProductId, out var previouslyReturned);
+                var soldQuantity = matchingInvoiceItems
+                    .Where(i => i.ProductBarCodeId == item.ProductBarCodeId)
+                    .Sum(i => i.Quantity);
+                previousReturnItems.TryGetValue((item.ProductId, item.ProductBarCodeId), out var previouslyReturned);
 
                 // التحقق من أن كمية الإرجاع موجبة
                 if (item.Quantity <= 0)
@@ -281,6 +290,21 @@ public class SalesReturnService : ISalesReturnService
                         ErrorCodes.SalesReturnExceedsSold);
                 }
             }
+
+            foreach (var requestedGroup in dto.Items.GroupBy(i => (i.ProductId, i.ProductBarCodeId)))
+            {
+                var soldQuantity = originalInvoice.Items
+                    .Where(i => i.ProductId == requestedGroup.Key.ProductId &&
+                                i.ProductBarCodeId == requestedGroup.Key.ProductBarCodeId)
+                    .Sum(i => i.Quantity);
+                previousReturnItems.TryGetValue(requestedGroup.Key, out var previouslyReturned);
+                if (previouslyReturned + requestedGroup.Sum(i => i.Quantity) > soldQuantity)
+                {
+                    return ServiceResult<SalesReturnResponseDto>.Failure(
+                        "إجمالي البنود المكررة في المرتجع يتجاوز الكمية المباعة لنفس الباركود",
+                        ErrorCodes.SalesReturnExceedsSold);
+                }
+            }
         }
         else
         {
@@ -293,7 +317,7 @@ public class SalesReturnService : ISalesReturnService
 
             if (productIdsNeedingDefaultBarcode.Count > 0)
             {
-                var defaultBarcodes = await _unitOfWork.ProductBarCodes.FindAsync(
+                var defaultBarcodes = await _unitOfWork.Products.FindBarCodesAsync(
                     b => productIdsNeedingDefaultBarcode.Contains(b.ProductId), ct);
                 var defaultBarcodeByProduct = defaultBarcodes
                     .GroupBy(b => b.ProductId)
@@ -307,6 +331,35 @@ public class SalesReturnService : ISalesReturnService
                         item.ProductBarCodeId = defaultBarcode.Id;
                     }
                 }
+            }
+        }
+
+        var returnProductIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+        var productsById = (await _unitOfWork.Products.FindAsync(p => returnProductIds.Contains(p.Id), ct))
+            .ToDictionary(p => p.Id);
+        if (productsById.Count != returnProductIds.Count)
+            return ServiceResult<SalesReturnResponseDto>.Failure("أحد الأصناف المحددة غير موجود", ErrorCodes.ProductNotFound);
+
+        // سعر المرتجع المرتبط بفـاتورة يؤخذ من الفاتورة الأصلية، وإلا من سعر البيع الحالي.
+        foreach (var item in dto.Items)
+        {
+            if (item.Quantity <= 0)
+                return ServiceResult<SalesReturnResponseDto>.Failure("كمية المرتجع يجب أن تكون أكبر من صفر", ErrorCodes.ValidationError);
+
+            if (originalInvoice is not null)
+            {
+                var matching = originalInvoice.Items
+                    .Where(i => i.ProductId == item.ProductId &&
+                                (!item.ProductBarCodeId.HasValue || i.ProductBarCodeId == item.ProductBarCodeId))
+                    .ToList();
+                var quantity = matching.Sum(i => i.Quantity);
+                item.UnitPrice = quantity > 0
+                    ? matching.Sum(i => i.UnitPrice * i.Quantity) / quantity
+                    : productsById[item.ProductId].SalePrice;
+            }
+            else
+            {
+                item.UnitPrice = productsById[item.ProductId].SalePrice;
             }
         }
 
@@ -328,11 +381,53 @@ public class SalesReturnService : ISalesReturnService
         // حساب إجمالي قيمة المرتجع
         salesReturn.TotalAmount = salesReturn.Items.Sum(i => i.LineTotal);
 
+        decimal refundedAmount;
+        var paymentMethod = dto.PaymentMethod ?? originalInvoice?.PaymentMethod ?? PaymentMethod.Cash;
+        if (dto.RefundedAmount.HasValue)
+        {
+            refundedAmount = dto.RefundedAmount.Value;
+        }
+        else if (originalInvoice is not null)
+        {
+            var previousReturns = await _unitOfWork.SalesReturns.FindAsync(
+                r => r.OriginalInvoiceId == originalInvoice.Id, ct);
+            var availableCash = Math.Max(0, originalInvoice.PaidAmount - previousReturns.Sum(r => r.RefundedAmount));
+            refundedAmount = Math.Min(salesReturn.TotalAmount, availableCash);
+            if (refundedAmount == 0) paymentMethod = PaymentMethod.Credit;
+        }
+        else
+        {
+            refundedAmount = customer is null ? salesReturn.TotalAmount : 0;
+            if (refundedAmount == 0) paymentMethod = PaymentMethod.Credit;
+        }
+
+        if (paymentMethod == PaymentMethod.Credit && refundedAmount > 0)
+            return ServiceResult<SalesReturnResponseDto>.Failure("التسوية الآجلة لا يمكن أن تتضمن مبلغاً نقدياً مرتجعاً", ErrorCodes.ValidationError);
+        if (refundedAmount < 0 || refundedAmount > salesReturn.TotalAmount)
+            return ServiceResult<SalesReturnResponseDto>.Failure("المبلغ المعاد لا يمكن أن يتجاوز إجمالي المرتجع", ErrorCodes.ValidationError);
+
+        var accountCredit = salesReturn.TotalAmount - refundedAmount;
+        if (accountCredit > 0 && customer is null)
+            return ServiceResult<SalesReturnResponseDto>.Failure("يجب تحديد العميل لقيد جزء من المرتجع في حسابه", ErrorCodes.ValidationError);
+
+        var safeResult = await _financialPosting.ResolveSafeAsync(
+            salesReturn.BranchId, dto.RefundSafeId, refundedAmount, outbound: true, ct);
+        if (!safeResult.IsSuccess)
+            return ServiceResult<SalesReturnResponseDto>.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+        Safe? refundSafe = safeResult.Data;
+        salesReturn.RefundedAmount = refundedAmount;
+        salesReturn.PaymentMethod = paymentMethod;
+        salesReturn.RefundSafeId = refundSafe?.Id;
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+
         // إعادة البضاعة إلى رصيد المخزون (صالة أو مخزن)
         if (warehouse.Type == WarehouseType.Show)
         {
             var productIds = salesReturn.Items.Select(i => i.ProductId).Distinct().ToList();
-            var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+            var stocksByProduct = (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                 s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
                 .ToDictionary(s => s.ProductId);
 
@@ -353,7 +448,7 @@ public class SalesReturnService : ISalesReturnService
                         Quantity = item.Quantity,
                         MinStockLevel = 0
                     };
-                    await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                    await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
                     stocksByProduct[item.ProductId] = newStock;
                 }
             }
@@ -367,7 +462,7 @@ public class SalesReturnService : ISalesReturnService
                 .ToList();
 
             var stocksByBarcode = barcodeIds.Count > 0
-                ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                     s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
                     .ToDictionary(s => s.ProductBarcodeId)
                 : new Dictionary<Guid, StorgeStock>();
@@ -391,17 +486,44 @@ public class SalesReturnService : ISalesReturnService
                         Quantity = item.Quantity,
                         MinStockLevel = 0
                     };
-                    await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                    await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                     stocksByBarcode[item.ProductBarCodeId.Value] = newStock;
                 }
             }
         }
 
         // إضافة سجل المرتجع للمستودع
+        if (salesReturn.Id == Guid.Empty) salesReturn.Id = Guid.NewGuid();
         await _unitOfWork.SalesReturns.AddAsync(salesReturn, ct);
+
+        if (customer is not null)
+        {
+            await _financialPosting.PostCustomerBalanceAsync(customer, -salesReturn.TotalAmount,
+                CustomerTransactionType.SalesReturn, salesReturn.BranchId, FinancialDocumentType.SalesReturn,
+                salesReturn.Id, salesReturn.ReturnDate, paymentMethod,
+                $"مرتجع مبيعات رقم {salesReturn.ReturnNumber}", ct);
+            await _financialPosting.PostCustomerBalanceAsync(customer, refundedAmount,
+                CustomerTransactionType.Reversal, salesReturn.BranchId, FinancialDocumentType.SalesReturn,
+                salesReturn.Id, salesReturn.ReturnDate, paymentMethod,
+                $"رد نقدي لمرتجع مبيعات رقم {salesReturn.ReturnNumber}", ct);
+        }
+
+        if (refundSafe is not null)
+        {
+            await _financialPosting.PostSafeBalanceAsync(refundSafe, -refundedAmount,
+                FinancialDocumentType.SalesReturn, salesReturn.Id, salesReturn.ReturnDate,
+                $"رد قيمة مرتجع مبيعات رقم {salesReturn.ReturnNumber}", ct);
+        }
 
         // حفظ التغييرات وحركات المخزون في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إعادة جلب المرتجع مع التفاصيل
         var created = await _unitOfWork.SalesReturns.FirstOrDefaultAsync(new SalesReturnWithDetailsSpec(salesReturn.Id), ct) ?? salesReturn;
@@ -426,6 +548,25 @@ public class SalesReturnService : ISalesReturnService
             return ServiceResult.Failure("مرتجع المبيعات غير موجود", ErrorCodes.SalesReturnNotFound);
         }
 
+        var customer = salesReturn.CustomerId.HasValue
+            ? await _unitOfWork.Customers.GetByIdAsync(salesReturn.CustomerId.Value, ct)
+            : null;
+        Safe? refundSafe = null;
+        if (salesReturn.RefundedAmount > 0)
+        {
+            if (!salesReturn.RefundSafeId.HasValue)
+                return ServiceResult.Failure("لا يمكن عكس مرتجع نقدي قديم دون خزينة مرتبطة", ErrorCodes.ValidationError);
+            var safeResult = await _financialPosting.ResolveSafeAsync(
+                salesReturn.BranchId, salesReturn.RefundSafeId, salesReturn.RefundedAmount, outbound: false, ct);
+            if (!safeResult.IsSuccess)
+                return ServiceResult.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+            refundSafe = safeResult.Data;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+
         // إلغاء تأثير المرتجع على المخزون (خصم الكميات التي كانت قد أضيفت سابقاً)
         if (salesReturn.Items != null && salesReturn.Items.Any())
         {
@@ -435,7 +576,7 @@ public class SalesReturnService : ISalesReturnService
                 if (warehouse.Type == WarehouseType.Show)
                 {
                     var productIds = salesReturn.Items.Select(i => i.ProductId).Distinct().ToList();
-                    var stocksByProduct = (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                    var stocksByProduct = (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                         s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
                         .ToDictionary(s => s.ProductId);
 
@@ -458,7 +599,7 @@ public class SalesReturnService : ISalesReturnService
 
                     if (barcodeIds.Count > 0)
                     {
-                        var stocksByBarcode = (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                        var stocksByBarcode = (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                             s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
                             .ToDictionary(s => s.ProductBarcodeId);
 
@@ -479,8 +620,34 @@ public class SalesReturnService : ISalesReturnService
         // تطبيق الحذف المنطقي لسجل المرتجع
         _unitOfWork.SalesReturns.SoftDelete(salesReturn);
 
+        if (customer is not null)
+        {
+            await _financialPosting.PostCustomerBalanceAsync(customer, -salesReturn.RefundedAmount,
+                CustomerTransactionType.Reversal, salesReturn.BranchId, FinancialDocumentType.SalesReturn,
+                salesReturn.Id, DateTime.UtcNow, salesReturn.PaymentMethod,
+                $"عكس الرد النقدي لمرتجع محذوف رقم {salesReturn.ReturnNumber}", ct);
+            await _financialPosting.PostCustomerBalanceAsync(customer, salesReturn.TotalAmount,
+                CustomerTransactionType.Reversal, salesReturn.BranchId, FinancialDocumentType.SalesReturn,
+                salesReturn.Id, DateTime.UtcNow, salesReturn.PaymentMethod,
+                $"عكس مرتجع مبيعات محذوف رقم {salesReturn.ReturnNumber}", ct);
+        }
+
+        if (refundSafe is not null)
+        {
+            await _financialPosting.PostSafeBalanceAsync(refundSafe, salesReturn.RefundedAmount,
+                FinancialDocumentType.SalesReturn, salesReturn.Id, DateTime.UtcNow,
+                $"عكس رد مرتجع مبيعات محذوف رقم {salesReturn.ReturnNumber}", ct);
+        }
+
         // حفظ التعديلات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();

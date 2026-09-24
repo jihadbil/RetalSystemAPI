@@ -31,6 +31,16 @@ public class CreateSalesReturnDto
     /// <summary>معرف العميل</summary>
     public Guid? CustomerId { get; set; }
 
+    /// <summary>المبلغ المعاد فعلياً للعميل؛ وما تبقى يخفض رصيد حسابه.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "المبلغ المرتجع يجب أن يكون أكبر من أو يساوي صفر")]
+    public decimal? RefundedAmount { get; set; }
+
+    /// <summary>طريقة رد المبلغ. استخدم Credit لقيد كامل القيمة في حساب العميل.</summary>
+    public PaymentMethod? PaymentMethod { get; set; }
+
+    /// <summary>الخزينة التي يُصرف منها المبلغ المرتجع.</summary>
+    public Guid? RefundSafeId { get; set; }
+
     /// <summary>سبب الإرجاع (بضاعة معيبة، صنف خاطئ، تغيير رأي العميل، منتهي الصلاحية)</summary>
     public SalesReturnReason Reason { get; set; } = SalesReturnReason.Other;
 

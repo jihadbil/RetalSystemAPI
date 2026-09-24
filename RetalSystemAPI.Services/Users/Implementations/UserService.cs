@@ -4,11 +4,13 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Services;
 using RetalSystemAPI.Models;
+using RetalSystemAPI.Models.Common;
 using RetalSystemAPI.Models.Constants;
 using RetalSystemAPI.Models.DTOs.Users;
 using RetalSystemAPI.Services.Common.Models;
@@ -29,6 +31,7 @@ public class UserService : IUserService
     private readonly AppDbContext _context;
     // خدمة توفير هوية المستأجر الحالي
     private readonly ICurrentTenantService _currentTenantService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     /// <summary>
     /// تهيئة خدمة المستخدمين وحقن خدمات الهوية وقاعدة البيانات والمستأجر الحالي.
@@ -41,7 +44,8 @@ public class UserService : IUserService
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         AppDbContext context,
-        ICurrentTenantService currentTenantService)
+        ICurrentTenantService currentTenantService,
+        IHttpContextAccessor httpContextAccessor)
     {
         // تعيين مدير المستخدمين
         _userManager = userManager;
@@ -51,6 +55,7 @@ public class UserService : IUserService
         _context = context;
         // تعيين خدمة المستأجر الحالي
         _currentTenantService = currentTenantService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <inheritdoc />
@@ -61,6 +66,8 @@ public class UserService : IUserService
         Guid? branchId,
         CancellationToken ct = default)
     {
+        Pagination.Normalize(ref pageNumber, ref pageSize);
+
         // جلب معرف المستأجر الحالي لتطبيق العزل المتعدد للمستأجرين
         var tenantId = _currentTenantService.TenantId;
 
@@ -178,7 +185,8 @@ public class UserService : IUserService
         // تهيئة مجموعة الصلاحيات الفعالة بالصلاحيات المباشرة
         var effectivePermissions = new HashSet<string>(directPermissions, StringComparer.OrdinalIgnoreCase);
         // فحص ما إذا كان المستخدم يمتلك دور الإدارة السيادي
-        bool isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isAdmin = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isTenantAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
         // إذا كان مسؤولاً رئيسياً يتم منحه كافة صلاحيات النظام تلقائياً
         if (isAdmin)
         {
@@ -186,6 +194,13 @@ public class UserService : IUserService
             foreach (var code in AppPermissions.GetAllPermissionCodes())
             {
                 // إضافة كود الصلاحية
+                effectivePermissions.Add(code);
+            }
+        }
+        else if (isTenantAdmin)
+        {
+            foreach (var code in AppPermissions.GetAllPermissionCodes().Where(p => p != Permissions.Roles.Manage))
+            {
                 effectivePermissions.Add(code);
             }
         }
@@ -236,6 +251,28 @@ public class UserService : IUserService
     {
         // استخراج معرف المستأجر الحالي
         var tenantId = _currentTenantService.TenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return ServiceResult<UserSummaryDto>.Failure("المستخدم غير مصرح له", ErrorCodes.Unauthorized);
+        }
+
+        var branchExists = await _context.Branches
+            .AsNoTracking()
+            .AnyAsync(b => b.Id == dto.BranchId && b.TenantId == tenantId && b.IsActive, ct);
+        if (!branchExists)
+        {
+            return ServiceResult<UserSummaryDto>.Failure("الفرع المحدد غير موجود أو غير نشط", ErrorCodes.BranchNotFound);
+        }
+
+        if (IsPrivilegedRole(dto.Role) && !CallerIsSuperAdmin())
+        {
+            return ServiceResult<UserSummaryDto>.Failure("لا يمكن إسناد دور إداري سيادي", ErrorCodes.Forbidden);
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Role) && !await _roleManager.RoleExistsAsync(dto.Role))
+        {
+            return ServiceResult<UserSummaryDto>.Failure("الدور المحدد غير موجود", ErrorCodes.ValidationError);
+        }
 
         // التحقق من عدم تكرار اسم المستخدم
         var existingUser = await _userManager.FindByNameAsync(dto.UserName);
@@ -259,17 +296,15 @@ public class UserService : IUserService
             }
         }
 
-        // تعيين معرف المستأجر المستهدف
-        var targetTenantId = dto.TenantId != Guid.Empty ? dto.TenantId : tenantId;
-
         // إنشاء كائن المستخدم الجديد
         var user = new ApplicationUser
         {
             UserName = dto.UserName,
             Email = dto.Email,
             PhoneNumber = dto.PhoneNumber,
-            TenantId = targetTenantId,
-            BranchId = dto.BranchId
+            TenantId = tenantId,
+            BranchId = dto.BranchId,
+            LockoutEnabled = true
         };
 
         // إنشاء المستخدم عبر UserManager مع تشفير كلمة المرور
@@ -286,12 +321,6 @@ public class UserService : IUserService
         // إسناد الدور المحدد للمستخدم إن تم تزويده
         if (!string.IsNullOrWhiteSpace(dto.Role))
         {
-            // التحقق من وجود الدور أو إنشاؤه تلقائياً
-            if (!await _roleManager.RoleExistsAsync(dto.Role))
-            {
-                // إنشاء الدور إن لم يكن موجوداً
-                await _roleManager.CreateAsync(new IdentityRole(dto.Role));
-            }
             // ربط المستخدم بالدور
             await _userManager.AddToRoleAsync(user, dto.Role);
         }
@@ -336,6 +365,24 @@ public class UserService : IUserService
             return ServiceResult<UserSummaryDto>.Failure("المستخدم غير موجود", ErrorCodes.UserNotFound);
         }
 
+        var branchExists = await _context.Branches
+            .AsNoTracking()
+            .AnyAsync(b => b.Id == dto.BranchId && b.TenantId == tenantId && b.IsActive, ct);
+        if (!branchExists)
+        {
+            return ServiceResult<UserSummaryDto>.Failure("الفرع المحدد غير موجود أو غير نشط", ErrorCodes.BranchNotFound);
+        }
+
+        if (IsPrivilegedRole(dto.Role) && !CallerIsSuperAdmin())
+        {
+            return ServiceResult<UserSummaryDto>.Failure("لا يمكن إسناد دور إداري سيادي", ErrorCodes.Forbidden);
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Role) && !await _roleManager.RoleExistsAsync(dto.Role))
+        {
+            return ServiceResult<UserSummaryDto>.Failure("الدور المحدد غير موجود", ErrorCodes.ValidationError);
+        }
+
         // تحديث البريد الإلكتروني
         user.Email = dto.Email;
         // تحديث رقم الهاتف
@@ -374,17 +421,17 @@ public class UserService : IUserService
             // إذا كان الدور المطلوب مختلفاً عن الأدوار الحالية
             if (!currentRoles.Contains(dto.Role))
             {
-                // التحقق من وجود الدور أو إنشاؤه
-                if (!await _roleManager.RoleExistsAsync(dto.Role))
-                {
-                    // إنشاء الدور الجديد
-                    await _roleManager.CreateAsync(new IdentityRole(dto.Role));
-                }
                 // إزالة الأدوار القديمة
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 // إسناد الدور الجديد
                 await _userManager.AddToRoleAsync(user, dto.Role);
             }
+        }
+
+        var sessionResetResult = await _userManager.UpdateSecurityStampAsync(user);
+        if (!sessionResetResult.Succeeded)
+        {
+            return ServiceResult<UserSummaryDto>.Failure("تم تحديث المستخدم لكن تعذر إبطال جلساته السابقة", ErrorCodes.ValidationError);
         }
 
         // جلب أدوار المستخدم المحدثة
@@ -519,10 +566,16 @@ public class UserService : IUserService
                 : new List<string>();
 
             // إعطاء دور المدير والمسؤول الرئيسي كافة صلاحيات النظام
-            if (r.Name != null && (r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+            if (r.Name != null && r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
             {
                 // جلب كافة صلاحيات النظام
                 perms = AppPermissions.GetAllPermissionCodes();
+            }
+            else if (r.Name != null && r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                perms = AppPermissions.GetAllPermissionCodes()
+                    .Where(p => p != Permissions.Roles.Manage)
+                    .ToList();
             }
 
             // إضافة كائن الدور إلى القائمة
@@ -593,6 +646,10 @@ public class UserService : IUserService
             return ServiceResult.Failure("لا يمكن حذف دور المسؤول الرئيسي", ErrorCodes.ValidationError);
         }
 
+        var affectedUsers = string.IsNullOrWhiteSpace(role.Name)
+            ? Array.Empty<ApplicationUser>()
+            : (await _userManager.GetUsersInRoleAsync(role.Name)).ToArray();
+
         // حذف الدور عبر مدير الأدوار
         var result = await _roleManager.DeleteAsync(role);
         // التحقق من نجاح الحذف
@@ -603,6 +660,8 @@ public class UserService : IUserService
             // إرجاع خطأ الحذف
             return ServiceResult.Failure($"فشل حذف الدور: {errors}", ErrorCodes.ValidationError);
         }
+
+        await InvalidateUserSessionsAsync(affectedUsers);
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
@@ -640,10 +699,16 @@ public class UserService : IUserService
         // قائمة لتجميع صلاحيات الدور
         List<string> perms;
         // إذا كان الدور هو دور الإدارة الكاملة
-        if (role.Name != null && (role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase) || role.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+        if (role.Name != null && role.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
         {
             // منحه جميع أكواد الصلاحيات
             perms = AppPermissions.GetAllPermissionCodes();
+        }
+        else if (role.Name != null && role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            perms = AppPermissions.GetAllPermissionCodes()
+                .Where(p => p != Permissions.Roles.Manage)
+                .ToList();
         }
         else
         {
@@ -685,6 +750,10 @@ public class UserService : IUserService
             return ServiceResult.Failure("دور المسؤول الرئيسي يمتلك كافة الصلاحيات دائماً ولا يمكن تقييده", ErrorCodes.ValidationError);
         }
 
+        var affectedUsers = string.IsNullOrWhiteSpace(role.Name)
+            ? Array.Empty<ApplicationUser>()
+            : (await _userManager.GetUsersInRoleAsync(role.Name)).ToArray();
+
         // جلب المطالبات السابقة المسجلة للدور
         var existingClaims = await _roleManager.GetClaimsAsync(role);
         // حذف المطالبات السابقة التي تمثل صلاحيات
@@ -706,6 +775,8 @@ public class UserService : IUserService
                 await _roleManager.AddClaimAsync(role, new Claim(Permissions.ClaimType, p));
             }
         }
+
+        await InvalidateUserSessionsAsync(affectedUsers);
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
@@ -767,7 +838,8 @@ public class UserService : IUserService
         // تهيئة مجموعة الصلاحيات الفعالة
         var effectivePerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // فحص ما إذا كان المستخدم مسؤولاً رئيسياً
-        bool isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isAdmin = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        bool isTenantAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
         // إذا كان مسؤولاً رئيسياً تمنح له كافة الصلاحيات
         if (isAdmin)
@@ -776,6 +848,13 @@ public class UserService : IUserService
             foreach (var code in AppPermissions.GetAllPermissionCodes())
             {
                 // إضافة الصلاحية
+                effectivePerms.Add(code);
+            }
+        }
+        else if (isTenantAdmin)
+        {
+            foreach (var code in AppPermissions.GetAllPermissionCodes().Where(p => p != Permissions.Roles.Manage))
+            {
                 effectivePerms.Add(code);
             }
         }
@@ -859,7 +938,29 @@ public class UserService : IUserService
             }
         }
 
+        var sessionResetResult = await _userManager.UpdateSecurityStampAsync(user);
+        if (!sessionResetResult.Succeeded)
+        {
+            return ServiceResult.Failure("تم تحديث الصلاحيات لكن تعذر إبطال جلسات المستخدم السابقة", ErrorCodes.ValidationError);
+        }
+
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
+    }
+
+    private bool CallerIsSuperAdmin() =>
+        _httpContextAccessor.HttpContext?.User.IsInRole("SuperAdmin") == true;
+
+    private static bool IsPrivilegedRole(string? roleName) =>
+        !string.IsNullOrWhiteSpace(roleName) &&
+        (roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+         roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+    private async Task InvalidateUserSessionsAsync(IEnumerable<ApplicationUser> users)
+    {
+        foreach (var user in users)
+        {
+            await _userManager.UpdateSecurityStampAsync(user);
+        }
     }
 }

@@ -83,11 +83,17 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.SalesInvoiceNotFound
         or ErrorCodes.SalesReturnNotFound
         or ErrorCodes.StockTransferNotFound
-        or ErrorCodes.StockAdjustmentNotFound => 404,
+        or ErrorCodes.StockAdjustmentNotFound
+        or ErrorCodes.SafeNotFound
+        or ErrorCodes.SafeTransactionNotFound
+        or ErrorCodes.ExpenseCategoryNotFound
+        or ErrorCodes.ExpenseNotFound => 404,
 
         // مطابقة حالات فشل المصادقة أو عدم التحقق من هوية وبيانات تسجيل الدخول (401 Unauthorized)
         ErrorCodes.Unauthorized
         or ErrorCodes.InvalidCredentials => 401,
+
+        ErrorCodes.Forbidden => 403,
 
         // مطابقة حالات التضارب وتكرار السجلات الفريدة أو تعارض التزامن (409 Conflict)
         ErrorCodes.UserAlreadyExists
@@ -105,6 +111,9 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.SalesReturnNumberExists
         or ErrorCodes.StockTransferNumberExists
         or ErrorCodes.StockAdjustmentNumberExists
+        or ErrorCodes.SafeNameExists
+        or ErrorCodes.ExpenseCategoryNameExists
+        or ErrorCodes.ExpenseNumberExists
         or ErrorCodes.ConcurrencyError => 409,
 
         // مطابقة حالات القيود المنطقية والعلاقات المانعة للحذف أو التعديل (422 Unprocessable Entity)
@@ -112,7 +121,9 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.CategoryHasProducts
         or ErrorCodes.UnitInUse
         or ErrorCodes.CategoryCircularRef
-        or ErrorCodes.WarehouseHasStock => 422,
+        or ErrorCodes.WarehouseHasStock
+        or ErrorCodes.SafeHasTransactions
+        or ErrorCodes.ExpenseCategoryHasExpenses => 422,
 
         // مطابقة أخطاء التحقق وقواعد الأعمال والمدخلات غير الصالحة (400 Bad Request)
         ErrorCodes.InvalidFileType
@@ -124,7 +135,10 @@ public abstract class BaseApiController : ControllerBase
         or ErrorCodes.PurchaseOrderInvalidStatus
         or ErrorCodes.SalesInvoiceInvalidStatus
         or ErrorCodes.StockTransferInvalidStatus
-        or ErrorCodes.StockTransferSameWarehouse => 400,
+        or ErrorCodes.StockTransferSameWarehouse
+        or ErrorCodes.InsufficientSafeBalance
+        or ErrorCodes.SafeSameTransfer
+        or ErrorCodes.SafeInactive => 400,
 
         // الحالة الافتراضية لأي كود خطأ عام أو غير معرّف بشكل صريح (400 Bad Request)
         _ => 400

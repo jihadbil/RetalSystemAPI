@@ -47,7 +47,7 @@ public class ProductImageService : IProductImageService
     public async Task<ServiceResult<IReadOnlyList<ProductImageResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         // استعلام كافة الصور التابعة للمنتج بالمعرف
-        var images = await _unitOfWork.ProductImages.FindAsync(i => i.ProductId == productId, ct);
+        var images = await _unitOfWork.Products.FindImagesAsync(i => i.ProductId == productId, ct);
         // تحويل قائمة الكيانات إلى قائمة كائنات نقل البيانات DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductImageResponseDto>>(images);
 
@@ -74,7 +74,7 @@ public class ProductImageService : IProductImageService
         if (dto.BarcodeId.HasValue)
         {
             // الاستعلام عن وجود الباركود
-            bool barcodeExists = await _unitOfWork.ProductBarCodes.ExistsAsync(b => b.Id == dto.BarcodeId.Value, ct);
+            bool barcodeExists = await _unitOfWork.Products.BarCodeExistsAsync(b => b.Id == dto.BarcodeId.Value, ct);
             // في حال عدم وجود الباركود
             if (!barcodeExists)
             {
@@ -84,7 +84,7 @@ public class ProductImageService : IProductImageService
         }
 
         // فحص ما إذا كان للمنتج أي صور سابقة
-        bool hasImages = await _unitOfWork.ProductImages.ExistsAsync(i => i.ProductId == productId, ct);
+        bool hasImages = await _unitOfWork.Products.ImageExistsAsync(i => i.ProductId == productId, ct);
 
         // تحويل بيانات الإدخال إلى كيان ProductImage
         var imageEntity = _mapper.Map<ProductImage>(dto);
@@ -94,7 +94,7 @@ public class ProductImageService : IProductImageService
         imageEntity.IsDefault = dto.IsDefault || !hasImages;
 
         // إضافة كيان الصورة إلى المستودع
-        await _unitOfWork.ProductImages.AddAsync(imageEntity, ct);
+        await _unitOfWork.Products.AddImageAsync(imageEntity, ct);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -108,7 +108,7 @@ public class ProductImageService : IProductImageService
     public async Task<ServiceResult> RemoveImageAsync(Guid imageId, CancellationToken ct = default)
     {
         // استعلام الصورة بالمعرف
-        var imageEntity = await _unitOfWork.ProductImages.GetByIdAsync(imageId, ct);
+        var imageEntity = await _unitOfWork.Products.GetImageByIdAsync(imageId, ct);
         // التحقق من وجود سجل الصورة
         if (imageEntity is null)
         {
@@ -120,7 +120,7 @@ public class ProductImageService : IProductImageService
         await _fileUploadService.DeleteAsync(imageEntity.ImageUrl, ct);
 
         // حذف سجل الصورة نهائياً من قاعدة البيانات
-        _unitOfWork.ProductImages.HardDelete(imageEntity);
+        _unitOfWork.Products.HardDeleteImage(imageEntity);
         // حفظ التغييرات
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -132,7 +132,7 @@ public class ProductImageService : IProductImageService
     public async Task<ServiceResult> SetDefaultImageAsync(Guid imageId, CancellationToken ct = default)
     {
         // استعلام الصورة المستهدفة بالمعرف
-        var targetImage = await _unitOfWork.ProductImages.GetByIdAsync(imageId, ct);
+        var targetImage = await _unitOfWork.Products.GetImageByIdAsync(imageId, ct);
         // التحقق من وجود الصورة
         if (targetImage is null)
         {
@@ -145,14 +145,14 @@ public class ProductImageService : IProductImageService
         try
         {
             // جلب كافة الصور المرتبطة بنفس المنتج
-            var allImages = await _unitOfWork.ProductImages.FindAsync(i => i.ProductId == targetImage.ProductId, ct);
+            var allImages = await _unitOfWork.Products.FindImagesAsync(i => i.ProductId == targetImage.ProductId, ct);
             // تعديل حالة الافتراضية: جعل الصورة المختارة فقط افتراضية
             foreach (var img in allImages)
             {
                 // تعيين حالة الافتراضية
                 img.IsDefault = (img.Id == imageId);
                 // تحديث السجل في المستودع
-                _unitOfWork.ProductImages.Update(img);
+                _unitOfWork.Products.UpdateImage(img);
             }
 
             // تأكيد وحفظ المعاملة

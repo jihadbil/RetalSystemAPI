@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using RetalSystemAPI.Models.DTOs.MappingProfiles;
 using RetalSystemAPI.Services.Auth.Implementations;
 using RetalSystemAPI.Services.Auth.Interfaces;
+using RetalSystemAPI.Services.Accounting.Implementations;
+using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Branch.Implementations;
 using RetalSystemAPI.Services.Branch.Interfaces;
 using RetalSystemAPI.Services.Catalog.Implementations;
@@ -41,15 +43,20 @@ public static class ServicesLayerExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // تفعيل التخزين المؤقت في الذاكرة لتسريع استعلامات لوحة التحكم والإحصائيات
+        services.AddMemoryCache();
+
         // ── AutoMapper Profiles ──────────────────────────────────
         // تسجيل ملفات التحويل للكيانات والـ DTOs عبر كافة التجميعات المطلوبة
         services.AddAutoMapper(
+            _ => { },
             typeof(CatalogMappingProfile).Assembly,
             typeof(BranchMappingProfile).Assembly,
             typeof(TenantMappingProfile).Assembly,
             typeof(SupplierMappingProfile).Assembly,
             typeof(WarehouseMappingProfile).Assembly,
-            typeof(PurchaseMappingProfile).Assembly
+            typeof(PurchaseMappingProfile).Assembly,
+            typeof(AccountingMappingProfile).Assembly
         );
 
         // ── Services Registration ─────────────────────────────────
@@ -121,6 +128,19 @@ public static class ServicesLayerExtensions
 
         // تسجيل خدمة لوحة التحكم والإحصائيات بنطاق Scoped
         services.AddScoped<IDashboardService, DashboardService>();
+
+        // ── Accounting Services ──────────────────────────────────
+        // تسجيل خدمة إدارة الخزائن والبنوك والحركات والتحويلات بنطاق Scoped
+        services.AddScoped<RetalSystemAPI.Services.Accounting.Interfaces.ISafeService, RetalSystemAPI.Services.Accounting.Implementations.SafeService>();
+        services.AddScoped<IFinancialPostingService, FinancialPostingService>();
+        services.AddScoped<IFinancialReconciliationService, FinancialReconciliationService>();
+        services.AddScoped<IPosCashService, PosCashService>();
+
+        // تسجيل خدمة إدارة تصنيفات المصروفات بنطاق Scoped
+        services.AddScoped<RetalSystemAPI.Services.Accounting.Interfaces.IExpenseCategoryService, RetalSystemAPI.Services.Accounting.Implementations.ExpenseCategoryService>();
+
+        // تسجيل خدمة إدارة سندات المصروفات التشغيلية بنطاق Scoped
+        services.AddScoped<RetalSystemAPI.Services.Accounting.Interfaces.IExpenseService, RetalSystemAPI.Services.Accounting.Implementations.ExpenseService>();
 
         // تسجيل خدمة إدارة حسابات المستخدمين وصلاحياتهم بنطاق Scoped
         services.AddScoped<RetalSystemAPI.Services.Users.Interfaces.IUserService, RetalSystemAPI.Services.Users.Implementations.UserService>();

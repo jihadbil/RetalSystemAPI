@@ -64,8 +64,9 @@ public class HasPermissionAttribute : Attribute, IAsyncAuthorizationFilter
             return Task.CompletedTask;
         }
 
-        // 2. السماح التلقائي والمباشر لمسؤولي النظام الحاملين لأدوار Admin أو SuperAdmin
-        if (user.IsInRole("Admin") || user.IsInRole("SuperAdmin"))
+        // 2. تجاوز فحص الصلاحيات محصور بمسؤول المنصة فقط. مدير المستأجر
+        // يخضع لمطالبات الصلاحيات مثل بقية المستخدمين.
+        if (user.IsInRole("SuperAdmin"))
         {
             // تخطي فحص الصلاحيات الفردية والمتابعة بنجاح لمسؤولي النظام
             return Task.CompletedTask;

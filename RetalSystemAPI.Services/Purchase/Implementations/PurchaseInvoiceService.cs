@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using RetalSystemAPI.Models.Accounting;
+using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Purchase;
@@ -11,6 +13,7 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Purchase;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
+using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Purchase.Interfaces;
 using RetalSystemAPI.Services.Purchase.Specifications;
 
@@ -25,18 +28,20 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
     private readonly IUnitOfWork _unitOfWork;
     // محول البيانات لتحويل الكيانات إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
+    private readonly IFinancialPostingService _financialPosting;
 
     /// <summary>
     /// تهيئة خدمة فواتير المشتريات مع حقن وحدة العمل والمحول.
     /// </summary>
     /// <param name="unitOfWork">وحدة العمل للتعامل مع قاعدة البيانات</param>
     /// <param name="mapper">خدمة تحويل البيانات</param>
-    public PurchaseInvoiceService(IUnitOfWork unitOfWork, IMapper mapper)
+    public PurchaseInvoiceService(IUnitOfWork unitOfWork, IMapper mapper, IFinancialPostingService financialPosting)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
         // تعيين مرجع محول الكيانات
         _mapper = mapper;
+        _financialPosting = financialPosting;
     }
 
     /// <inheritdoc />
@@ -90,13 +95,15 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
     public async Task<ServiceResult<PurchaseInvoiceResponseDto>> CreateAsync(CreatePurchaseInvoiceDto dto, CancellationToken ct = default)
     {
         // التحقق من وجود المورد المحدد في قاعدة البيانات
-        bool supplierExists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Id == dto.SupplierId, ct);
+        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(dto.SupplierId, ct);
         // في حال عدم وجود المورد
-        if (!supplierExists)
+        if (supplier is null)
         {
             // إرجاع خطأ بعدم وجود المورد
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المورد المحدد غير موجود", ErrorCodes.SupplierNotFound);
         }
+        if (!supplier.IsActive)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المورد المحدد معطل حالياً", ErrorCodes.ValidationError);
 
         // التحقق من وجود الفرع المسجل
         bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
@@ -131,6 +138,15 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             // إرجاع خطأ وجوب إضافة بنود للفاتورة
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("يجب إضافة بند واحد على الأقل لفاتورة المشتريات", ErrorCodes.ValidationError);
         }
+
+        foreach (var item in dto.Items)
+        {
+            var gross = item.Quantity * item.UnitPrice;
+            if (item.Quantity <= 0 || item.UnitPrice < 0 || item.DiscountAmount < 0 || item.DiscountAmount > gross)
+                return ServiceResult<PurchaseInvoiceResponseDto>.Failure("بيانات كمية أو سعر أو خصم أحد البنود غير صحيحة", ErrorCodes.ValidationError);
+        }
+        if (dto.DiscountAmount < 0 || dto.TaxAmount < 0)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("الخصم والضريبة لا يقبلان قيماً سالبة", ErrorCodes.ValidationError);
 
         // تحويل بيانات الإدخال إلى كيان فاتورة المشتريات
         var invoice = _mapper.Map<PurchaseInvoice>(dto);
@@ -188,20 +204,29 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         // احتساب المبلغ الإجمالي بعد الخصومات والضرائب
         invoice.TotalAmount = Math.Max(0, invoice.SubTotal - invoice.DiscountAmount + invoice.TaxAmount);
 
-        // ضبط المبالغ المدفوعة والمتبقية وفق حالة سداد الفاتورة
-        if (invoice.Status == InvoiceStatus.Paid)
+        if (invoice.DiscountAmount > invoice.SubTotal + invoice.TaxAmount)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("خصم الفاتورة يتجاوز قيمة البنود والضريبة", ErrorCodes.ValidationError);
+        if (dto.PaidAmount < 0 || dto.PaidAmount > invoice.TotalAmount)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة", ErrorCodes.ValidationError);
+        invoice.PaidAmount = dto.PaidAmount;
+        invoice.RemainingAmount = invoice.TotalAmount - invoice.PaidAmount;
+        invoice.Status = invoice.PaidAmount == invoice.TotalAmount
+            ? InvoiceStatus.Paid
+            : invoice.PaidAmount > 0 ? InvoiceStatus.PartiallyPaid : InvoiceStatus.Pending;
+
+        var safeResult = await _financialPosting.ResolveSafeAsync(
+            dto.BranchId, dto.PaymentSafeId, invoice.PaidAmount, outbound: true, ct);
+        if (!safeResult.IsSuccess)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+        Safe? paymentSafe = safeResult.Data;
+        invoice.PaymentSafeId = paymentSafe?.Id;
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            // إذا كانت مدفوعة بالكامل يتم سداد المبلغ الإجمالي وتصفير المتبقي
-            invoice.PaidAmount = invoice.TotalAmount;
-            invoice.RemainingAmount = 0;
-        }
-        else
-        {
-            // احتساب المبلغ المتبقي بناء على المبلغ المدفوع جزئياً
-            invoice.RemainingAmount = Math.Max(0, invoice.TotalAmount - invoice.PaidAmount);
-        }
 
         // إضافة فاتورة المشتريات إلى المستودع
+        if (invoice.Id == Guid.Empty) invoice.Id = Guid.NewGuid();
         await _unitOfWork.PurchaseInvoices.AddAsync(invoice, ct);
 
         // ── زيادة رصيد المخزون فوراً وتحديث أسعار التكلفة عند إنشاء الفاتورة وإضافة البند ──
@@ -210,8 +235,31 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         // تحديث سعر التكلفة ومتوسط السعر للأصناف الواردة في الفاتورة
         await UpdateProductsCostAsync(invoice.Items, ct);
 
+        await _financialPosting.PostSupplierBalanceAsync(supplier, invoice.TotalAmount,
+            SupplierTransactionType.PurchaseInvoice, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, invoice.InvoiceDate, invoice.PaymentMethod,
+            $"فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+        await _financialPosting.PostSupplierBalanceAsync(supplier, -invoice.PaidAmount,
+            SupplierTransactionType.Payment, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, invoice.InvoiceDate, invoice.PaymentMethod,
+            $"دفعة فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+
+        if (paymentSafe is not null)
+        {
+            await _financialPosting.PostSafeBalanceAsync(paymentSafe, -invoice.PaidAmount,
+                FinancialDocumentType.PurchaseInvoice, invoice.Id, invoice.InvoiceDate,
+                $"سداد فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+        }
+
         // حفظ كافة التغييرات وحركات المخزون في معاملة واحدة
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إعادة تحميل الفاتورة بالتفاصيل الكاملة لبناء DTO الاستجابة
         var createdInvoice = await _unitOfWork.PurchaseInvoices.FirstOrDefaultAsync(new PurchaseInvoiceWithDetailsSpec(invoice.Id), ct) ?? invoice;
@@ -234,19 +282,59 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("فاتورة المشتريات غير موجودة", ErrorCodes.PurchaseOrderNotFound);
         }
 
-        // قاعدة قفل التعديل: لا يُسمح بتعديل أي فاتورة مشتريات مغلقة أو مدفوعة ومرحلة للمخازن
-        if (invoice.Status == InvoiceStatus.Paid)
+        // لا يعدل بعد الإغلاق؛ الفاتورة المفتوحة Pending فقط تقبل الإضافة التراكمية.
+        if (invoice.Status is not InvoiceStatus.Draft and not InvoiceStatus.Pending)
         {
-            // إرجاع خطأ بمنع تعديل الفاتورة المغلقة
-            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة مشتريات مغلقة ومرحلة للمخازن", ErrorCodes.ValidationError);
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة مشتريات مرحلة — استخدم الإلغاء أو مرتجع المشتريات", ErrorCodes.ValidationError);
         }
 
-        // منع تعديل الفواتير الملغاة أو الباطلة
-        if (invoice.Status == InvoiceStatus.Cancelled || invoice.Status == InvoiceStatus.Voided)
+        if (dto.SupplierId != invoice.SupplierId || dto.BranchId != invoice.BranchId || dto.WarehouseId != invoice.WarehouseId)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure(
+                "لا يمكن تغيير المورد أو الفرع أو المستودع بعد بدء ترحيل بنود الفاتورة",
+                ErrorCodes.ValidationError);
+
+        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(invoice.SupplierId, ct);
+        if (supplier is null)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المورد المرتبط بالفاتورة غير موجود", ErrorCodes.SupplierNotFound);
+
+        if (dto.Items is not null)
         {
-            // إرجاع خطأ بعدم جواز تعديل فاتورة ملغاة
-            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة مشتريات ملغاة أو باطلة", ErrorCodes.PurchaseOrderInvalidStatus);
+            foreach (var item in dto.Items)
+            {
+                var gross = item.Quantity * item.UnitPrice;
+                if (item.Quantity <= 0 || item.UnitPrice < 0 || item.DiscountAmount < 0 || item.DiscountAmount > gross)
+                    return ServiceResult<PurchaseInvoiceResponseDto>.Failure("بيانات كمية أو سعر أو خصم أحد البنود غير صحيحة", ErrorCodes.ValidationError);
+            }
         }
+        if (dto.DiscountAmount < 0 || dto.TaxAmount < 0)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("الخصم والضريبة لا يقبلان قيماً سالبة", ErrorCodes.ValidationError);
+
+        var oldTotal = invoice.TotalAmount;
+        var oldPaid = invoice.PaidAmount;
+        var newSubTotal = dto.Items?.Sum(i => Math.Max(0, (i.Quantity * i.UnitPrice) - i.DiscountAmount)) ?? invoice.SubTotal;
+        var newTotal = newSubTotal - dto.DiscountAmount + dto.TaxAmount;
+        if (newTotal < 0)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("خصم الفاتورة يتجاوز قيمة البنود والضريبة", ErrorCodes.ValidationError);
+        var newPaid = dto.Status == InvoiceStatus.Paid ? newTotal : dto.PaidAmount;
+        if (newPaid < 0 || newPaid > newTotal)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة", ErrorCodes.ValidationError);
+
+        var paidDelta = newPaid - oldPaid;
+        Safe? paymentSafe = null;
+        if (paidDelta != 0)
+        {
+            if (invoice.PaymentSafeId.HasValue && dto.PaymentSafeId.HasValue && invoice.PaymentSafeId != dto.PaymentSafeId)
+                return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تغيير خزينة فاتورة تحتوي على دفعات", ErrorCodes.ValidationError);
+            var safeResult = await _financialPosting.ResolveSafeAsync(
+                invoice.BranchId, invoice.PaymentSafeId ?? dto.PaymentSafeId, Math.Abs(paidDelta), outbound: paidDelta > 0, ct);
+            if (!safeResult.IsSuccess)
+                return ServiceResult<PurchaseInvoiceResponseDto>.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+            paymentSafe = safeResult.Data;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
 
         // التحقق من وجود المستودع الجديد
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(dto.WarehouseId, ct);
@@ -317,7 +405,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                     // إضافة البند لقائمة البنود الجديدة
                     newlyAddedItems.Add(invItem);
                     // إضافة البند لقاعدة البيانات
-                    await _unitOfWork.PurchaseInvoiceItems.AddAsync(invItem, ct);
+                    await _unitOfWork.PurchaseInvoices.AddItemAsync(invItem, ct);
                 }
 
                 // زيادة المخزون وتحديث أسعار التكلفة للبند/البنود الجديدة المضافة فقط!
@@ -346,23 +434,23 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                 var removedItemIds = itemsToRemove.Select(i => i.Id).ToList();
 
                 // استعلام الكيانات المتتبعة لتفريعات النكهات المحذوفة
-                var trackedBreakdowns = await _unitOfWork.PurchaseInvoiceItemBreakdowns.FindTrackedAsync(
+                var trackedBreakdowns = await _unitOfWork.PurchaseInvoices.FindBreakdownsTrackedAsync(
                     b => removedBreakdownIds.Contains(b.Id), ct);
                 // حذف كل تفريعة من قاعدة البيانات
                 foreach (var trackedBd in trackedBreakdowns)
                 {
                     // حذف صلب لتفريعة النكهة
-                    _unitOfWork.PurchaseInvoiceItemBreakdowns.HardDelete(trackedBd);
+                    _unitOfWork.PurchaseInvoices.HardDeleteBreakdown(trackedBd);
                 }
 
                 // استعلام الكيانات المتتبعة لبنود الفاتورة المحذوفة
-                var trackedItems = await _unitOfWork.PurchaseInvoiceItems.FindTrackedAsync(
+                var trackedItems = await _unitOfWork.PurchaseInvoices.FindItemsTrackedAsync(
                     i => removedItemIds.Contains(i.Id), ct);
                 // حذف كل بند من المستودع
                 foreach (var trackedItem in trackedItems)
                 {
                     // حذف صلب لبند الفاتورة
-                    _unitOfWork.PurchaseInvoiceItems.HardDelete(trackedItem);
+                    _unitOfWork.PurchaseInvoices.HardDeleteItem(trackedItem);
                 }
             }
         }
@@ -394,28 +482,17 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         // تحديث الملاحظات
         invoice.Notes = dto.Notes;
         // إعادة احتساب الإجمالي الفرعي
-        invoice.SubTotal = dto.Items?.Sum(i => Math.Max(0, (i.Quantity * i.UnitPrice) - i.DiscountAmount)) ?? invoice.SubTotal;
+        invoice.SubTotal = newSubTotal;
         // احتساب الإجمالي النهائي
-        invoice.TotalAmount = Math.Max(0, invoice.SubTotal - invoice.DiscountAmount + invoice.TaxAmount);
+        invoice.TotalAmount = newTotal;
 
         // فحص ما إذا كان الطلب يتضمن إغلاق الفاتورة (التحويل إلى Paid)
-        bool isClosing = dto.Status == InvoiceStatus.Paid;
-        // تعيين الحالة الجديدة
-        invoice.Status = dto.Status;
-
-        // ضبط المدفوع والمتبقي عند الإغلاق أو الدفع الجزئي
-        if (isClosing)
-        {
-            // في حالة الإغلاق يتم دفع كامل المبلغ وتصفير المتبقي
-            invoice.PaidAmount = invoice.TotalAmount;
-            invoice.RemainingAmount = 0;
-        }
-        else
-        {
-            // تحديث المبلغ المدفوع واحتساب المتبقي
-            invoice.PaidAmount = dto.PaidAmount;
-            invoice.RemainingAmount = Math.Max(0, invoice.TotalAmount - invoice.PaidAmount);
-        }
+        invoice.PaidAmount = newPaid;
+        invoice.RemainingAmount = newTotal - newPaid;
+        invoice.Status = newPaid == newTotal
+            ? InvoiceStatus.Paid
+            : newPaid > 0 ? InvoiceStatus.PartiallyPaid : InvoiceStatus.Pending;
+        invoice.PaymentSafeId = paymentSafe?.Id ?? invoice.PaymentSafeId;
 
         // تفريغ كائنات الربط المنفصلة لتجنب أي تعارض في تتبع الكيانات
         invoice.Items = null!;
@@ -426,8 +503,30 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
 
         // تحديث الفاتورة في المستودع
         _unitOfWork.PurchaseInvoices.Update(invoice);
+
+        await _financialPosting.PostSupplierBalanceAsync(supplier, newTotal - oldTotal,
+            SupplierTransactionType.PurchaseInvoice, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, invoice.InvoiceDate, invoice.PaymentMethod,
+            $"تعديل فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+        await _financialPosting.PostSupplierBalanceAsync(supplier, -paidDelta,
+            SupplierTransactionType.Payment, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, invoice.InvoiceDate, invoice.PaymentMethod,
+            $"تعديل دفعة فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+        if (paymentSafe is not null)
+        {
+            await _financialPosting.PostSafeBalanceAsync(paymentSafe, -paidDelta,
+                FinancialDocumentType.PurchaseInvoice, invoice.Id, invoice.InvoiceDate,
+                $"تعديل سداد فاتورة مشتريات رقم {invoice.InvoiceNumber}", ct);
+        }
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إعادة جلب الفاتورة المحدثة مع تفاصيلها لبناء كائن الاستجابة
         var updatedInvoice = await _unitOfWork.PurchaseInvoices.FirstOrDefaultAsync(new PurchaseInvoiceWithDetailsSpec(id), ct) ?? invoice;
@@ -471,7 +570,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
 
             // جلب الباركودات الافتراضية دفعة واحدة لتفادي استعلامات N+1
             var defaultBarcodeByProduct = fallbackProductIds.Count > 0
-                ? (await _unitOfWork.ProductBarCodes.FindAsync(
+                ? (await _unitOfWork.Products.FindBarCodesAsync(
                     b => fallbackProductIds.Contains(b.ProductId), ct))
                     .GroupBy(b => b.ProductId)
                     .ToDictionary(g => g.Key, g => g.First())
@@ -506,7 +605,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             var barcodeIdList = allBarcodeIds.ToList();
             // استعلام أرصدة المخزن المتتبعة للباركودات المعنية دفعة واحدة
             var stocksByBarcode = barcodeIdList.Count > 0
-                ? (await _unitOfWork.StorgeStocks.FindTrackedAsync(
+                ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
                     s => s.WarehouseId == warehouse.Id && barcodeIdList.Contains(s.ProductBarcodeId), ct))
                     .ToDictionary(s => s.ProductBarcodeId)
                 : new Dictionary<Guid, StorgeStock>();
@@ -538,7 +637,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                                 MinStockLevel = 0
                             };
                             // إضافة السجل للمستودع
-                            await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                            await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                             // حفظ السجل في القاموس المحلي
                             stocksByBarcode[bd.ProductBarCodeId] = newStock;
                         }
@@ -579,7 +678,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                             MinStockLevel = 0
                         };
                         // إضافة السجل الجديد
-                        await _unitOfWork.StorgeStocks.AddAsync(newStock, ct);
+                        await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
                         // تخزينه في القاموس
                         stocksByBarcode[barcodeId.Value] = newStock;
                     }
@@ -593,7 +692,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             var productIds = itemsList.Select(i => i.ProductId).Distinct().ToList();
             // استعلام أرصدة صالة العرض المتتبعة دفعة واحدة للأصناف المشاركة
             var stocksByProduct = productIds.Count > 0
-                ? (await _unitOfWork.ShowroomStocks.FindTrackedAsync(
+                ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
                     s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
                     .ToDictionary(s => s.ProductId)
                 : new Dictionary<Guid, ShowroomStock>();
@@ -619,7 +718,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                         MinStockLevel = 0
                     };
                     // إضافة سجل رصيد الصالة
-                    await _unitOfWork.ShowroomStocks.AddAsync(newStock, ct);
+                    await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
                     // حفظ السجل في القاموس
                     stocksByProduct[item.ProductId] = newStock;
                 }
@@ -687,6 +786,29 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             return ServiceResult.Failure("الفاتورة ملغاة بالفعل", ErrorCodes.PurchaseOrderInvalidStatus);
         }
 
+        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(invoice.SupplierId, ct);
+        if (supplier is null)
+            return ServiceResult.Failure("المورد المرتبط بالفاتورة غير موجود", ErrorCodes.SupplierNotFound);
+
+        Safe? paymentSafe = null;
+        if (invoice.PaidAmount > 0)
+        {
+            if (!invoice.PaymentSafeId.HasValue)
+                return ServiceResult.Failure(
+                    "لا يمكن إلغاء فاتورة قديمة مدفوعة قبل تحديد خزينة التسوية لها",
+                    ErrorCodes.ValidationError);
+
+            var safeResult = await _financialPosting.ResolveSafeAsync(
+                invoice.BranchId, invoice.PaymentSafeId, invoice.PaidAmount, outbound: false, ct);
+            if (!safeResult.IsSuccess)
+                return ServiceResult.Failure(safeResult.ErrorMessage!, safeResult.ErrorCode);
+            paymentSafe = safeResult.Data;
+        }
+
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+
         // عكس تأثير المخزون بخصم الكميات التي كانت قد أضيفت بموجب الفاتورة
         if (invoice.Items != null && invoice.Items.Any())
         {
@@ -698,8 +820,31 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         invoice.Status = InvoiceStatus.Cancelled;
         // تعليم الفاتورة كمحدثة
         _unitOfWork.PurchaseInvoices.Update(invoice);
+
+        await _financialPosting.PostSupplierBalanceAsync(supplier, invoice.PaidAmount,
+            SupplierTransactionType.Reversal, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, DateTime.UtcNow, invoice.PaymentMethod,
+            $"عكس دفعة فاتورة مشتريات ملغاة رقم {invoice.InvoiceNumber}", ct);
+        await _financialPosting.PostSupplierBalanceAsync(supplier, -invoice.TotalAmount,
+            SupplierTransactionType.Reversal, invoice.BranchId, FinancialDocumentType.PurchaseInvoice,
+            invoice.Id, DateTime.UtcNow, invoice.PaymentMethod,
+            $"عكس فاتورة مشتريات ملغاة رقم {invoice.InvoiceNumber}", ct);
+
+        if (paymentSafe is not null)
+        {
+            await _financialPosting.PostSafeBalanceAsync(paymentSafe, invoice.PaidAmount,
+                FinancialDocumentType.PurchaseInvoice, invoice.Id, DateTime.UtcNow,
+                $"استرداد سداد فاتورة مشتريات ملغاة رقم {invoice.InvoiceNumber}", ct);
+        }
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
@@ -725,6 +870,11 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             // إرجاع خطأ منع الحذف
             return ServiceResult.Failure("لا يمكن حذف فاتورة مشتريات لها مرتجعات مرتبطة — احذف المرتجعات أولاً", ErrorCodes.ValidationError);
         }
+
+        if (invoice.Status != InvoiceStatus.Draft)
+            return ServiceResult.Failure(
+                "لا يجوز حذف فاتورة مرحلة حفاظاً على سجل التدقيق؛ استخدم الإلغاء بدلاً من الحذف",
+                ErrorCodes.ValidationError);
 
         // عكس المخزون في حال لم تكن الفاتورة ملغاة مسبقاً
         if (invoice.Status != InvoiceStatus.Cancelled && invoice.Items != null && invoice.Items.Any())

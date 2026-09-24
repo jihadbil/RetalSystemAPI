@@ -17,7 +17,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -153,6 +153,600 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.CashSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApprovedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CashDrawerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CashierUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosingNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("CountedClosingBalance")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Difference")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ExpectedClosingBalance")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("OpeningFloat")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("PosTerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CashDrawerId")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (1,2) AND [IsDeleted] = 0");
+
+                    b.HasIndex("CashierUserId")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (1,2) AND [IsDeleted] = 0");
+
+                    b.HasIndex("PosTerminalId");
+
+                    b.HasIndex("TenantId", "OpenedAt");
+
+                    b.ToTable("CashSessions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashSessions_Amounts", "[OpeningFloat] >= 0 AND [ExpectedClosingBalance] >= 0 AND ([CountedClosingBalance] IS NULL OR [CountedClosingBalance] >= 0)");
+
+                            t.HasCheckConstraint("CK_CashSessions_Status", "[Status] IN (1,2,3,4)");
+                        });
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("BeneficiaryName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ExpenseCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExpenseNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid?>("SafeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("ExpenseDate");
+
+                    b.HasIndex("SafeId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "ExpenseCategoryId");
+
+                    b.HasIndex("TenantId", "ExpenseNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "SafeId");
+
+                    b.ToTable("Expenses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Expenses_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Expenses_PaymentMethod", "[PaymentMethod] IN (1,2,3,5)");
+                        });
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.ExpenseCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ExpenseCategories", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosDeviceCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PosTerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PosTerminalId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "PosTerminalId", "RevokedAt");
+
+                    b.ToTable("PosDeviceCredentials", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosTerminal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("DefaultCashDrawerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("PairingCodeExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PairingCodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("DefaultCashDrawerId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "BranchId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("PosTerminals", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Safe", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CurrentBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "Type");
+
+                    b.HasIndex("TenantId", "BranchId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Safes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Safes_Balances", "[OpeningBalance] >= 0 AND [CurrentBalance] >= 0");
+
+                            t.HasCheckConstraint("CK_Safes_Type", "[Type] IN (1,2,3)");
+                        });
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.SafeTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid?>("CashSessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PerformedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SafeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashSessionId");
+
+                    b.HasIndex("SafeId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("TenantId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "TransactionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CashSessionId", "TransactionDate");
+
+                    b.HasIndex("TenantId", "DocumentType", "DocumentId");
+
+                    b.HasIndex("TenantId", "SafeId", "Direction");
+
+                    b.HasIndex("TenantId", "SafeId", "TransactionDate");
+
+                    b.ToTable("SafeTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SafeTransactions_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_SafeTransactions_Direction", "[Direction] IN (1,2)");
+
+                            t.HasCheckConstraint("CK_SafeTransactions_DocumentType", "[DocumentType] BETWEEN 1 AND 13");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.ApplicationUser", b =>
@@ -700,6 +1294,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
 
+                    b.Property<decimal>("CurrentBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
                     b.Property<string>("Email")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -807,6 +1406,110 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.ToTable("CustomerPhones", (string)null);
                 });
 
+            modelBuilder.Entity("RetalSystemAPI.Models.Customers.CustomerTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CreditAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("DebitAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "CustomerId", "TransactionDate");
+
+                    b.HasIndex("TenantId", "CustomerId", "TransactionType");
+
+                    b.HasIndex("TenantId", "DocumentType", "DocumentId");
+
+                    b.ToTable("CustomerTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CustomerTransactions_DebitCredit", "([DebitAmount] > 0 AND [CreditAmount] = 0) OR ([CreditAmount] > 0 AND [DebitAmount] = 0)");
+
+                            t.HasCheckConstraint("CK_CustomerTransactions_DocumentType", "[DocumentType] BETWEEN 1 AND 13");
+
+                            t.HasCheckConstraint("CK_CustomerTransactions_PaymentMethod", "[PaymentMethod] IS NULL OR [PaymentMethod] BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_CustomerTransactions_Type", "[TransactionType] BETWEEN 1 AND 6");
+                        });
+                });
+
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -847,6 +1550,9 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("PaymentSafeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("PurchaseOrderId")
                         .HasColumnType("uniqueidentifier");
@@ -897,6 +1603,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("InvoiceDate");
 
+                    b.HasIndex("PaymentSafeId");
+
                     b.HasIndex("PurchaseOrderId");
 
                     b.HasIndex("SupplierId");
@@ -906,7 +1614,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId", "InvoiceNumber")
                         .IsUnique();
 
-                    b.ToTable("PurchaseInvoices", (string)null);
+                    b.ToTable("PurchaseInvoices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseInvoices_Amounts", "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItem", b =>
@@ -1208,6 +1919,9 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<int>("Reason")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("RefundSafeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ReturnDate")
                         .HasColumnType("datetime2");
 
@@ -1249,6 +1963,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("PurchaseInvoiceId");
 
+                    b.HasIndex("RefundSafeId");
+
                     b.HasIndex("ReturnDate");
 
                     b.HasIndex("SupplierId");
@@ -1266,7 +1982,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "WarehouseId");
 
-                    b.ToTable("PurchaseReturns", (string)null);
+                    b.ToTable("PurchaseReturns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseReturns_TotalAmount", "[TotalAmount] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseReturnItem", b =>
@@ -1350,6 +2069,9 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("CashSessionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1387,6 +2109,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("PaymentSafeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PosTerminalId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("RemainingAmount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
@@ -1402,6 +2130,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("SubTotal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("TaxAmount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
@@ -1427,13 +2160,21 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("BranchId");
 
+                    b.HasIndex("CashSessionId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("InvoiceDate");
 
+                    b.HasIndex("PaymentSafeId");
+
+                    b.HasIndex("PosTerminalId");
+
                     b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "CashSessionId");
 
                     b.HasIndex("TenantId", "CustomerId");
 
@@ -1446,7 +2187,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "WarehouseId");
 
-                    b.ToTable("SalesInvoices", (string)null);
+                    b.ToTable("SalesInvoices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesInvoices_Amounts", "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesInvoiceItem", b =>
@@ -1552,8 +2296,19 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<Guid?>("OriginalInvoiceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
                     b.Property<int>("Reason")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("RefundSafeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("RefundedAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("ReturnDate")
                         .HasColumnType("datetime2");
@@ -1594,6 +2349,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("OriginalInvoiceId");
 
+                    b.HasIndex("RefundSafeId");
+
                     b.HasIndex("ReturnDate");
 
                     b.HasIndex("WarehouseId");
@@ -1609,7 +2366,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "WarehouseId");
 
-                    b.ToTable("SalesReturns", (string)null);
+                    b.ToTable("SalesReturns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesReturns_Amounts", "[TotalAmount] >= 0 AND [RefundedAmount] >= 0 AND [RefundedAmount] <= [TotalAmount]");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesReturnItem", b =>
@@ -1696,6 +2456,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CurrentBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -1789,6 +2554,110 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique();
 
                     b.ToTable("SupplierPhones", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CreditAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("DebitAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "DocumentType", "DocumentId");
+
+                    b.HasIndex("TenantId", "SupplierId", "TransactionDate");
+
+                    b.HasIndex("TenantId", "SupplierId", "TransactionType");
+
+                    b.ToTable("SupplierTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SupplierTransactions_DebitCredit", "([DebitAmount] > 0 AND [CreditAmount] = 0) OR ([CreditAmount] > 0 AND [DebitAmount] = 0)");
+
+                            t.HasCheckConstraint("CK_SupplierTransactions_DocumentType", "[DocumentType] BETWEEN 1 AND 13");
+
+                            t.HasCheckConstraint("CK_SupplierTransactions_PaymentMethod", "[PaymentMethod] IS NULL OR [PaymentMethod] BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_SupplierTransactions_Type", "[TransactionType] BETWEEN 1 AND 6");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Tenant", b =>
@@ -2432,6 +3301,177 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.CashSession", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "CashDrawer")
+                        .WithMany("CashSessions")
+                        .HasForeignKey("CashDrawerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
+                        .WithMany("CashSessions")
+                        .HasForeignKey("PosTerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("CashDrawer");
+
+                    b.Navigation("PosTerminal");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Expense", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.ExpenseCategory", "ExpenseCategory")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "Safe")
+                        .WithMany()
+                        .HasForeignKey("SafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("ExpenseCategory");
+
+                    b.Navigation("Safe");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.ExpenseCategory", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosDeviceCredential", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
+                        .WithMany("DeviceCredentials")
+                        .HasForeignKey("PosTerminalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PosTerminal");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosTerminal", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "DefaultCashDrawer")
+                        .WithMany("PosTerminals")
+                        .HasForeignKey("DefaultCashDrawerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("DefaultCashDrawer");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Safe", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.SafeTransaction", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Accounting.CashSession", "CashSession")
+                        .WithMany()
+                        .HasForeignKey("CashSessionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "Safe")
+                        .WithMany("Transactions")
+                        .HasForeignKey("SafeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CashSession");
+
+                    b.Navigation("Safe");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("RetalSystemAPI.Models.ApplicationUser", b =>
                 {
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
@@ -2631,6 +3671,33 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("RetalSystemAPI.Models.Customers.CustomerTransaction", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
+                        .WithMany("CustomerTransactions")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoice", b =>
                 {
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
@@ -2638,6 +3705,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
+                        .WithMany()
+                        .HasForeignKey("PaymentSafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseOrder", "PurchaseOrder")
                         .WithMany()
@@ -2663,6 +3735,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Branch");
+
+                    b.Navigation("PaymentSafe");
 
                     b.Navigation("PurchaseOrder");
 
@@ -2807,6 +3881,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasForeignKey("PurchaseInvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
+                        .WithMany()
+                        .HasForeignKey("RefundSafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
@@ -2828,6 +3907,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Branch");
 
                     b.Navigation("PurchaseInvoice");
+
+                    b.Navigation("RefundSafe");
 
                     b.Navigation("Supplier");
 
@@ -2878,9 +3959,24 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Accounting.CashSession", "CashSession")
+                        .WithMany()
+                        .HasForeignKey("CashSessionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
                         .WithMany("SalesInvoices")
                         .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
+                        .WithMany()
+                        .HasForeignKey("PaymentSafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
+                        .WithMany()
+                        .HasForeignKey("PosTerminalId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
@@ -2897,7 +3993,13 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.Navigation("Branch");
 
+                    b.Navigation("CashSession");
+
                     b.Navigation("Customer");
+
+                    b.Navigation("PaymentSafe");
+
+                    b.Navigation("PosTerminal");
 
                     b.Navigation("Tenant");
 
@@ -2956,6 +4058,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasForeignKey("OriginalInvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
+                        .WithMany()
+                        .HasForeignKey("RefundSafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -2973,6 +4080,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("OriginalInvoice");
+
+                    b.Navigation("RefundSafe");
 
                     b.Navigation("Tenant");
 
@@ -3037,6 +4146,33 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Supplier");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierTransaction", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany("SupplierTransactions")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
 
                     b.Navigation("Supplier");
 
@@ -3230,6 +4366,27 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.ExpenseCategory", b =>
+                {
+                    b.Navigation("Expenses");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosTerminal", b =>
+                {
+                    b.Navigation("CashSessions");
+
+                    b.Navigation("DeviceCredentials");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Safe", b =>
+                {
+                    b.Navigation("CashSessions");
+
+                    b.Navigation("PosTerminals");
+
+                    b.Navigation("Transactions");
+                });
+
             modelBuilder.Entity("RetalSystemAPI.Models.Branchs.Branch", b =>
                 {
                     b.Navigation("ApplicationUsers");
@@ -3277,6 +4434,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                 {
                     b.Navigation("CustomerPhones");
 
+                    b.Navigation("CustomerTransactions");
+
                     b.Navigation("SalesInvoices");
                 });
 
@@ -3317,6 +4476,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
             modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.Supplier", b =>
                 {
                     b.Navigation("SupplierPhones");
+
+                    b.Navigation("SupplierTransactions");
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StockAdjustment", b =>

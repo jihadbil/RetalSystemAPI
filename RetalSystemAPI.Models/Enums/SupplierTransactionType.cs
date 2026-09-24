@@ -1,15 +1,44 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace RetalSystemAPI.Models.Enums;
 
+/// <summary>
+/// يحدد نوع حركة حساب المورد في دفتر أستاذ الموردين المالي.
+/// </summary>
+// تعريف تعداد أنواع حركات حسابات الموردين
 public enum SupplierTransactionType
 {
+    /// <summary>
+    /// فاتورة شراء تمثل التزاماً ودَيناً على المنشأة لصالح المورد (دائن).
+    /// </summary>
+    // حركة فاتورة شراء تزيد مستحقات المورد
+    PurchaseInvoice = 1,
 
-    PurchaseInvoice = 1,  // فاتورة شراء (دين على المحل)
-    Payment = 2,          // سداد للمورد
-    PurchaseReturn = 3,   // مرتجع مشتريات
+    /// <summary>
+    /// سداد ودفعة نقدية أو بنكية صادرة إلى المورد تخفض المستحقات (مدين).
+    /// </summary>
+    // حركة سداد وصرف دفعة للمورد
+    Payment = 2,
+
+    /// <summary>
+    /// مرتجع مشتريات يقلل من التزامات المنشأة للمورد (مدين).
+    /// </summary>
+    // حركة مردودات مشتريات للمورد
+    PurchaseReturn = 3,
+
+    /// <summary>
+    /// رصيد افتتاحي مستحق للمورد عند تدشين النظام.
+    /// </summary>
+    // حركة الرصيد الافتتاحي للمورد
     OpeningBalance = 4,
-    Adjustment = 5
+
+    /// <summary>
+    /// تسوية حساب يدوية لرصيد المورد.
+    /// </summary>
+    // حركة تسوية حساب رصيد المورد
+    Adjustment = 5,
+
+    /// <summary>
+    /// قيد عكسي لإلغاء أثر مستند مورد ملغى.
+    /// </summary>
+    // حركة قيد عكسي لمستند مورد ملغى
+    Reversal = 6
 }

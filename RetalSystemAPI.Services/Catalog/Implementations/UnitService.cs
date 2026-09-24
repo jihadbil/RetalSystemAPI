@@ -138,7 +138,7 @@ public class UnitService : IUnitService
         }
 
         // التحقق مما إذا كانت الوحدة مستخدمة في أي منتج قائم
-        bool inUse = await _unitOfWork.ProductUnits.ExistsAsync(pu => pu.UnitId == id, ct);
+        bool inUse = await _unitOfWork.Products.UnitExistsAsync(pu => pu.UnitId == id, ct);
         // في حال وجود ارتباطات قائمة
         if (inUse)
         {

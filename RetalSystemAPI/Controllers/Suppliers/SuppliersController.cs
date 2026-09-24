@@ -185,4 +185,61 @@ public class SuppliersController : BaseApiController
         // تحويل وإرجاع النتيجة كاستجابة HTTP
         return ToActionResult(result);
     }
+
+    /// <summary>
+    /// توليد كشف حساب مالي تفصيلي للمورد خلال فترة محددة شاملاً الرصيد السابق وحركات الفترة ومجاميع المدين والدائن.
+    /// </summary>
+    /// <param name="id">المعرف الفريد للمورد.</param>
+    /// <param name="fromDate">تاريخ بداية الفترة الاختياري.</param>
+    /// <param name="toDate">تاريخ نهاية الفترة الاختياري.</param>
+    /// <param name="branchId">معرف الفرع الاختياري للفلترة.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>تقرير كشف الحساب المالي للمورد.</returns>
+    [HttpGet("{id:guid}/statement")]
+    [HasPermission(Permissions.Suppliers.View)]
+    public async Task<IActionResult> GetStatement(
+        [FromRoute] Guid id,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] Guid? branchId = null,
+        CancellationToken ct = default)
+    {
+        var filter = new SupplierStatementFilterDto
+        {
+            SupplierId = id,
+            FromDate = fromDate,
+            ToDate = toDate,
+            BranchId = branchId
+        };
+        var result = await _supplierService.GetStatementAsync(filter, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// تسجيل سند صرف وسداد دفعة للمورد مع خصمها من الخزينة المحددة وتحديث رصيد المورد ذرّياً.
+    /// </summary>
+    /// <param name="dto">بيانات سداد المورد.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>بيانات حركة السداد المسجلة.</returns>
+    [HttpPost("payments")]
+    [HasPermission(Permissions.Suppliers.Edit)]
+    public async Task<IActionResult> AddPayment([FromBody] CreateSupplierPaymentDto dto, CancellationToken ct = default)
+    {
+        var result = await _supplierService.AddPaymentAsync(dto, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// تسجيل تسوية رصيد حساب المورد (تعديل التزام دائن / مدين).
+    /// </summary>
+    /// <param name="dto">بيانات تسوية حساب المورد.</param>
+    /// <param name="ct">رمز إلغاء العملية.</param>
+    /// <returns>بيانات حركة التسوية المسجلة.</returns>
+    [HttpPost("adjustments")]
+    [HasPermission(Permissions.Suppliers.Edit)]
+    public async Task<IActionResult> AddAdjustment([FromBody] CreateSupplierAdjustmentDto dto, CancellationToken ct = default)
+    {
+        var result = await _supplierService.AddAdjustmentAsync(dto, ct);
+        return ToActionResult(result);
+    }
 }
