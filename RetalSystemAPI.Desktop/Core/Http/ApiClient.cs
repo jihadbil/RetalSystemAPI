@@ -14,12 +14,14 @@ public class ApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly AuthStateService _authState;
+    private readonly CredentialStoreService _credentialStore;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ApiClient(HttpClient httpClient, AuthStateService authState)
+    public ApiClient(HttpClient httpClient, AuthStateService authState, CredentialStoreService credentialStore)
     {
         _httpClient = httpClient;
         _authState = authState;
+        _credentialStore = credentialStore;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -38,6 +40,11 @@ public class ApiClient
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _authState.JwtToken);
         }
+
+
+        var posDeviceToken = Environment.GetEnvironmentVariable("RETAL_POS_DEVICE_TOKEN") ?? _credentialStore.LoadPosDeviceToken();
+        if (!string.IsNullOrWhiteSpace(posDeviceToken))
+            request.Headers.TryAddWithoutValidation("X-POS-Device-Token", posDeviceToken);
 
         return request;
     }

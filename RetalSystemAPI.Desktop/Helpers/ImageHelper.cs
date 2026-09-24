@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,7 +13,7 @@ using System.Windows.Media.Imaging;
 namespace RetalSystemAPI.Desktop.Helpers;
 
 /// <summary>
-/// فئة مساعدة لتحميل وعرض الصور من الخادم المحلي أو الإنترنت في WPF مع دعم التخزين المؤقت وتجاوز شهادات SSL المحلية.
+/// فئة مساعدة لتحميل وعرض الصور المحلية أو صور خادم النظام عبر HTTPS مع تخزين مؤقت محدود.
 /// </summary>
 public static class ImageHelper
 {
@@ -25,14 +28,23 @@ public static class ImageHelper
     public static void SetSourceUrl(DependencyObject obj, string? value) => obj.SetValue(SourceUrlProperty, value);
 
     private static readonly ConcurrentDictionary<string, BitmapSource> _cache = new();
-    private static readonly HttpClient _httpClient = new(new HttpClientHandler
-    {
-        ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-    }) { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> _failedUrls = new();
+    private static readonly ConditionalWeakTable<Image, CancellationTokenSource> _pendingLoads = new();
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly TimeSpan FailedUrlRetryDelay = TimeSpan.FromMinutes(2);
+    private const int MaxCachedImages = 500;
+    private const int MaxImageBytes = 10 * 1024 * 1024;
 
     private static async void OnSourceUrlChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not Image image) return;
+
+        if (_pendingLoads.TryGetValue(image, out var previousLoad))
+        {
+            previousLoad.Cancel();
+            previousLoad.Dispose();
+            _pendingLoads.Remove(image);
+        }
 
         string? rawUrl = e.NewValue as string;
         if (string.IsNullOrWhiteSpace(rawUrl))
@@ -65,18 +77,24 @@ public static class ImageHelper
         }
 
         // 2. توحيد المسار النسبي أو الكامل للخادم
-        string fullUrl = url;
-        if (fullUrl.StartsWith("/"))
+        if (!TryResolveRemoteUrl(url, out var fullUrl))
         {
-            fullUrl = $"https://localhost:7226{fullUrl}";
-        }
-        else if (!fullUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
-                 !fullUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            fullUrl = $"https://localhost:7226/{fullUrl.TrimStart('/')}";
+            image.Source = null;
+            return;
         }
 
-        // 3. التحقق من الذاكرة المؤقتة (Cache)
+        // 3. التحقق من الذاكرة المؤقتة (Cache) أو قائمة الروابط الفاشلة لتفادي الانتظار المتكرر
+        if (_failedUrls.TryGetValue(fullUrl, out var failedAt))
+        {
+            if (DateTimeOffset.UtcNow - failedAt < FailedUrlRetryDelay)
+            {
+                image.Source = null;
+                return;
+            }
+
+            _failedUrls.TryRemove(fullUrl, out _);
+        }
+
         if (_cache.TryGetValue(fullUrl, out var cached))
         {
             image.Source = cached;
@@ -84,60 +102,124 @@ public static class ImageHelper
         }
 
         image.Source = null;
+        var loadCancellation = new CancellationTokenSource();
+        _pendingLoads.Add(image, loadCancellation);
 
         // 4. تحميل الصورة في الخلفية وفك تشفيرها
         try
         {
-            var bytes = await _httpClient.GetByteArrayAsync(fullUrl);
-            if (bytes != null && bytes.Length > 0)
+            using var response = await _httpClient.GetAsync(
+                fullUrl,
+                HttpCompletionOption.ResponseHeadersRead,
+                loadCancellation.Token);
+            response.EnsureSuccessStatusCode();
+
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
+            if (mediaType is not null && !mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
-                var bmp = new BitmapImage();
-                using (var ms = new MemoryStream(bytes))
+                throw new InvalidDataException("The remote resource is not an image.");
+            }
+
+            if (response.Content.Headers.ContentLength > MaxImageBytes)
+            {
+                throw new InvalidDataException("The remote image exceeds the permitted size.");
+            }
+
+            await using var responseStream = await response.Content.ReadAsStreamAsync(loadCancellation.Token);
+            using var imageStream = new MemoryStream();
+            var buffer = new byte[81_920];
+            while (true)
+            {
+                var bytesRead = await responseStream.ReadAsync(buffer, loadCancellation.Token);
+                if (bytesRead == 0) break;
+                if (imageStream.Length + bytesRead > MaxImageBytes)
                 {
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.StreamSource = ms;
-                    bmp.EndInit();
+                    throw new InvalidDataException("The remote image exceeds the permitted size.");
                 }
+
+                await imageStream.WriteAsync(buffer.AsMemory(0, bytesRead), loadCancellation.Token);
+            }
+
+            if (imageStream.Length > 0)
+            {
+                imageStream.Position = 0;
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = imageStream;
+                bmp.EndInit();
                 bmp.Freeze();
+                TrimCacheIfNeeded();
                 _cache[fullUrl] = bmp;
 
                 if (string.Equals(GetSourceUrl(image)?.Trim(), url, StringComparison.OrdinalIgnoreCase))
                 {
                     image.Source = bmp;
                 }
+                return;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch
         {
-            // في حال فشل HTTPS، المحاولة عبر HTTP المحلي
-            if (fullUrl.StartsWith("https://localhost:7226", StringComparison.OrdinalIgnoreCase))
+            _failedUrls[fullUrl] = DateTimeOffset.UtcNow;
+        }
+        finally
+        {
+            if (_pendingLoads.TryGetValue(image, out var currentLoad) &&
+                ReferenceEquals(currentLoad, loadCancellation))
             {
-                string httpFallback = fullUrl.Replace("https://localhost:7226", "http://localhost:5005");
-                try
-                {
-                    var bytes = await _httpClient.GetByteArrayAsync(httpFallback);
-                    if (bytes != null && bytes.Length > 0)
-                    {
-                        var bmp = new BitmapImage();
-                        using (var ms = new MemoryStream(bytes))
-                        {
-                            bmp.BeginInit();
-                            bmp.CacheOption = BitmapCacheOption.OnLoad;
-                            bmp.StreamSource = ms;
-                            bmp.EndInit();
-                        }
-                        bmp.Freeze();
-                        _cache[fullUrl] = bmp;
-
-                        if (string.Equals(GetSourceUrl(image)?.Trim(), url, StringComparison.OrdinalIgnoreCase))
-                        {
-                            image.Source = bmp;
-                        }
-                    }
-                }
-                catch { }
+                _pendingLoads.Remove(image);
             }
+
+            loadCancellation.Dispose();
+        }
+    }
+
+    private static bool TryResolveRemoteUrl(string value, out string resolvedUrl)
+    {
+        resolvedUrl = string.Empty;
+        var configuredApiUrl = Environment.GetEnvironmentVariable("RETAL_API_BASE_URL")
+            ?? "https://localhost:7226/api/";
+
+        if (!Uri.TryCreate(configuredApiUrl, UriKind.Absolute, out var apiBaseUri) ||
+            apiBaseUri.Scheme != Uri.UriSchemeHttps)
+        {
+            return false;
+        }
+
+        var allowedOrigin = new Uri(apiBaseUri.GetLeftPart(UriPartial.Authority));
+        Uri candidate;
+        if (Uri.TryCreate(value, UriKind.Absolute, out var absoluteUri))
+        {
+            candidate = absoluteUri;
+        }
+        else
+        {
+            candidate = new Uri(allowedOrigin, value.TrimStart('/'));
+        }
+
+        if (candidate.Scheme != Uri.UriSchemeHttps ||
+            !string.Equals(candidate.Host, allowedOrigin.Host, StringComparison.OrdinalIgnoreCase) ||
+            candidate.Port != allowedOrigin.Port)
+        {
+            return false;
+        }
+
+        resolvedUrl = candidate.AbsoluteUri;
+        return true;
+    }
+
+    private static void TrimCacheIfNeeded()
+    {
+        if (_cache.Count < MaxCachedImages) return;
+
+        foreach (var key in _cache.Keys.Take(Math.Max(1, MaxCachedImages / 10)))
+        {
+            _cache.TryRemove(key, out _);
         }
     }
 }

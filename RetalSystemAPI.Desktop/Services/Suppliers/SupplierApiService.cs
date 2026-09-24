@@ -18,6 +18,9 @@ public interface ISupplierApiService
     Task<ApiResponse> DeleteAsync(Guid id, CancellationToken ct = default);
     Task<ApiResponse<SupplierDto>> AddPhoneAsync(Guid supplierId, CreateSupplierPhoneRequest request, CancellationToken ct = default);
     Task<ApiResponse> DeletePhoneAsync(Guid supplierId, Guid phoneId, CancellationToken ct = default);
+    Task<ApiResponse<SupplierStatementDto>> GetStatementAsync(Guid supplierId, DateTime? fromDate = null, DateTime? toDate = null, int pageNumber = 1, int pageSize = 50, CancellationToken ct = default);
+    Task<ApiResponse<SupplierTransactionDto>> AddPaymentAsync(Guid supplierId, CreateSupplierPaymentRequest request, CancellationToken ct = default);
+    Task<ApiResponse<SupplierTransactionDto>> AddAdjustmentAsync(Guid supplierId, CreateSupplierAdjustmentRequest request, CancellationToken ct = default);
 }
 
 public class SupplierApiService : ISupplierApiService
@@ -72,5 +75,25 @@ public class SupplierApiService : ISupplierApiService
     public Task<ApiResponse> DeletePhoneAsync(Guid supplierId, Guid phoneId, CancellationToken ct = default)
     {
         return _apiClient.DeleteAsync($"suppliers/{supplierId}/phones/{phoneId}", ct);
+    }
+
+    public Task<ApiResponse<SupplierStatementDto>> GetStatementAsync(Guid supplierId, DateTime? fromDate = null, DateTime? toDate = null, int pageNumber = 1, int pageSize = 50, CancellationToken ct = default)
+    {
+        var url = $"suppliers/{supplierId}/statement?pageNumber={pageNumber}&pageSize={pageSize}";
+        if (fromDate.HasValue) url += $"&fromDate={Uri.EscapeDataString(fromDate.Value.ToString("o"))}";
+        if (toDate.HasValue) url += $"&toDate={Uri.EscapeDataString(toDate.Value.ToString("o"))}";
+        return _apiClient.GetAsync<SupplierStatementDto>(url, ct);
+    }
+
+    public Task<ApiResponse<SupplierTransactionDto>> AddPaymentAsync(Guid supplierId, CreateSupplierPaymentRequest request, CancellationToken ct = default)
+    {
+        request.SupplierId = supplierId;
+        return _apiClient.PostAsync<SupplierTransactionDto>("suppliers/payments", request, ct);
+    }
+
+    public Task<ApiResponse<SupplierTransactionDto>> AddAdjustmentAsync(Guid supplierId, CreateSupplierAdjustmentRequest request, CancellationToken ct = default)
+    {
+        request.SupplierId = supplierId;
+        return _apiClient.PostAsync<SupplierTransactionDto>("suppliers/adjustments", request, ct);
     }
 }

@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Branch;
+using SafeSummaryDto = RetalSystemAPI.Desktop.Models.Accounting.SafeSummaryDto;
 using RetalSystemAPI.Desktop.Models.Catalog;
 using RetalSystemAPI.Desktop.Models.Purchase;
 using RetalSystemAPI.Desktop.Models.Sales;
 using RetalSystemAPI.Desktop.Models.Suppliers;
 using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Purchase;
 using RetalSystemAPI.Desktop.Services.Suppliers;
@@ -264,6 +266,7 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly IProductApiService _productApiService;
     private readonly IPurchaseInvoiceApiService _purchaseInvoiceApiService;
+    private readonly ISafeApiService? _safeApiService;
 
     [ObservableProperty]
     private Guid? _returnId;
@@ -279,6 +282,12 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private BranchDto? _selectedBranch;
+
+    [ObservableProperty]
+    private ObservableCollection<SafeSummaryDto> _safes = new();
+
+    [ObservableProperty]
+    private SafeSummaryDto? _selectedSafe;
 
     [ObservableProperty]
     private ObservableCollection<SupplierSummaryDto> _suppliers = new();
@@ -350,7 +359,8 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
         ISupplierApiService supplierApiService,
         IWarehouseApiService warehouseApiService,
         IProductApiService productApiService,
-        IPurchaseInvoiceApiService purchaseInvoiceApiService)
+        IPurchaseInvoiceApiService purchaseInvoiceApiService,
+        ISafeApiService? safeApiService = null)
     {
         _purchaseReturnApiService = purchaseReturnApiService;
         _branchApiService = branchApiService;
@@ -358,7 +368,10 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
         _warehouseApiService = warehouseApiService;
         _productApiService = productApiService;
         _purchaseInvoiceApiService = purchaseInvoiceApiService;
+        _safeApiService = safeApiService;
     }
+
+    partial void OnSelectedBranchChanged(BranchDto? value) => _ = LoadSafesAsync();
 
     public async Task InitializeForCreateAsync()
     {
@@ -463,6 +476,7 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
                 Branches = new ObservableCollection<BranchDto>(branchRes.Data);
                 SelectedBranch = Branches.FirstOrDefault();
             }
+            await LoadSafesAsync();
 
             var supRes = await _supplierApiService.GetAllAsync();
             if (supRes.Success && supRes.Data != null)
@@ -481,6 +495,16 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
 
             // الأصناف لا تُجلب كاملة؛ تُبحث تدريجياً بالاسم أو الباركود من الخادم
         });
+    }
+
+    private async Task LoadSafesAsync()
+    {
+        if (_safeApiService is null || SelectedBranch is null) return;
+        var result = await _safeApiService.GetAllAsync(branchId: SelectedBranch.Id, isActive: true);
+        if (!result.Success || result.Data is null) return;
+        Safes = new ObservableCollection<SafeSummaryDto>(result.Data);
+        if (SelectedSafe is null || Safes.All(s => s.Id != SelectedSafe.Id))
+            SelectedSafe = Safes.FirstOrDefault();
     }
 
     partial void OnProductSearchTermChanged(string value)
@@ -683,6 +707,7 @@ public partial class PurchaseReturnFormViewModel : BaseViewModel
                 BranchId = SelectedBranch.Id,
                 WarehouseId = SelectedWarehouse.Id,
                 PaymentMethod = PaymentMethod,
+                RefundSafeId = SelectedSafe?.Id,
                 Reason = Reason,
                 Notes = Notes,
                 Items = Items.ToList()

@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Branch;
+using SafeSummaryDto = RetalSystemAPI.Desktop.Models.Accounting.SafeSummaryDto;
 using RetalSystemAPI.Desktop.Models.Catalog;
 using RetalSystemAPI.Desktop.Models.Customers;
 using RetalSystemAPI.Desktop.Models.Sales;
 using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Customers;
 using RetalSystemAPI.Desktop.Services.Sales;
@@ -219,6 +221,7 @@ public partial class SalesReturnFormViewModel : BaseViewModel
     private readonly IProductApiService _productApiService;
     private readonly ISalesInvoiceApiService _salesInvoiceApiService;
     private readonly Core.Auth.AuthStateService _authStateService;
+    private readonly ISafeApiService? _safeApiService;
 
     [ObservableProperty]
     private Guid? _returnId;
@@ -237,6 +240,12 @@ public partial class SalesReturnFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private BranchDto? _selectedBranch;
+
+    [ObservableProperty]
+    private ObservableCollection<SafeSummaryDto> _safes = new();
+
+    [ObservableProperty]
+    private SafeSummaryDto? _selectedSafe;
 
     [ObservableProperty]
     private ObservableCollection<WarehouseSummaryDto> _warehouses = new();
@@ -311,7 +320,8 @@ public partial class SalesReturnFormViewModel : BaseViewModel
         ICustomerApiService customerApiService,
         IProductApiService productApiService,
         ISalesInvoiceApiService salesInvoiceApiService,
-        Core.Auth.AuthStateService authStateService)
+        Core.Auth.AuthStateService authStateService,
+        ISafeApiService? safeApiService = null)
     {
         _salesReturnApiService = salesReturnApiService;
         _branchApiService = branchApiService;
@@ -320,7 +330,10 @@ public partial class SalesReturnFormViewModel : BaseViewModel
         _productApiService = productApiService;
         _salesInvoiceApiService = salesInvoiceApiService;
         _authStateService = authStateService;
+        _safeApiService = safeApiService;
     }
+
+    partial void OnSelectedBranchChanged(BranchDto? value) => _ = LoadSafesAsync();
 
     partial void OnSelectedProductToAddChanged(ProductDto? value)
     {
@@ -481,6 +494,7 @@ public partial class SalesReturnFormViewModel : BaseViewModel
             Branches = new ObservableCollection<BranchDto>(bRes.Data);
             if (SelectedBranch == null && Branches.Count > 0) SelectedBranch = Branches[0];
         }
+        await LoadSafesAsync();
 
         var wRes = await _warehouseApiService.GetAllAsync();
         if (wRes.Success && wRes.Data != null)
@@ -498,7 +512,17 @@ public partial class SalesReturnFormViewModel : BaseViewModel
         // الأصناف لا تُجلب كاملة؛ تُبحث تدريجياً بالاسم أو الباركود من الخادم
     }
 
-    partial void OnProductSearchTermChanged(string? value)
+    private async Task LoadSafesAsync()
+    {
+        if (_safeApiService is null || SelectedBranch is null) return;
+        var result = await _safeApiService.GetAllAsync(branchId: SelectedBranch.Id, isActive: true);
+        if (!result.Success || result.Data is null) return;
+        Safes = new ObservableCollection<SafeSummaryDto>(result.Data);
+        if (SelectedSafe is null || Safes.All(s => s.Id != SelectedSafe.Id))
+            SelectedSafe = Safes.FirstOrDefault();
+    }
+
+    partial void OnProductSearchTermChanged(string value)
     {
         if (IsViewOnly) return;
         // بحث مؤجل (Debounce) لتفادي إغراق الخادم بطلب لكل حرف
@@ -728,6 +752,7 @@ public partial class SalesReturnFormViewModel : BaseViewModel
                 BranchId = SelectedBranch.Id,
                 WarehouseId = SelectedWarehouse.Id,
                 CustomerId = SelectedCustomer?.Id,
+                RefundSafeId = SelectedSafe?.Id,
                 ReturnDate = ReturnDate,
                 Reason = Reason,
                 Notes = Notes,

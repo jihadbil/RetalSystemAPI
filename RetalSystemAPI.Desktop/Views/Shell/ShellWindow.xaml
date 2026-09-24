@@ -204,7 +204,7 @@
                     <StackPanel>
                         
                                 <!-- Dashboard -->
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessDashboard, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=Dashboard}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=Dashboard}"
@@ -247,7 +247,7 @@
                             <StackPanel>
 
                                 <!-- Sales Invoices -->
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessSalesInvoices, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=SalesInvoices}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=SalesInvoices}"
@@ -260,7 +260,7 @@
                                 </Button>
 
                                 <!-- Sales Returns -->
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessSalesReturns, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=SalesReturns}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=SalesReturns}"
@@ -273,7 +273,8 @@
                                 </Button>
 
                                 <!-- Customers -->
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button
+                                        Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessCustomers, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=Customers}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=Customers}"
@@ -296,7 +297,8 @@
                                 </DockPanel>
                             </Expander.Header>
                             <StackPanel>
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button
+                                        Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessPurchaseInvoices, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=PurchaseInvoices}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=PurchaseInvoices}"
@@ -307,7 +309,8 @@
                                         <TextBlock Style="{StaticResource SidebarItemTextStyle}" Text="فواتير المشتريات" Foreground="{Binding ActiveSection, Converter={StaticResource ActiveNavToForegroundConverter}, ConverterParameter=PurchaseInvoices}" />
                                     </DockPanel>
                                 </Button>
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" 
+                                <Button
+                                        Style="{StaticResource SidebarNavButtonStyle}"
                                         Visibility="{Binding CanAccessPurchaseReturns, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=PurchaseReturns}"
                                         BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=PurchaseReturns}"
@@ -432,7 +435,52 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- Group 4: الإدارة والنظام -->
+                        <!-- Group 4: الحسابات والمالية -->
+                        <Expander Style="{StaticResource SidebarExpanderStyle}" IsExpanded="False" Visibility="{Binding CanAccessAccountingGroup, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Expander.Header>
+                                <DockPanel HorizontalAlignment="Center">
+                                    <Path Style="{StaticResource SidebarIconStyle}" Data="{StaticResource IconAccounting}" Fill="{DynamicResource PrimaryBrush}" Width="14" Height="14" />
+                                    <TextBlock Text="الحسابات والمالية" Style="{StaticResource ExpanderHeaderTextStyle}"/>
+                                </DockPanel>
+                            </Expander.Header>
+                            <StackPanel>
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
+                                        Visibility="{Binding CanAccessSafes, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=Safes}"
+                                        BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=Safes}"
+                                        Command="{Binding NavigateToSafesCommand}"
+                                        ToolTip="الخزن والحسابات المصرفية">
+                                    <DockPanel HorizontalAlignment="Center">
+                                        <Path Style="{StaticResource SidebarIconStyle}" Data="{StaticResource IconSafe}" Fill="{DynamicResource TextMutedBrush}" Width="14" Height="14" />
+                                        <TextBlock Style="{StaticResource SidebarItemTextStyle}" Text="الخزن والحسابات المصرفية" Foreground="{Binding ActiveSection, Converter={StaticResource ActiveNavToForegroundConverter}, ConverterParameter=Safes}" />
+                                    </DockPanel>
+                                </Button>
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
+                                        Visibility="{Binding CanAccessExpenses, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=Expenses}"
+                                        BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=Expenses}"
+                                        Command="{Binding NavigateToExpensesCommand}"
+                                        ToolTip="المصروفات التشغيلية">
+                                    <DockPanel HorizontalAlignment="Center">
+                                        <Path Style="{StaticResource SidebarIconStyle}" Data="{StaticResource IconExpenses}" Fill="{DynamicResource TextMutedBrush}" Width="14" Height="14" />
+                                        <TextBlock Style="{StaticResource SidebarItemTextStyle}" Text="المصروفات التشغيلية" Foreground="{Binding ActiveSection, Converter={StaticResource ActiveNavToForegroundConverter}, ConverterParameter=Expenses}" />
+                                    </DockPanel>
+                                </Button>
+                                <Button Style="{StaticResource SidebarNavButtonStyle}"
+                                        Visibility="{Binding CanAccessExpenseCategories, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Background="{Binding ActiveSection, Converter={StaticResource ActiveNavToBrushConverter}, ConverterParameter=ExpenseCategories}"
+                                        BorderBrush="{Binding ActiveSection, Converter={StaticResource ActiveNavToBorderBrushConverter}, ConverterParameter=ExpenseCategories}"
+                                        Command="{Binding NavigateToExpenseCategoriesCommand}"
+                                        ToolTip="تصنيفات المصروفات">
+                                    <DockPanel HorizontalAlignment="Center">
+                                        <Path Style="{StaticResource SidebarIconStyle}" Data="{StaticResource IconExpenseCategory}" Fill="{DynamicResource TextMutedBrush}" Width="14" Height="14" />
+                                        <TextBlock Style="{StaticResource SidebarItemTextStyle}" Text="تصنيفات المصروفات" Foreground="{Binding ActiveSection, Converter={StaticResource ActiveNavToForegroundConverter}, ConverterParameter=ExpenseCategories}" />
+                                    </DockPanel>
+                                </Button>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- Group 5: الإدارة والنظام -->
                         <Expander Style="{StaticResource SidebarExpanderStyle}" IsExpanded="False" Visibility="{Binding CanAccessAdminGroup, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Expander.Header>
                                 <DockPanel HorizontalAlignment="Center">

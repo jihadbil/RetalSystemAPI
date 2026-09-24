@@ -16,6 +16,8 @@ public partial class SuppliersView : UserControl
 
         viewModel.OpenDialogHandler = OpenDialogAsync;
         viewModel.ConfirmDeleteHandler = ConfirmDeleteAsync;
+        viewModel.OpenStatementHandler = OpenStatementAsync;
+        viewModel.OpenPaymentHandler = OpenPaymentAsync;
     }
 
     private async Task OpenDialogAsync(SupplierSummaryDto? supplier)
@@ -39,5 +41,36 @@ public partial class SuppliersView : UserControl
         return Task.FromResult(RetalSystemAPI.Desktop.Controls.ModernConfirmDialog.ShowConfirm(
             Window.GetWindow(this) ?? Application.Current.MainWindow, title, message,
             "تأكيد", "تراجع", RetalSystemAPI.Desktop.Controls.ConfirmDialogType.Danger));
+    }
+
+    private async Task OpenStatementAsync(SupplierSummaryDto supplier)
+    {
+        var app = (App)Application.Current;
+        var statementVm = app.Services.GetRequiredService<SupplierStatementViewModel>();
+        await statementVm.InitializeAsync(supplier.Id, supplier.Name);
+
+        var window = new SupplierStatementWindow
+        {
+            DataContext = statementVm,
+            Owner = Application.Current.MainWindow
+        };
+
+        window.ShowDialog();
+    }
+
+    private async Task OpenPaymentAsync(SupplierSummaryDto supplier)
+    {
+        var app = (App)Application.Current;
+        var paymentVm = app.Services.GetRequiredService<SupplierPaymentViewModel>();
+        await paymentVm.InitializeAsync(supplier.Id, supplier.Name, supplier.CurrentBalance);
+
+        var window = new SupplierPaymentWindow
+        {
+            DataContext = paymentVm,
+            Owner = Application.Current.MainWindow
+        };
+
+        paymentVm.CloseWindowHandler = () => window.DialogResult = true;
+        window.ShowDialog();
     }
 }

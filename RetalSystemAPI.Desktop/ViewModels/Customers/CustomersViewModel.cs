@@ -62,6 +62,8 @@ public partial class CustomersViewModel : BaseViewModel
 
     public Func<CustomerSummaryDto?, Task>? OpenDialogHandler { get; set; }
     public Func<string, string, Task<bool>>? ConfirmDeleteHandler { get; set; }
+    public Func<CustomerSummaryDto, Task>? OpenStatementHandler { get; set; }
+    public Func<CustomerSummaryDto, Task>? OpenPaymentHandler { get; set; }
 
     public CustomersViewModel(ICustomerApiService customerApiService)
     {
@@ -169,6 +171,25 @@ public partial class CustomersViewModel : BaseViewModel
             if (res.Success) await LoadCustomersAsync();
             else ErrorMessage = res.Message;
         });
+    }
+
+    [RelayCommand]
+    private async Task ViewStatementAsync(object? parameter)
+    {
+        if (parameter is CustomerSummaryDto customer && OpenStatementHandler != null)
+        {
+            await OpenStatementHandler(customer);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ReceivePaymentAsync(object? parameter)
+    {
+        if (parameter is CustomerSummaryDto customer && OpenPaymentHandler != null)
+        {
+            await OpenPaymentHandler(customer);
+            await LoadCustomersAsync();
+        }
     }
 }
 

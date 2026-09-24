@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Branch;
+using SafeSummaryDto = RetalSystemAPI.Desktop.Models.Accounting.SafeSummaryDto;
 using RetalSystemAPI.Desktop.Models.Catalog;
 using RetalSystemAPI.Desktop.Models.Customers;
 using RetalSystemAPI.Desktop.Models.Sales;
 using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Customers;
 using RetalSystemAPI.Desktop.Services.Sales;
@@ -238,6 +240,7 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly ICustomerApiService _customerApiService;
     private readonly IProductApiService _productApiService;
+    private readonly ISafeApiService? _safeApiService;
 
     [ObservableProperty]
     private Guid? _invoiceId;
@@ -262,6 +265,12 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private BranchDto? _selectedBranch;
+
+    [ObservableProperty]
+    private ObservableCollection<SafeSummaryDto> _safes = new();
+
+    [ObservableProperty]
+    private SafeSummaryDto? _selectedSafe;
 
     [ObservableProperty]
     private ObservableCollection<WarehouseSummaryDto> _warehouses = new();
@@ -331,14 +340,18 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
         IBranchApiService branchApiService,
         IWarehouseApiService warehouseApiService,
         ICustomerApiService customerApiService,
-        IProductApiService productApiService)
+        IProductApiService productApiService,
+        ISafeApiService? safeApiService = null)
     {
         _salesInvoiceApiService = salesInvoiceApiService;
         _branchApiService = branchApiService;
         _warehouseApiService = warehouseApiService;
         _customerApiService = customerApiService;
         _productApiService = productApiService;
+        _safeApiService = safeApiService;
     }
+
+    partial void OnSelectedBranchChanged(BranchDto? value) => _ = LoadSafesAsync();
 
     partial void OnSelectedProductToAddChanged(ProductDto? value)
     {
@@ -389,6 +402,7 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
             Branches = new ObservableCollection<BranchDto>(bRes.Data);
             if (SelectedBranch == null && Branches.Count > 0) SelectedBranch = Branches[0];
         }
+        await LoadSafesAsync();
 
         var wRes = await _warehouseApiService.GetAllAsync();
         if (wRes.Success && wRes.Data != null)
@@ -410,6 +424,16 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
         }
     }
 
+    private async Task LoadSafesAsync()
+    {
+        if (_safeApiService is null || SelectedBranch is null) return;
+        var result = await _safeApiService.GetAllAsync(branchId: SelectedBranch.Id, isActive: true);
+        if (!result.Success || result.Data is null) return;
+        Safes = new ObservableCollection<SafeSummaryDto>(result.Data);
+        if (SelectedSafe is null || Safes.All(s => s.Id != SelectedSafe.Id))
+            SelectedSafe = Safes.FirstOrDefault();
+    }
+
     private async Task LoadInvoiceDetailsAsync(Guid id)
     {
         await ExecuteAsync(async () =>
@@ -427,6 +451,8 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
                 PaidAmount = inv.PaidAmount;
 
                 SelectedBranch = Branches.FirstOrDefault(b => b.Id == inv.BranchId);
+                await LoadSafesAsync();
+                SelectedSafe = Safes.FirstOrDefault(s => s.Id == inv.PaymentSafeId) ?? SelectedSafe;
                 SelectedWarehouse = Warehouses.FirstOrDefault(w => w.Id == inv.WarehouseId);
                 SelectedCustomer = Customers.FirstOrDefault(c => c.Id == inv.CustomerId);
 
@@ -554,6 +580,7 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
                     Status = Status,
                     PaymentMethod = PaymentMethod,
                     PaidAmount = PaidAmount,
+                    TaxAmount = TaxAmount,
                     Notes = Notes,
                     Items = Items.ToList()
                 };
@@ -578,6 +605,7 @@ public partial class SalesInvoiceFormViewModel : BaseViewModel
                     TaxAmount = TaxAmount,
                     TotalAmount = TotalAmount,
                     PaidAmount = PaidAmount,
+                    PaymentSafeId = SelectedSafe?.Id,
                     Notes = Notes,
                     Items = Items.ToList()
                 };

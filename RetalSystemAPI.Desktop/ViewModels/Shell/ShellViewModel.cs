@@ -7,6 +7,7 @@ using RetalSystemAPI.Desktop.Core.Auth;
 using RetalSystemAPI.Desktop.Core.Navigation;
 using RetalSystemAPI.Desktop.Services;
 using RetalSystemAPI.Desktop.ViewModels.Base;
+using RetalSystemAPI.Desktop.Views.Accounting;
 using RetalSystemAPI.Desktop.Views.Branches;
 using RetalSystemAPI.Desktop.Views.Catalog;
 using RetalSystemAPI.Desktop.Views.Customers;
@@ -54,7 +55,7 @@ public partial class ShellViewModel : BaseViewModel
 
     // ── Screen Access Permissions ──
     public bool CanAccessDashboard => _authStateService.HasPermission(Permissions.Dashboard.View);
-    public bool CanAccessPos => _authStateService.HasPermission(Permissions.Pos.Access);
+    public bool CanAccessPos => _authStateService.HasPermission(Permissions.Pos.View);
     public bool CanAccessProducts => _authStateService.HasPermission(Permissions.Products.View);
     public bool CanAccessCategories => _authStateService.HasPermission(Permissions.Categories.View);
     public bool CanAccessUnits => _authStateService.HasPermission(Permissions.Units.View);
@@ -72,11 +73,15 @@ public partial class ShellViewModel : BaseViewModel
     public bool CanAccessBranches => _authStateService.HasPermission(Permissions.Branches.View);
     public bool CanAccessUsers => _authStateService.HasPermission(Permissions.Users.View) || _authStateService.HasPermission(Permissions.Roles.View);
     public bool CanAccessTenants => _authStateService.HasPermission(Permissions.Tenants.View);
+    public bool CanAccessSafes => _authStateService.HasPermission(Permissions.Safes.View);
+    public bool CanAccessExpenses => _authStateService.HasPermission(Permissions.Expenses.View);
+    public bool CanAccessExpenseCategories => _authStateService.HasPermission(Permissions.ExpenseCategories.View);
 
     // ── Group Visibility ──
     public bool CanAccessSalesGroup => CanAccessSalesInvoices || CanAccessSalesReturns || CanAccessCustomers;
     public bool CanAccessPurchaseGroup => CanAccessPurchaseInvoices || CanAccessPurchaseReturns || CanAccessPurchaseOrders || CanAccessSuppliers;
     public bool CanAccessStockGroup => CanAccessStock || CanAccessProducts || CanAccessCategories || CanAccessUnits || CanAccessWarehouses || CanAccessStockTransfers || CanAccessStockAdjustments;
+    public bool CanAccessAccountingGroup => CanAccessSafes || CanAccessExpenses || CanAccessExpenseCategories;
     public bool CanAccessAdminGroup => CanAccessBranches || CanAccessUsers || CanAccessTenants;
 
     [RelayCommand]
@@ -160,10 +165,14 @@ public partial class ShellViewModel : BaseViewModel
         OnPropertyChanged(nameof(CanAccessBranches));
         OnPropertyChanged(nameof(CanAccessUsers));
         OnPropertyChanged(nameof(CanAccessTenants));
+        OnPropertyChanged(nameof(CanAccessSafes));
+        OnPropertyChanged(nameof(CanAccessExpenses));
+        OnPropertyChanged(nameof(CanAccessExpenseCategories));
 
         OnPropertyChanged(nameof(CanAccessSalesGroup));
         OnPropertyChanged(nameof(CanAccessPurchaseGroup));
         OnPropertyChanged(nameof(CanAccessStockGroup));
+        OnPropertyChanged(nameof(CanAccessAccountingGroup));
         OnPropertyChanged(nameof(CanAccessAdminGroup));
     }
 
@@ -179,6 +188,7 @@ public partial class ShellViewModel : BaseViewModel
             "Stock" => "أرصدة المخزون", "StockTransfers" => "التحويلات المخزنية", "StockAdjustments" => "التسويات الجردية",
             "SalesInvoices" => "فواتير المبيعات", "SalesReturns" => "مرتجعات المبيعات",
             "PurchaseInvoices" => "فواتير المشتريات", "PurchaseOrders" => "أوامر الشراء", "PurchaseReturns" => "مرتجعات المشتريات",
+            "Safes" => "الخزن والحسابات المصرفية", "Expenses" => "سندات المصروفات التشغيلية", "ExpenseCategories" => "تصنيفات وبنود المصروفات",
             "Users" => "المستخدمون والصلاحيات", "Tenants" => "ملف المنشأة", _ => "مساحة العمل"
         };
     }
@@ -452,6 +462,45 @@ public partial class ShellViewModel : BaseViewModel
         ActiveSection = "Users";
         CurrentTitle = "إدارة المستخدمين والصلاحيات";
         _navigationService.NavigateTo<RetalSystemAPI.Desktop.Views.Users.UsersView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToSafes()
+    {
+        if (!CanAccessSafes)
+        {
+            ToastService.ShowWarning("ليس لديك صلاحية الوصول إلى إدارة الخزن والحسابات المصرفية", "صلاحية مرفوضة");
+            return;
+        }
+        ActiveSection = "Safes";
+        CurrentTitle = "الخزن والحسابات المصرفية";
+        _navigationService.NavigateTo<SafesView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToExpenses()
+    {
+        if (!CanAccessExpenses)
+        {
+            ToastService.ShowWarning("ليس لديك صلاحية الوصول إلى سندات المصروفات التشغيلية", "صلاحية مرفوضة");
+            return;
+        }
+        ActiveSection = "Expenses";
+        CurrentTitle = "سندات المصروفات التشغيلية";
+        _navigationService.NavigateTo<ExpensesView>();
+    }
+
+    [RelayCommand]
+    private void NavigateToExpenseCategories()
+    {
+        if (!CanAccessExpenseCategories)
+        {
+            ToastService.ShowWarning("ليس لديك صلاحية الوصول إلى تصنيفات وبنود المصروفات", "صلاحية مرفوضة");
+            return;
+        }
+        ActiveSection = "ExpenseCategories";
+        CurrentTitle = "تصنيفات وبنود المصروفات";
+        _navigationService.NavigateTo<ExpenseCategoriesView>();
     }
 
     [RelayCommand]

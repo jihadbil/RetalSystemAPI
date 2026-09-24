@@ -48,6 +48,8 @@ public partial class SuppliersViewModel : BaseViewModel
 
     public Func<SupplierSummaryDto?, Task>? OpenDialogHandler { get; set; }
     public Func<string, string, Task<bool>>? ConfirmDeleteHandler { get; set; }
+    public Func<SupplierSummaryDto, Task>? OpenStatementHandler { get; set; }
+    public Func<SupplierSummaryDto, Task>? OpenPaymentHandler { get; set; }
 
     public SuppliersViewModel(ISupplierApiService supplierApiService)
     {
@@ -136,6 +138,25 @@ public partial class SuppliersViewModel : BaseViewModel
             if (res.Success) await LoadSuppliersAsync();
             else ErrorMessage = res.Message;
         });
+    }
+
+    [RelayCommand]
+    private async Task ViewStatementAsync(object? parameter)
+    {
+        if (parameter is SupplierSummaryDto supplier && OpenStatementHandler != null)
+        {
+            await OpenStatementHandler(supplier);
+        }
+    }
+
+    [RelayCommand]
+    private async Task MakePaymentAsync(object? parameter)
+    {
+        if (parameter is SupplierSummaryDto supplier && OpenPaymentHandler != null)
+        {
+            await OpenPaymentHandler(supplier);
+            await LoadSuppliersAsync();
+        }
     }
 }
 

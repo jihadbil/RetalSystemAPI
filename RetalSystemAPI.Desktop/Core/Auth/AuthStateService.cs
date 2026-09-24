@@ -15,14 +15,15 @@ public class AuthStateService
     public System.Collections.Generic.List<string> CurrentRoles { get; private set; } = new();
     public System.Collections.Generic.HashSet<string> CurrentPermissions { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     public bool IsAuthenticated => !string.IsNullOrEmpty(JwtToken);
-    public bool IsCashier => CurrentRoles.Any(r => r.Equals("Cashier", StringComparison.OrdinalIgnoreCase) || r.Equals("كاشير", StringComparison.OrdinalIgnoreCase)) && !IsAdmin;
-    public bool IsAdmin => CurrentRoles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) || r.Equals("مدير", StringComparison.OrdinalIgnoreCase));
+    public bool IsCashier => (CurrentRoles?.Any(r => r.Equals("Cashier", StringComparison.OrdinalIgnoreCase) || r.Equals("كاشير", StringComparison.OrdinalIgnoreCase)) ?? false) && !IsAdmin;
+    public bool IsAdmin => CurrentRoles?.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase) || r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) || r.Equals("مدير", StringComparison.OrdinalIgnoreCase)) ?? false;
+    public bool IsPlatformAdmin => CurrentRoles?.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)) ?? false;
 
     public bool HasPermission(string permission)
     {
-        if (IsAdmin) return true;
+        if (IsPlatformAdmin) return true;
         if (string.IsNullOrWhiteSpace(permission)) return true;
-        return CurrentPermissions.Contains(permission);
+        return CurrentPermissions?.Contains(permission) ?? false;
     }
 
     public bool CanAccessScreen(string screenPermission)
@@ -62,8 +63,8 @@ public class AuthStateService
         CurrentUserId = null;
         CurrentUserName = null;
         CurrentTenantId = null;
-        CurrentRoles.Clear();
-        CurrentPermissions.Clear();
+        CurrentRoles?.Clear();
+        CurrentPermissions?.Clear();
         _credentialStore.ClearToken();
         AuthStateChanged?.Invoke(this, EventArgs.Empty);
     }

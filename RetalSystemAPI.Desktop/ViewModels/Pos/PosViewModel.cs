@@ -6,17 +6,20 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Branch;
+using SafeSummaryDto = RetalSystemAPI.Desktop.Models.Accounting.SafeSummaryDto;
 using RetalSystemAPI.Desktop.Models.Catalog;
 using RetalSystemAPI.Desktop.Models.Customers;
 using RetalSystemAPI.Desktop.Models.Pos;
 using RetalSystemAPI.Desktop.Models.Sales;
 using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Customers;
 using RetalSystemAPI.Desktop.Services.Sales;
 using RetalSystemAPI.Desktop.Services.Warehouses;
 using RetalSystemAPI.Desktop.ViewModels.Base;
+using RetalSystemAPI.Desktop.Core.Auth;
 
 namespace RetalSystemAPI.Desktop.ViewModels.Pos;
 
@@ -31,6 +34,9 @@ public partial class PosViewModel : BaseViewModel
     private readonly ISalesInvoiceApiService _salesInvoiceApiService;
     private readonly IToastService _toastService;
     private readonly IPosSessionService _sessionService;
+    private readonly ISafeApiService? _safeApiService;
+    private readonly IPosCashApiService _posCashApiService;
+    private readonly AuthStateService _authState;
     private readonly string? _sessionScope;
     private readonly System.Windows.Threading.DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private bool _restoring = true;
@@ -53,6 +59,21 @@ public partial class PosViewModel : BaseViewModel
 
     [ObservableProperty]
     private WarehouseSummaryDto? _selectedWarehouse;
+
+    [ObservableProperty]
+    private ObservableCollection<SafeSummaryDto> _safes = new();
+
+    [ObservableProperty]
+    private SafeSummaryDto? _selectedSafe;
+
+    [ObservableProperty] private string _pairingCode = string.Empty;
+    [ObservableProperty] private string? _posTerminalName;
+    [ObservableProperty] private string? _cashDrawerName;
+    [ObservableProperty] private CashSessionInfo? _currentCashSession;
+    [ObservableProperty] private decimal _openingFloat;
+    [ObservableProperty] private decimal _countedClosingBalance;
+    public bool IsDevicePaired => !string.IsNullOrWhiteSpace(PosTerminalName);
+    public bool HasOpenCashSession => CurrentCashSession != null;
 
     partial void OnSelectedWarehouseChanged(WarehouseSummaryDto? value)
     {
@@ -136,7 +157,10 @@ public partial class PosViewModel : BaseViewModel
         IStockApiService stockApiService,
         ISalesInvoiceApiService salesInvoiceApiService,
         IToastService toastService,
-        IPosSessionService sessionService)
+        IPosSessionService sessionService,
+        IPosCashApiService posCashApiService,
+        AuthStateService authState,
+        ISafeApiService? safeApiService = null)
     {
         _branchApiService = branchApiService;
         _warehouseApiService = warehouseApiService;
@@ -147,6 +171,9 @@ public partial class PosViewModel : BaseViewModel
         _salesInvoiceApiService = salesInvoiceApiService;
         _toastService = toastService;
         _sessionService = sessionService;
+        _safeApiService = safeApiService;
+        _posCashApiService = posCashApiService;
+        _authState = authState;
         _sessionScope = sessionService.ScopeKey;
         _saveTimer.Tick += (_, _) => SaveWorkspace();
         PropertyChanged += (_, e) =>
@@ -159,7 +186,11 @@ public partial class PosViewModel : BaseViewModel
 
     partial void OnSelectedBranchChanged(BranchDto? value)
     {
-        if (!_restoring) _ = FilterWarehousesForBranchAsync();
+        if (!_restoring)
+        {
+            _ = FilterWarehousesForBranchAsync();
+            _ = LoadSafesAsync();
+        }
     }
 
     partial void OnSelectedCustomerChanged(CustomerSummaryDto? value)
@@ -197,6 +228,8 @@ public partial class PosViewModel : BaseViewModel
 
             // 2. Warehouses (Showrooms)
             await FilterWarehousesForBranchAsync();
+            await LoadSafesAsync();
+            await LoadPosContextAsync();
 
             // 3. Customers
             await LoadCustomersAsync();
@@ -296,6 +329,63 @@ public partial class PosViewModel : BaseViewModel
                 SelectedWarehouse = showroom ?? Warehouses.FirstOrDefault();
             }
         }
+    }
+
+    private async Task LoadSafesAsync()
+    {
+        if (_safeApiService is null || SelectedBranch is null) return;
+        var result = await _safeApiService.GetAllAsync(branchId: SelectedBranch.Id, isActive: true);
+        if (!result.Success || result.Data is null) return;
+        Safes = new ObservableCollection<SafeSummaryDto>(result.Data);
+        if (SelectedSafe is null || Safes.All(s => s.Id != SelectedSafe.Id))
+            SelectedSafe = Safes.FirstOrDefault();
+    }
+
+    private async Task LoadPosContextAsync()
+    {
+        var result = await _posCashApiService.GetContextAsync();
+        if (!result.Success || result.Data == null)
+        {
+            PosTerminalName = null; CashDrawerName = null; CurrentCashSession = null;
+        }
+        else
+        {
+            PosTerminalName = result.Data.Terminal.Name;
+            CashDrawerName = result.Data.Terminal.DefaultCashDrawerName;
+            CurrentCashSession = result.Data.CurrentSession;
+            SelectedSafe = Safes.FirstOrDefault(x => x.Id == result.Data.Terminal.DefaultCashDrawerId) ?? SelectedSafe;
+            if (CurrentCashSession != null) CountedClosingBalance = CurrentCashSession.ExpectedClosingBalance;
+        }
+        OnPropertyChanged(nameof(IsDevicePaired));
+        OnPropertyChanged(nameof(HasOpenCashSession));
+    }
+
+    [RelayCommand]
+    private async Task PairPosDeviceAsync()
+    {
+        if (!_authState.CurrentTenantId.HasValue || string.IsNullOrWhiteSpace(PairingCode))
+        { ErrorMessage = "أدخل رمز الربط وتأكد من جلسة الدخول"; return; }
+        var result = await _posCashApiService.ClaimAsync(_authState.CurrentTenantId.Value, PairingCode.Trim());
+        if (!result.Success) { ErrorMessage = result.Message; return; }
+        PairingCode = string.Empty; await LoadPosContextAsync();
+        _toastService.ShowSuccess("تم ربط هذا الجهاز بنقطة البيع بنجاح");
+    }
+
+    [RelayCommand]
+    private async Task OpenCashSessionAsync()
+    {
+        var result = await _posCashApiService.OpenAsync(OpeningFloat);
+        if (!result.Success) { ErrorMessage = result.Message; return; }
+        await LoadPosContextAsync(); _toastService.ShowSuccess("تم فتح وردية درج النقود");
+    }
+
+    [RelayCommand]
+    private async Task CloseCashSessionAsync()
+    {
+        var result = await _posCashApiService.CloseAsync(CountedClosingBalance);
+        if (!result.Success) { ErrorMessage = result.Message; return; }
+        await LoadPosContextAsync();
+        _toastService.ShowSuccess(result.Data?.Status == 2 ? "تم إرسال فرق الجرد لاعتماد المشرف" : "تم إغلاق الوردية بنجاح");
     }
 
     [RelayCommand]
@@ -507,6 +597,13 @@ public partial class PosViewModel : BaseViewModel
         OrderNotes = string.Empty;
         ErrorMessage = null;
         SuccessMessage = null;
+
+        if (SelectedPaymentMethod == PaymentMethod.Cash && CurrentCashSession == null)
+        {
+            ErrorMessage = "يجب ربط الجهاز وفتح وردية درج النقود قبل تنفيذ بيع نقدي";
+            _toastService.ShowWarning(ErrorMessage, "وردية غير مفتوحة");
+            return;
+        }
         _activeDraftId = Guid.NewGuid();
         _restoring = false;
         RecalculateTotals();
@@ -732,6 +829,8 @@ public partial class PosViewModel : BaseViewModel
                 TaxAmount = TaxAmount,
                 TotalAmount = GrandTotal,
                 PaidAmount = SelectedPaymentMethod == PaymentMethod.Card ? GrandTotal : Math.Min(PaidAmount, GrandTotal),
+                PaymentSafeId = SelectedSafe?.Id,
+                CashSessionId = SelectedPaymentMethod == PaymentMethod.Cash ? CurrentCashSession?.Id : null,
                 Notes = OrderNotes ?? (isCredit ? $"فاتورة بيع آجل (دين) - متبقي دين: {CustomerDebtAmount:N2} د.ل" : null),
                 Items = CartItems.Select(c => new CreateSalesInvoiceItemRequest
                 {

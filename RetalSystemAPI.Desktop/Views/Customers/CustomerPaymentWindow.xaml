@@ -1,0 +1,84 @@
+<Window x:Class="RetalSystemAPI.Desktop.Views.Customers.CustomerPaymentWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:RetalSystemAPI.Desktop.Models.Accounting"
+        Title="سند قبض / سداد عميل" Height="500" Width="500"
+        WindowStartupLocation="CenterOwner" FlowDirection="RightToLeft"
+        Background="{DynamicResource SurfaceBrush}" ResizeMode="NoResize" Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="تسجيل سند قبض / تحصيل من عميل" 
+                   FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,16"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,10,0">
+                <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="{Binding CustomerName, StringFormat={}العميل: {0}}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding CustomerCurrentBalance, StringFormat={}المديونية الحالية المستحقة: {0:N2} د.ل}" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                        <TextBlock Text="المبلغ المقبوض (د.ل) *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                        <TextBlock Text="طريقة الدفع *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox SelectedValue="{Binding PaymentMethod}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center">
+                            <ComboBoxItem Content="نقداً (كاش)" Tag="{x:Static models:PaymentMethod.Cash}" IsSelected="True"/>
+                            <ComboBoxItem Content="بطاقة مصرفية" Tag="{x:Static models:PaymentMethod.CreditCard}"/>
+                            <ComboBoxItem Content="تحويل مصرفي" Tag="{x:Static models:PaymentMethod.BankTransfer}"/>
+                            <ComboBoxItem Content="صك مصرفي" Tag="{x:Static models:PaymentMethod.Cheque}"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                        <TextBlock Text="الفرع *" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                        <TextBlock Text="الخزينة المودع بها" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name" Height="36" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="تاريخ السند" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <DatePicker SelectedDate="{Binding PaymentDate}" Height="36" VerticalContentAlignment="Center" Margin="0,0,0,12"/>
+
+                <TextBlock Text="البيان" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Height="36" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,0,12"/>
+
+                <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="50" TextWrapping="Wrap" Padding="8" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,0,8"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,8" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="تأكيد وحفظ السند" Command="{Binding SaveCommand}" Width="130" Height="36" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                <Button Content="إلغاء" IsCancel="True" Width="80" Height="36" Margin="10,0,0,0" Background="{DynamicResource SurfaceHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Cursor="Hand"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

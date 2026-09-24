@@ -12,7 +12,9 @@ public static class Permissions
 
     public static class Pos
     {
-        public const string Access = "Permissions.Pos.Access";
+        public const string View = "Permissions.Pos.View";
+        public const string OpenSession = "Permissions.Pos.OpenSession";
+        public const string CloseSession = "Permissions.Pos.CloseSession";
     }
 
     public static class Products
@@ -46,6 +48,8 @@ public static class Permissions
         public const string Create = "Permissions.Customers.Create";
         public const string Edit = "Permissions.Customers.Edit";
         public const string Delete = "Permissions.Customers.Delete";
+        public const string Pay = "Permissions.Customers.Pay";
+        public const string Adjust = "Permissions.Customers.Adjust";
     }
 
     public static class Suppliers
@@ -54,6 +58,8 @@ public static class Permissions
         public const string Create = "Permissions.Suppliers.Create";
         public const string Edit = "Permissions.Suppliers.Edit";
         public const string Delete = "Permissions.Suppliers.Delete";
+        public const string Pay = "Permissions.Suppliers.Pay";
+        public const string Adjust = "Permissions.Suppliers.Adjust";
     }
 
     public static class SalesInvoices
@@ -153,5 +159,37 @@ public static class Permissions
     {
         public const string View = "Permissions.Tenants.View";
         public const string Edit = "Permissions.Tenants.Edit";
+    }
+
+    public static class Safes
+    {
+        public const string View = "Permissions.Safes.View";
+        public const string Create = "Permissions.Safes.Create";
+        public const string Edit = "Permissions.Safes.Edit";
+        public const string Delete = "Permissions.Safes.Delete";
+        public const string Transfer = "Permissions.Safes.Transfer";
+        public const string Transactions = "Permissions.Safes.Transactions";
+    }
+
+    public static class FinancialReconciliation
+    {
+        public const string View = "Permissions.FinancialReconciliation.View";
+    }
+
+    public static class ExpenseCategories
+    {
+        public const string View = "Permissions.ExpenseCategories.View";
+        public const string Create = "Permissions.ExpenseCategories.Create";
+        public const string Edit = "Permissions.ExpenseCategories.Edit";
+        public const string Delete = "Permissions.ExpenseCategories.Delete";
+    }
+
+    public static class Expenses
+    {
+        public const string View = "Permissions.Expenses.View";
+        public const string Create = "Permissions.Expenses.Create";
+        public const string Edit = "Permissions.Expenses.Edit";
+        public const string Delete = "Permissions.Expenses.Delete";
+        public const string Cancel = "Permissions.Expenses.Cancel";
     }
 }

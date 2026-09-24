@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetalSystemAPI.Desktop.Models.Branch;
+using SafeSummaryDto = RetalSystemAPI.Desktop.Models.Accounting.SafeSummaryDto;
 using RetalSystemAPI.Desktop.Models.Catalog;
 using RetalSystemAPI.Desktop.Models.Purchase;
 using RetalSystemAPI.Desktop.Models.Sales;
 using RetalSystemAPI.Desktop.Models.Suppliers;
 using RetalSystemAPI.Desktop.Models.Warehouses;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Purchase;
 using RetalSystemAPI.Desktop.Services.Suppliers;
@@ -298,6 +300,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
     private readonly ISupplierApiService _supplierApiService;
     private readonly IWarehouseApiService _warehouseApiService;
     private readonly IProductApiService _productApiService;
+    private readonly ISafeApiService? _safeApiService;
 
     public Guid? Id { get; private set; }
     public bool IsEditMode => Id.HasValue;
@@ -313,6 +316,12 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
 
     [ObservableProperty]
     private BranchDto? _selectedBranch;
+
+    [ObservableProperty]
+    private ObservableCollection<SafeSummaryDto> _safes = new();
+
+    [ObservableProperty]
+    private SafeSummaryDto? _selectedSafe;
 
     [ObservableProperty]
     private ObservableCollection<SupplierSummaryDto> _suppliers = new();
@@ -499,14 +508,18 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
         IBranchApiService branchApiService,
         ISupplierApiService supplierApiService,
         IWarehouseApiService warehouseApiService,
-        IProductApiService productApiService)
+        IProductApiService productApiService,
+        ISafeApiService? safeApiService = null)
     {
         _invoiceApiService = invoiceApiService;
         _branchApiService = branchApiService;
         _supplierApiService = supplierApiService;
         _warehouseApiService = warehouseApiService;
         _productApiService = productApiService;
+        _safeApiService = safeApiService;
     }
+
+    partial void OnSelectedBranchChanged(BranchDto? value) => _ = LoadSafesAsync();
 
     partial void OnDiscountAmountChanged(decimal value) => RecalculateTotals();
     partial void OnTaxAmountChanged(decimal value) => RecalculateTotals();
@@ -554,7 +567,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
 
             PackagingOptions = options;
             SelectedPackagingOption = optionToSelect;
-            UnitsPerPackage = SelectedPackagingOption.ConversionFactor;
+            UnitsPerPackage = optionToSelect!.ConversionFactor;
             PackageQuantity = 1;
 
             var baseUnitCost = value.CostPrice > 0 ? value.CostPrice : value.SalePrice;
@@ -712,6 +725,8 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
                 InvoiceNumber = invoice.InvoiceNumber;
                 InvoiceDate = invoice.InvoiceDate;
                 SelectedBranch = Branches.FirstOrDefault(b => b.Id == invoice.BranchId);
+                await LoadSafesAsync();
+                SelectedSafe = Safes.FirstOrDefault(s => s.Id == invoice.PaymentSafeId) ?? SelectedSafe;
                 SelectedSupplier = Suppliers.FirstOrDefault(s => s.Id == invoice.SupplierId);
                 SelectedWarehouse = Warehouses.FirstOrDefault(w => w.Id == invoice.WarehouseId);
                 Status = invoice.Status;
@@ -739,6 +754,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
             else
             {
                 SelectedBranch = Branches.FirstOrDefault();
+                await LoadSafesAsync();
                 SelectedSupplier = Suppliers.FirstOrDefault();
                 SelectedWarehouse = Warehouses.FirstOrDefault();
                 Status = InvoiceStatus.Pending;
@@ -749,6 +765,16 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
             OnPropertyChanged(nameof(StatusDisplayName));
             RecalculateTotals();
         });
+    }
+
+    private async Task LoadSafesAsync()
+    {
+        if (_safeApiService is null || SelectedBranch is null) return;
+        var result = await _safeApiService.GetAllAsync(branchId: SelectedBranch.Id, isActive: true);
+        if (!result.Success || result.Data is null) return;
+        Safes = new ObservableCollection<SafeSummaryDto>(result.Data);
+        if (SelectedSafe is null || Safes.All(s => s.Id != SelectedSafe.Id))
+            SelectedSafe = Safes.FirstOrDefault();
     }
 
     [RelayCommand]
@@ -883,6 +909,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
                     TaxAmount = TaxAmount,
                     TotalAmount = TotalAmount,
                     PaidAmount = PaidAmount,
+                    PaymentSafeId = SelectedSafe?.Id,
                     Notes = Notes,
                     Items = Items.ToList()
                 };
@@ -918,6 +945,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
                     TaxAmount = TaxAmount,
                     TotalAmount = TotalAmount,
                     PaidAmount = PaidAmount,
+                    PaymentSafeId = SelectedSafe?.Id,
                     Notes = Notes,
                     Items = Items.ToList()
                 };
@@ -1070,6 +1098,7 @@ public partial class PurchaseInvoiceFormViewModel : BaseViewModel
                     TaxAmount = TaxAmount,
                     TotalAmount = TotalAmount,
                     PaidAmount = TotalAmount,
+                    PaymentSafeId = SelectedSafe?.Id,
                     Notes = Notes,
                     Items = Items.ToList()
                 };

@@ -28,6 +28,11 @@ using RetalSystemAPI.Desktop.ViewModels.Dashboard;
 using RetalSystemAPI.Desktop.ViewModels.Pos;
 using RetalSystemAPI.Desktop.Views.Catalog;
 using RetalSystemAPI.Desktop.Views.Pos;
+using RetalSystemAPI.Desktop.Models.Accounting;
+using RetalSystemAPI.Desktop.Services.Accounting;
+using RetalSystemAPI.Desktop.ViewModels.Accounting;
+using RetalSystemAPI.Desktop.ViewModels.Customers;
+using PaymentMethod = RetalSystemAPI.Desktop.Models.Sales.PaymentMethod;
 
 internal static class Program
 {
@@ -220,6 +225,51 @@ internal static class Program
         lookup.SetResult(new ApiResponse<ProductDto> { Success = true, Data = Products[0] });
         await queuedFirst;
         Check(queuedScanner.CartItems.Single().Quantity == 2 && !queuedScanner.IsScanning, "Slow barcode lookup does not lose the next scan");
+
+        // ══════════════ ACCOUNTING UX CHECKS ══════════════
+        var mainSafe = new SafeSummaryDto { Id = Guid.NewGuid(), Name = "الخزينة الرئيسية", CurrentBalance = 5000, BranchName = "الفرع الرئيسي", Type = SafeType.Coffer, IsActive = true };
+        var subSafe = new SafeSummaryDto { Id = Guid.NewGuid(), Name = "خزينة فرعية", CurrentBalance = 1000, BranchName = "الفرع الرئيسي", Type = SafeType.CashDrawer, IsActive = true };
+        var safesList = new List<SafeSummaryDto> { mainSafe, subSafe };
+        var safeApi = Stub.Create<ISafeApiService>((method, _) => method switch
+        {
+            "GetPagedAsync" => Ok(new PagedResult<SafeSummaryDto> { Items = safesList, TotalCount = safesList.Count, TotalPages = 1 }),
+            "GetAllAsync" => Ok(safesList),
+            _ => Ok(true)
+        });
+
+        var safesVm = new SafesViewModel(safeApi, BranchApi(), new FakeToast());
+        await safesVm.InitializeAsync();
+        Check(safesVm.Safes.Count == 2 && safesVm.Safes[0].Name == "الخزينة الرئيسية", "Safes list loads correctly with branch and balance");
+
+        var transferVm = new SafeTransferViewModel(safeApi, new FakeToast());
+        await transferVm.InitializeAsync(mainSafe.Id);
+        transferVm.ToSafe = mainSafe; // Attempt transfer to same safe
+        transferVm.Amount = 500;
+        await transferVm.TransferCommand.ExecuteAsync(null);
+        Check(transferVm.ErrorMessage?.Contains("نفس الخزينة") == true, "Transfer to same safe is rejected");
+
+        transferVm.ToSafe = subSafe;
+        transferVm.Amount = -10;
+        Check(transferVm.GetErrors(nameof(SafeTransferViewModel.Amount)).Any(), "Negative transfer amount triggers validation error");
+        transferVm.Amount = 250;
+        Check(!transferVm.GetErrors(nameof(SafeTransferViewModel.Amount)).Any(), "Valid transfer amount clears validation error");
+
+        var customerPaymentVm = new CustomerPaymentViewModel(CustomerApi(), safeApi, BranchApi(), new FakeToast());
+        await customerPaymentVm.InitializeAsync(Customer.Id, Customer.Name, 500);
+        customerPaymentVm.Amount = -50;
+        Check(customerPaymentVm.GetErrors(nameof(CustomerPaymentViewModel.Amount)).Any(), "Negative customer payment amount triggers validation error");
+        customerPaymentVm.Amount = 150;
+        Check(!customerPaymentVm.GetErrors(nameof(CustomerPaymentViewModel.Amount)).Any(), "Valid customer payment amount clears validation error");
+
+        var expenseCat = new ExpenseCategoryDto { Id = Guid.NewGuid(), Name = "صيانة وتشغيل", IsActive = true };
+        var expenseCategoryApi = Stub.Create<IExpenseCategoryApiService>((_, _) => Ok(new List<ExpenseCategoryDto> { expenseCat }));
+        var expenseApi = Stub.Create<IExpenseApiService>((_, _) => Ok(true));
+        var expenseForm = new ExpenseFormViewModel(expenseApi, expenseCategoryApi, safeApi, BranchApi(), new FakeToast());
+        await expenseForm.InitializeAsync(null);
+        expenseForm.Amount = -100;
+        Check(expenseForm.GetErrors(nameof(ExpenseFormViewModel.Amount)).Any(), "Negative expense amount triggers validation");
+        expenseForm.Amount = 200;
+        Check(!expenseForm.GetErrors(nameof(ExpenseFormViewModel.Amount)).Any(), "Valid expense amount clears validation error");
 
         if (args.Contains("--render"))
         {

@@ -64,6 +64,8 @@ public class SalesInvoiceDto
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
+    public Guid? CashSessionId { get; set; }
     public decimal RemainingAmount { get; set; }
     public string? Notes { get; set; }
     public List<SalesInvoiceItemDto> Items { get; set; } = new();
@@ -127,6 +129,8 @@ public class CreateSalesInvoiceRequest
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
+    public Guid? CashSessionId { get; set; }
     public string? Notes { get; set; }
     public List<CreateSalesInvoiceItemRequest> Items { get; set; } = new();
 }
@@ -148,6 +152,7 @@ public class UpdateSalesInvoiceRequest
     public InvoiceStatus Status { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
     public decimal PaidAmount { get; set; }
+    public decimal TaxAmount { get; set; }
     public string? Notes { get; set; }
     public List<CreateSalesInvoiceItemRequest>? Items { get; set; }
 }

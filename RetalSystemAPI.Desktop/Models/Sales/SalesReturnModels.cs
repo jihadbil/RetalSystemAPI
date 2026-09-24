@@ -38,6 +38,9 @@ public class SalesReturnDto
         _ => "أخرى"
     };
     public decimal TotalAmount { get; set; }
+    public decimal RefundedAmount { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
+    public Guid? RefundSafeId { get; set; }
     public string? Notes { get; set; }
     public List<SalesReturnItemDto> Items { get; set; } = new();
 }
@@ -84,6 +87,9 @@ public class CreateSalesReturnRequest
     public Guid BranchId { get; set; }
     public Guid WarehouseId { get; set; }
     public Guid? CustomerId { get; set; }
+    public decimal? RefundedAmount { get; set; }
+    public PaymentMethod? PaymentMethod { get; set; }
+    public Guid? RefundSafeId { get; set; }
     public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
     public SalesReturnReason Reason { get; set; } = SalesReturnReason.CustomerChangedMind;
     public string? Notes { get; set; }

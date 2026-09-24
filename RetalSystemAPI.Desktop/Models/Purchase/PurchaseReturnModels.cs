@@ -29,6 +29,7 @@ public class PurchaseReturnSummaryDto
     public PaymentMethod PaymentMethod { get; set; }
     public string PaymentMethodName { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
+    public Guid? RefundSafeId { get; set; }
     public PurchaseReturnReason Reason { get; set; }
     public string ReasonName => Reason switch
     {
@@ -95,6 +96,7 @@ public class CreatePurchaseReturnRequest
     public Guid BranchId { get; set; }
     public Guid WarehouseId { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public Guid? RefundSafeId { get; set; }
     public PurchaseReturnReason Reason { get; set; } = PurchaseReturnReason.Defective;
     public string? Notes { get; set; }
     public List<CreatePurchaseReturnItemRequest> Items { get; set; } = new();

@@ -72,13 +72,9 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Margin="6,0,0,0">
-                        <TextBlock Text="حالة الفاتورة" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                        <ComboBox SelectedValue="{Binding Status}" SelectedValuePath="Tag" Height="36" VerticalContentAlignment="Center">
-                            <ComboBoxItem Content="مسودة" Tag="{x:Static sales:InvoiceStatus.Draft}"/>
-                            <ComboBoxItem Content="مصدرة" Tag="{x:Static sales:InvoiceStatus.Issued}" IsSelected="True"/>
-                            <ComboBoxItem Content="مدفوعة بالكامل" Tag="{x:Static sales:InvoiceStatus.Paid}"/>
-                            <ComboBoxItem Content="مدفوعة جزئياً" Tag="{x:Static sales:InvoiceStatus.PartiallyPaid}"/>
-                        </ComboBox>
+                        <TextBlock Text="الخزينة / الحساب" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name"
+                                  Height="36" VerticalContentAlignment="Center" AutomationProperties.Name="خزينة تحصيل الفاتورة"/>
                     </StackPanel>
                 </Grid>
 

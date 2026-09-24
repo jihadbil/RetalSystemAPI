@@ -9,7 +9,7 @@
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,12">
    <Grid>
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <StackPanel Margin="0,0,12,0">
      <TextBlock Text="امسح الباركود لإضافة صنف" FontWeight="SemiBold" Margin="0,0,0,6"/>
@@ -29,6 +29,32 @@
      <Button Content="تحديث" Command="{Binding RefreshCommand}" Height="36" Margin="0,0,8,0"/>
      <Button Content="أصناف سريعة F4" Command="{Binding ToggleQuickItemsCommand}" Height="36"/>
     </WrapPanel>
+    <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="0,10,0,0" Padding="10" CornerRadius="8" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+     <WrapPanel VerticalAlignment="Center">
+      <TextBlock Text="ربط درج النقود:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <StackPanel Orientation="Horizontal">
+       <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding IsDevicePaired}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+       <TextBox Text="{Binding PairingCode, UpdateSourceTrigger=PropertyChanged}" Width="130" Height="32" FlowDirection="LeftToRight" Margin="0,0,6,0" AutomationProperties.Name="رمز ربط نقطة البيع"/>
+       <Button Content="ربط الجهاز" Command="{Binding PairPosDeviceCommand}" Height="32"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal">
+       <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsDevicePaired}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+       <TextBlock Text="{Binding PosTerminalName, StringFormat=النقطة: {0}}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+       <TextBlock Text="{Binding CashDrawerName, StringFormat=الدرج: {0}}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+       <StackPanel Orientation="Horizontal">
+        <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasOpenCashSession}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+        <TextBox Text="{Binding OpeningFloat, UpdateSourceTrigger=PropertyChanged}" Width="100" Height="32" Margin="0,0,6,0" FlowDirection="LeftToRight" ToolTip="الرصيد الافتتاحي المعدود"/>
+        <Button Content="فتح وردية" Command="{Binding OpenCashSessionCommand}" Height="32"/>
+       </StackPanel>
+       <StackPanel Orientation="Horizontal">
+        <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasOpenCashSession}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+        <TextBlock Text="وردية مفتوحة" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBox Text="{Binding CountedClosingBalance, UpdateSourceTrigger=PropertyChanged}" Width="100" Height="32" Margin="0,0,6,0" FlowDirection="LeftToRight" ToolTip="الرصيد الفعلي المعدود عند الإغلاق"/>
+        <Button Content="إغلاق الوردية" Command="{Binding CloseCashSessionCommand}" Height="32"/>
+       </StackPanel>
+      </StackPanel>
+     </WrapPanel>
+    </Border>
    </Grid>
   </Border>
   <Border Grid.Row="1" Background="{DynamicResource DangerLightBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10" Visibility="{Binding ErrorMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}">
@@ -123,6 +149,10 @@
         <RadioButton x:Name="PayCardRadio" Content="بطاقة" GroupName="Payment" Checked="PayCard_Checked" ToolTip="F9"/>
         <RadioButton x:Name="PayCreditRadio" Content="آجل" GroupName="Payment" Checked="PayCredit_Checked"/>
        </UniformGrid>
+       <TextBlock Text="الخزينة / الحساب" FontWeight="SemiBold" Margin="0,0,0,6"/>
+       <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}"
+                 DisplayMemberPath="Name" Height="38" Margin="0,0,0,12"
+                 AutomationProperties.Name="خزينة تحصيل الفاتورة"/>
        <StackPanel x:Name="CashFields">
         <TextBlock Text="المبلغ المستلم" Margin="0,0,0,6"/>
         <TextBox Text="{Binding PaidAmount, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Height="42" FontSize="20" FlowDirection="LeftToRight" AutomationProperties.Name="المبلغ المستلم"/>

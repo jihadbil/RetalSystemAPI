@@ -102,11 +102,18 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Notes -->
-                        <StackPanel>
-                            <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceBrush}" IsReadOnly="{Binding IsViewOnly}"/>
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="خزينة استلام المرتجع" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name" Height="34"
+                                          IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="ملاحظات" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceBrush}" IsReadOnly="{Binding IsViewOnly}"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 

@@ -78,6 +78,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.5*"/>
                         <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="1.5*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
@@ -95,6 +96,12 @@
                             <ComboBoxItem Content="صنف خاطئ" Tag="{x:Static sales:SalesReturnReason.WrongItem}"/>
                             <ComboBoxItem Content="أسباب أخرى" Tag="{x:Static sales:SalesReturnReason.Other}"/>
                         </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Margin="6,0,0,0">
+                        <TextBlock Text="خزينة رد المبلغ" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name"
+                                  Height="36" IsEnabled="{Binding IsViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                     </StackPanel>
                 </Grid>
 

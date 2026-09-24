@@ -24,6 +24,7 @@ public class PurchaseInvoiceSummaryDto
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
     public decimal RemainingAmount { get; set; }
     public int ItemsCount { get; set; }
 }
@@ -48,6 +49,7 @@ public class PurchaseInvoiceDto
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
     public decimal RemainingAmount { get; set; }
     public Guid? PurchaseOrderId { get; set; }
     public string? PurchaseOrderNumber { get; set; }
@@ -83,6 +85,7 @@ public class CreatePurchaseInvoiceRequest
     public decimal TaxAmount { get; set; } = 0;
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
     public Guid? PurchaseOrderId { get; set; }
     public string? Notes { get; set; }
     public List<CreatePurchaseInvoiceItemRequest> Items { get; set; } = new();
@@ -144,6 +147,7 @@ public class UpdatePurchaseInvoiceRequest
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? PaymentSafeId { get; set; }
     public string? Notes { get; set; }
     public List<CreatePurchaseInvoiceItemRequest>? Items { get; set; }
 }

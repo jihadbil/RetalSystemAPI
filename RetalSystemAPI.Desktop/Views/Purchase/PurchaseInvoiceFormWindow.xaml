@@ -92,8 +92,14 @@
                     <DatePicker SelectedDate="{Binding InvoiceDate}" Height="32"/>
                 </StackPanel>
 
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,10,0">
+                    <TextBlock Text="الخزينة / الحساب" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
+                    <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name"
+                              Style="{StaticResource DefaultComboBoxStyle}" Height="32" AutomationProperties.Name="خزينة سداد الفاتورة"/>
+                </StackPanel>
+
                 <!-- Notes -->
-                <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2">
+                <StackPanel Grid.Row="1" Grid.Column="3">
                     <TextBlock Text="ملاحظات" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,3"/>
                     <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Style="{StaticResource DefaultTextBoxStyle}" Height="32" VerticalContentAlignment="Center" Padding="6,0"/>
                 </StackPanel>

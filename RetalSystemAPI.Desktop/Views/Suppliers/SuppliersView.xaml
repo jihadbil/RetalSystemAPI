@@ -38,16 +38,27 @@
         <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <DataGrid ItemsSource="{Binding Suppliers}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}" Background="Transparent" RowHeight="42">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="اسم المورد" Binding="{Binding Name}" Width="2*"/>
-                    <DataGridTextColumn Header="العنوان" Binding="{Binding Address}" Width="3*"/>
-                    <DataGridTextColumn Header="الرصيد الافتتاحي" Binding="{Binding OpeningBalance, StringFormat={}{0:N2} د.ل}" Width="1.5*"/>
-                    <DataGridTextColumn Header="عدد الهواتف" Binding="{Binding PhoneCount}" Width="1*"/>
-                    <DataGridTemplateColumn Header="الإجراءات" Width="190">
+                    <DataGridTextColumn Header="اسم المورد" Binding="{Binding Name}" Width="1.8*"/>
+                    <DataGridTextColumn Header="العنوان" Binding="{Binding Address}" Width="2*"/>
+                    <DataGridTextColumn Header="الرصيد الافتتاحي" Binding="{Binding OpeningBalance, StringFormat={}{0:N2} د.ل}" Width="1.2*"/>
+                    <DataGridTextColumn Header="الرصيد الحالي المستحق" Binding="{Binding CurrentBalance, StringFormat={}{0:N2} د.ل}" Width="1.4*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="عدد الهواتف" Binding="{Binding PhoneCount}" Width="0.9*"/>
+                    <DataGridTemplateColumn Header="الإجراءات والعمليات المالية" Width="310">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Button Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource TextPrimaryBrush}" Content="تعديل/هواتف" Command="{Binding DataContext.EditSupplierCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
-                                    <Button Style="{StaticResource TextButtonStyle}" Foreground="{DynamicResource DangerBrush}" Content="حذف" Command="{Binding DataContext.DeleteSupplierCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="8,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource AccentBrush}" Content="سند صرف" Command="{Binding DataContext.MakePaymentCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource GhostButtonStyle}" Content="كشف حساب" Command="{Binding DataContext.ViewStatementCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource TextPrimaryBrush}" Content="تعديل/هواتف" Command="{Binding DataContext.EditSupplierCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource TextButtonStyle}" Foreground="{DynamicResource DangerBrush}" Content="حذف" Command="{Binding DataContext.DeleteSupplierCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

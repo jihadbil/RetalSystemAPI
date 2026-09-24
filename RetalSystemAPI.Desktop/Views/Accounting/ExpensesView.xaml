@@ -1,0 +1,152 @@
+<UserControl x:Class="RetalSystemAPI.Desktop.Views.Accounting.ExpensesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:RetalSystemAPI.Desktop.Controls"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1050" 
+             FlowDirection="RightToLeft" 
+             Background="{DynamicResource BackgroundBrush}" 
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,15">
+            <Button Content="+ تسجيل مصروف جديد" Command="{Binding CreateExpenseCommand}" DockPanel.Dock="Left" Height="36" Padding="16,0" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryOnBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Path Data="{StaticResource IconExpenses}" Fill="{DynamicResource PrimaryBrush}" Width="22" Height="22" Stretch="Uniform" Margin="0,0,10,0"/>
+                <TextBlock Text="سندات المصروفات التشغيلية" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Summary Metric Cards -->
+        <Grid Grid.Row="1" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" Margin="0,0,8,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="إجمالي المصروفات التشغيلية (النشطة)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBlock Text="{Binding TotalExpensesAmount, StringFormat={}{0:N2} د.ل}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" Margin="8,0,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="إجمالي عدد سندات الصرف" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBlock Text="{Binding TotalExpensesCount, StringFormat={}{0} سند}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Filters Bar -->
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,15" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.5*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Row 0: Category, Safe, Branch -->
+                <TextBlock Text="التصنيف:" VerticalAlignment="Center" Margin="5,0,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+
+                <TextBlock Grid.Column="2" Text="الخزينة:" VerticalAlignment="Center" Margin="12,0,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="3" ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+
+                <TextBlock Grid.Column="4" Text="الفرع:" VerticalAlignment="Center" Margin="12,0,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <ComboBox Grid.Column="5" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}" DisplayMemberPath="Name" Height="34" VerticalContentAlignment="Center"/>
+
+                <!-- Row 1: Dates & Search -->
+                <TextBlock Grid.Row="1" Text="من تاريخ:" VerticalAlignment="Center" Margin="5,10,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <DatePicker Grid.Row="1" Grid.Column="1" SelectedDate="{Binding FromDate}" Height="34" VerticalContentAlignment="Center" Margin="0,10,0,0"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="إلى تاريخ:" VerticalAlignment="Center" Margin="12,10,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <DatePicker Grid.Row="1" Grid.Column="3" SelectedDate="{Binding ToDate}" Height="34" VerticalContentAlignment="Center" Margin="0,10,0,0"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="بحث:" VerticalAlignment="Center" Margin="12,10,8,0" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <Grid Grid.Row="1" Grid.Column="5" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}"/>
+                    <Button Grid.Column="1" Content="تحديث" Command="{Binding LoadExpensesCommand}" Margin="8,0,0,0" Padding="14,0" Height="34" Background="{DynamicResource TextPrimaryBrush}" Foreground="{DynamicResource SurfaceBrush}" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid Card -->
+        <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Expenses}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column" HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}" Background="Transparent" RowHeight="42">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="رقم السند" Binding="{Binding ExpenseNumber}" Width="1.2*"/>
+                    <DataGridTextColumn Header="التاريخ" Binding="{Binding ExpenseDate, StringFormat={}{0:yyyy/MM/dd}}" Width="1*"/>
+                    <DataGridTextColumn Header="التصنيف" Binding="{Binding ExpenseCategoryName}" Width="1.5*"/>
+                    <DataGridTextColumn Header="الفرع" Binding="{Binding BranchName}" Width="1.2*"/>
+                    <DataGridTextColumn Header="الخزينة المخصوم منها" Binding="{Binding SafeName, TargetNullValue='غير محدد'}" Width="1.4*"/>
+                    <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat={}{0:N2} د.ل}" Width="1.3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="طريقة الدفع" Binding="{Binding PaymentMethodName}" Width="1*"/>
+                    <DataGridTextColumn Header="المستفيد" Binding="{Binding BeneficiaryName, TargetNullValue='-'}" Width="1.2*"/>
+                    <DataGridTextColumn Header="البيان" Binding="{Binding Description}" Width="2*"/>
+                    <DataGridTemplateColumn Header="الحالة" Width="1*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding IsCancelled, Converter={StaticResource StatusTextConverter}}" 
+                                           Foreground="{Binding IsCancelled, Converter={StaticResource StatusToColorConverter}}" 
+                                           FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="الإجراءات" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Style="{StaticResource GhostButtonStyle}" Content="تعديل" Command="{Binding DataContext.EditExpenseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Content="إلغاء السند" Command="{Binding DataContext.CancelExpenseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" Background="{DynamicResource WarningBrush}" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    <Button Style="{StaticResource TextButtonStyle}" Foreground="{DynamicResource DangerBrush}" Content="حذف" Command="{Binding DataContext.DeleteExpenseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" Margin="2,0" Padding="6,4" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Pagination & Overlay -->
+        <StackPanel Grid.Row="4" Margin="0,10,0,0">
+            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,6" />
+            <controls:PaginationControl CurrentPage="{Binding CurrentPage}" TotalPages="{Binding TotalPages}" PageSize="{Binding PageSize, Mode=TwoWay}" IsLoading="{Binding IsLoading}" NextPageCommand="{Binding NextPageCommand}" PrevPageCommand="{Binding PrevPageCommand}" />
+        </StackPanel>
+
+        <controls:ListFeedback Grid.Row="3" ItemsCount="{Binding Expenses.Count}" IsLoading="{Binding IsLoading}" Message="{Binding ErrorMessage}" RetryCommand="{Binding LoadExpensesCommand}" />
+        <controls:LoadingOverlay Grid.RowSpan="5" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+    </Grid>
+</UserControl>

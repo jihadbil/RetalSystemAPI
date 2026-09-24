@@ -19,6 +19,9 @@ public interface ICustomerApiService
     Task<ApiResponse<CustomerDto>> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default);
     Task<ApiResponse<CustomerDto>> AddPhoneAsync(Guid customerId, CreateCustomerPhoneRequest request, CancellationToken ct = default);
     Task<ApiResponse> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default);
+    Task<ApiResponse<CustomerStatementDto>> GetStatementAsync(Guid customerId, DateTime? fromDate = null, DateTime? toDate = null, int pageNumber = 1, int pageSize = 50, CancellationToken ct = default);
+    Task<ApiResponse<CustomerTransactionDto>> AddPaymentAsync(Guid customerId, CreateCustomerPaymentRequest request, CancellationToken ct = default);
+    Task<ApiResponse<CustomerTransactionDto>> AddAdjustmentAsync(Guid customerId, CreateCustomerAdjustmentRequest request, CancellationToken ct = default);
 }
 
 public class CustomerApiService : ICustomerApiService
@@ -85,5 +88,25 @@ public class CustomerApiService : ICustomerApiService
     public Task<ApiResponse> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default)
     {
         return _apiClient.DeleteAsync($"customers/{customerId}/phones/{phoneId}", ct);
+    }
+
+    public Task<ApiResponse<CustomerStatementDto>> GetStatementAsync(Guid customerId, DateTime? fromDate = null, DateTime? toDate = null, int pageNumber = 1, int pageSize = 50, CancellationToken ct = default)
+    {
+        var url = $"customers/{customerId}/statement?pageNumber={pageNumber}&pageSize={pageSize}";
+        if (fromDate.HasValue) url += $"&fromDate={Uri.EscapeDataString(fromDate.Value.ToString("o"))}";
+        if (toDate.HasValue) url += $"&toDate={Uri.EscapeDataString(toDate.Value.ToString("o"))}";
+        return _apiClient.GetAsync<CustomerStatementDto>(url, ct);
+    }
+
+    public Task<ApiResponse<CustomerTransactionDto>> AddPaymentAsync(Guid customerId, CreateCustomerPaymentRequest request, CancellationToken ct = default)
+    {
+        request.CustomerId = customerId;
+        return _apiClient.PostAsync<CustomerTransactionDto>("customers/payments", request, ct);
+    }
+
+    public Task<ApiResponse<CustomerTransactionDto>> AddAdjustmentAsync(Guid customerId, CreateCustomerAdjustmentRequest request, CancellationToken ct = default)
+    {
+        request.CustomerId = customerId;
+        return _apiClient.PostAsync<CustomerTransactionDto>("customers/adjustments", request, ct);
     }
 }

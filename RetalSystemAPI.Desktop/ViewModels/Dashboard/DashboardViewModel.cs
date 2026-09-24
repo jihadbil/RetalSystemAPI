@@ -77,9 +77,18 @@ public partial class DashboardViewModel : BaseViewModel
         _ = InitializeAsync();
     }
 
+    private bool _isInitializing;
     private async Task InitializeAsync()
     {
-        await LoadBranchesAsync();
+        _isInitializing = true;
+        try
+        {
+            await LoadBranchesAsync();
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
         await LoadDashboardAsync();
     }
 
@@ -116,6 +125,8 @@ public partial class DashboardViewModel : BaseViewModel
     private int _loadVersion;
     partial void OnSelectedBranchChanged(BranchDto? value)
     {
+        // تجاهل التغيير التلقائي أثناء التهيئة الأولى لتفادي إرسال طلبين متطابقين في نفس الوقت
+        if (_isInitializing) return;
         _ = LoadDashboardAsync();
     }
 

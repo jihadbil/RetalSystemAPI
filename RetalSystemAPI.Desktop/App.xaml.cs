@@ -6,12 +6,14 @@ using RetalSystemAPI.Desktop.Core.Auth;
 using RetalSystemAPI.Desktop.Core.Http;
 using RetalSystemAPI.Desktop.Core.Navigation;
 using RetalSystemAPI.Desktop.Services;
+using RetalSystemAPI.Desktop.Services.Accounting;
 using RetalSystemAPI.Desktop.Services.Catalog;
 using RetalSystemAPI.Desktop.Services.Customers;
 using RetalSystemAPI.Desktop.Services.Purchase;
 using RetalSystemAPI.Desktop.Services.Sales;
 using RetalSystemAPI.Desktop.Services.Suppliers;
 using RetalSystemAPI.Desktop.Services.Warehouses;
+using RetalSystemAPI.Desktop.ViewModels.Accounting;
 using RetalSystemAPI.Desktop.ViewModels.Auth;
 using RetalSystemAPI.Desktop.ViewModels.Branches;
 using RetalSystemAPI.Desktop.ViewModels.Catalog;
@@ -25,6 +27,7 @@ using RetalSystemAPI.Desktop.ViewModels.Stock;
 using RetalSystemAPI.Desktop.ViewModels.Suppliers;
 using RetalSystemAPI.Desktop.ViewModels.Tenants;
 using RetalSystemAPI.Desktop.ViewModels.Warehouses;
+using RetalSystemAPI.Desktop.Views.Accounting;
 using RetalSystemAPI.Desktop.Views.Auth;
 using RetalSystemAPI.Desktop.Views.Branches;
 using RetalSystemAPI.Desktop.Views.Catalog;
@@ -81,15 +84,35 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
-        // Base API Address with Local SSL Bypass
-        services.AddHttpClient<ApiClient>(client =>
+        var configuredApiUrl = Environment.GetEnvironmentVariable("RETAL_API_BASE_URL")
+            ?? "https://localhost:7226/api/";
+        if (!Uri.TryCreate(configuredApiUrl, UriKind.Absolute, out var apiBaseUri) ||
+            apiBaseUri.Scheme != Uri.UriSchemeHttps ||
+            !apiBaseUri.AbsolutePath.EndsWith("/api/", StringComparison.OrdinalIgnoreCase))
         {
-            client.BaseAddress = new Uri("https://localhost:7226/api/");
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            throw new InvalidOperationException(
+                "RETAL_API_BASE_URL must be an absolute HTTPS URL ending with /api/.");
+        }
+
+        var apiClientBuilder = services.AddHttpClient<ApiClient>(client =>
         {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+            client.BaseAddress = apiBaseUri;
+            client.Timeout = TimeSpan.FromSeconds(30);
         });
+
+#if DEBUG
+        // Development certificates are accepted only by Debug builds and only
+        // when connecting to localhost. Release builds always use normal TLS
+        // certificate validation.
+        if (apiBaseUri.IsLoopback)
+        {
+            apiClientBuilder.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            });
+        }
+#endif
 
         // Core Services
         services.AddSingleton<CredentialStoreService>();
@@ -124,6 +147,10 @@ public partial class App : Application
         services.AddTransient<IPurchaseReturnApiService, PurchaseReturnApiService>();
         services.AddTransient<IDashboardApiService, DashboardApiService>();
         services.AddTransient<RetalSystemAPI.Desktop.Services.Users.IUserApiService, RetalSystemAPI.Desktop.Services.Users.UserApiService>();
+        services.AddTransient<ISafeApiService, SafeApiService>();
+        services.AddTransient<IExpenseCategoryApiService, ExpenseCategoryApiService>();
+        services.AddTransient<IExpenseApiService, ExpenseApiService>();
+        services.AddTransient<IPosCashApiService, PosCashApiService>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
@@ -169,6 +196,19 @@ public partial class App : Application
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.ResetPasswordViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.RolePermissionsViewModel>();
         services.AddTransient<RetalSystemAPI.Desktop.ViewModels.Users.UserPermissionsViewModel>();
+        services.AddTransient<SafesViewModel>();
+        services.AddTransient<SafeFormViewModel>();
+        services.AddTransient<SafeTransferViewModel>();
+        services.AddTransient<SafeTransactionFormViewModel>();
+        services.AddTransient<SafeLedgerViewModel>();
+        services.AddTransient<ExpenseCategoriesViewModel>();
+        services.AddTransient<ExpenseCategoryFormViewModel>();
+        services.AddTransient<ExpensesViewModel>();
+        services.AddTransient<ExpenseFormViewModel>();
+        services.AddTransient<CustomerStatementViewModel>();
+        services.AddTransient<CustomerPaymentViewModel>();
+        services.AddTransient<SupplierStatementViewModel>();
+        services.AddTransient<SupplierPaymentViewModel>();
 
         // Views
         services.AddTransient<LoginView>();
@@ -193,6 +233,13 @@ public partial class App : Application
         services.AddTransient<PurchaseOrdersView>();
         services.AddTransient<PurchaseInvoicesView>();
         services.AddTransient<PurchaseReturnsView>();
+        services.AddTransient<SafesView>();
+        services.AddTransient<ExpenseCategoriesView>();
+        services.AddTransient<ExpensesView>();
+        services.AddTransient<CustomerStatementWindow>();
+        services.AddTransient<CustomerPaymentWindow>();
+        services.AddTransient<SupplierStatementWindow>();
+        services.AddTransient<SupplierPaymentWindow>();
         services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UsersView>();
         services.AddTransient<RetalSystemAPI.Desktop.Views.Users.RolePermissionsWindow>();
         services.AddTransient<RetalSystemAPI.Desktop.Views.Users.UserPermissionsWindow>();
