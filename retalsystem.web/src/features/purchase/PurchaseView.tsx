@@ -6,6 +6,8 @@ import type {
   PurchaseReturnDto,
 } from './types/purchase.types';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
+import { PurchaseInvoiceDetailsModal } from './components/PurchaseInvoiceDetailsModal';
+import { PurchaseOrderModal } from './components/PurchaseOrderModal';
 import { PurchaseReturnModal } from './components/PurchaseReturnModal';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
@@ -24,7 +26,9 @@ import {
   IconArrowBackUp,
   IconPlus,
   IconSearch,
+  IconEye,
 } from '@tabler/icons-react';
+import { PurchaseStatusLabels } from './types/purchase.types';
 
 export const PurchaseView: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -40,7 +44,10 @@ export const PurchaseView: React.FC = () => {
   const pagination = usePagination({ initialPageSize: 10 });
   const { page, pageSize, setTotalCount } = pagination;
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -102,6 +109,16 @@ export const PurchaseView: React.FC = () => {
             onClick={() => setIsInvoiceModalOpen(true)}
           >
             + فاتورة شراء جديدة
+          </Button>
+        )}
+        {activeTab === 'orders' && (
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<IconPlus className="w-4 h-4" />}
+            onClick={() => setIsOrderModalOpen(true)}
+          >
+            + أمر شراء جديد
           </Button>
         )}
         {activeTab === 'returns' && (
@@ -166,6 +183,7 @@ export const PurchaseView: React.FC = () => {
                       <th className="py-3 px-3 text-center">المدفوع</th>
                       <th className="py-3 px-3 text-center">المتبقي للمورد</th>
                       <th className="py-3 px-4 text-center">الحالة</th>
+                      <th className="py-3 px-3 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -187,9 +205,32 @@ export const PurchaseView: React.FC = () => {
                           {inv.remainingAmount > 0 ? `${inv.remainingAmount.toFixed(2)} د.ل` : '-'}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Badge variant="success" size="sm">
-                            مستلمة ومرحلة
-                          </Badge>
+                          {inv.status === 2 ? (
+                            <Badge variant="success" size="sm">
+                              مغلقة ومرحلة
+                            </Badge>
+                          ) : inv.status === 1 ? (
+                            <Badge variant="warning" size="sm">
+                              قيد الإدخال
+                            </Badge>
+                          ) : (
+                            <Badge variant="info" size="sm">
+                              {PurchaseStatusLabels[inv.status]?.text || 'مسودة'}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedInvoiceId(inv.id);
+                              setIsDetailsModalOpen(true);
+                            }}
+                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-emerald-700 transition-colors"
+                            title="عرض تفاصيل الفاتورة والبنود"
+                          >
+                            <IconEye className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -213,38 +254,48 @@ export const PurchaseView: React.FC = () => {
       {/* تبويب أوامر الشراء */}
       {activeTab === 'orders' && (
         <Card noPadding>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
-                <tr>
-                  <th className="py-3 px-4">رقم الأمر</th>
-                  <th className="py-3 px-3">التاريخ</th>
-                  <th className="py-3 px-3">المورد</th>
-                  <th className="py-3 px-3 text-center">القيمة التقديرية</th>
-                  <th className="py-3 px-4 text-center">الحالة</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {orders.map((ord) => (
-                  <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-800">{ord.orderNumber}</td>
-                    <td className="py-3 px-3 text-slate-500">
-                      {new Date(ord.orderDate).toLocaleDateString('ar-LY')}
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-slate-800">{ord.supplierName}</td>
-                    <td className="py-3 px-3 text-center font-bold text-slate-900 num-ltr">
-                      {ord.totalAmount.toFixed(2)} د.ل
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <Badge variant="info" size="sm">
-                        {ord.status}
-                      </Badge>
-                    </td>
+          {orders.length === 0 ? (
+            <div className="py-12">
+              <EmptyState
+                isSearch={false}
+                actionText="+ إنشاء أول أمر شراء"
+                onAction={() => setIsOrderModalOpen(true)}
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
+                  <tr>
+                    <th className="py-3 px-4">رقم الأمر</th>
+                    <th className="py-3 px-3">التاريخ</th>
+                    <th className="py-3 px-3">المورد</th>
+                    <th className="py-3 px-3 text-center">القيمة التقديرية</th>
+                    <th className="py-3 px-4 text-center">الحالة</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {orders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800">{ord.orderNumber}</td>
+                      <td className="py-3 px-3 text-slate-500">
+                        {new Date(ord.orderDate).toLocaleDateString('ar-LY')}
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-slate-800">{ord.supplierName || 'طلب توريد عام'}</td>
+                      <td className="py-3 px-3 text-center font-bold text-slate-900 num-ltr">
+                        {ord.totalAmount.toFixed(2)} د.ل
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <Badge variant="info" size="sm">
+                          {ord.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       )}
 
@@ -295,6 +346,33 @@ export const PurchaseView: React.FC = () => {
             showError('خطأ أثناء حفظ الفاتورة', msg);
           }
         }}
+      />
+
+      {/* نافذة إنشاء أمر شراء */}
+      <PurchaseOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onSave={async (data) => {
+          try {
+            await purchaseService.createOrder(data);
+            showSuccess('تم إنشاء أمر الشراء', 'تم حفظ أمر الشراء بنجاح');
+            loadPurchaseData();
+            setIsOrderModalOpen(false);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'فشل إنشاء أمر الشراء';
+            showError('خطأ أثناء إنشاء أمر الشراء', msg);
+          }
+        }}
+      />
+
+      {/* نافذة تفاصيل فاتورة مشتريات */}
+      <PurchaseInvoiceDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedInvoiceId(null);
+        }}
+        invoiceId={selectedInvoiceId}
       />
 
       {/* نافذة إنشاء مرتجع مشتريات */}

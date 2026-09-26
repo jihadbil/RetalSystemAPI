@@ -88,12 +88,41 @@ export const catalogService = {
     }
   },
 
+  // البحث بالباركود
+  async getByBarCode(barCode: string): Promise<ProductDto> {
+    try {
+      return await apiClient.get<ProductDto>(`catalog/products/by-barcode/${encodeURIComponent(barCode)}`);
+    } catch (err) {
+      console.error('[catalogService.getByBarCode] Failed to fetch product by barcode:', err);
+      throw err;
+    }
+  },
+
+  // البحث في المنتجات
+  async searchProducts(query: string): Promise<ProductDto[]> {
+    try {
+      return await apiClient.get<ProductDto[]>(`catalog/products/search?q=${encodeURIComponent(query)}`);
+    } catch (err) {
+      console.error('[catalogService.searchProducts] Failed to search products:', err);
+      throw err;
+    }
+  },
+
   // وحدات القياس
   async getUnits(): Promise<UnitDto[]> {
     try {
       return await apiClient.get<UnitDto[]>('catalog/units');
     } catch (err) {
       console.error('[catalogService.getUnits] Failed to fetch units:', err);
+      throw err;
+    }
+  },
+
+  async createUnit(unit: { name: string; symbol: string; isBaseUnit?: boolean }): Promise<UnitDto> {
+    try {
+      return await apiClient.post<UnitDto>('catalog/units', unit);
+    } catch (err) {
+      console.error('[catalogService.createUnit] Failed to create unit:', err);
       throw err;
     }
   },

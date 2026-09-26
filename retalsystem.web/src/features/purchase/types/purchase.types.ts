@@ -3,18 +3,104 @@
 export enum PurchaseInvoiceStatus {
   Draft = 0,
   Pending = 1,
-  Received = 2,
-  Paid = 3,
+  Paid = 2,
+  PartiallyPaid = 3,
   Cancelled = 4,
+  Voided = 5,
+}
+
+export enum PurchasePaymentMethod {
+  Cash = 1,
+  BankTransfer = 2,
+  CreditCard = 3,
+  Credit = 4,
+  Cheque = 5,
 }
 
 export const PurchaseStatusLabels: Record<PurchaseInvoiceStatus, { text: string; color: string; bg: string }> = {
   [PurchaseInvoiceStatus.Draft]: { text: 'مسودة', color: 'text-slate-700', bg: 'bg-slate-100' },
-  [PurchaseInvoiceStatus.Pending]: { text: 'قيد الاستلام', color: 'text-amber-700', bg: 'bg-amber-50' },
-  [PurchaseInvoiceStatus.Received]: { text: 'مستلمة', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  [PurchaseInvoiceStatus.Paid]: { text: 'مسددة بالكامل', color: 'text-sky-700', bg: 'bg-sky-50' },
-  [PurchaseInvoiceStatus.Cancelled]: { text: 'ملغية', color: 'text-rose-700', bg: 'bg-rose-50' },
+  [PurchaseInvoiceStatus.Pending]: { text: 'قيد الإدخال', color: 'text-amber-700', bg: 'bg-amber-50' },
+  [PurchaseInvoiceStatus.Paid]: { text: 'مغلقة ومرحلة', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  [PurchaseInvoiceStatus.PartiallyPaid]: { text: 'مسددة جزئياً', color: 'text-sky-700', bg: 'bg-sky-50' },
+  [PurchaseInvoiceStatus.Cancelled]: { text: 'ملغاة', color: 'text-rose-700', bg: 'bg-rose-50' },
+  [PurchaseInvoiceStatus.Voided]: { text: 'مبطلة', color: 'text-slate-500', bg: 'bg-slate-50' },
 };
+
+export interface PackagingUnitOption {
+  name: string;
+  conversionFactor: number;
+  displayText: string;
+}
+
+export interface FlavorBreakdownItem {
+  productBarCodeId: string;
+  barCode: string;
+  title: string;
+  packageQuantity: number;
+  unitsPerPackage: number;
+  totalPieces: number;
+  unitPrice: number;
+  totalCost: number;
+}
+
+export interface CreatePurchaseInvoiceItemRequest {
+  productId: string;
+  productName: string;
+  productBarCodeId?: string;
+  barCode?: string;
+  packageUnitName: string;
+  packageQuantity: number;
+  unitsPerPackage: number;
+  invoicePackagePrice: number;
+  quantity: number;
+  unitPrice: number;
+  salePrice: number;
+  discountAmount: number;
+  lineTotal: number;
+  profitPerPiece: number;
+  profitMarginPercentage: number;
+  breakdowns?: {
+    productBarCodeId: string;
+    packageQuantity: number;
+    unitsPerPackage: number;
+    quantity: number;
+    unitPrice: number;
+  }[];
+  flavorsSummaryText?: string;
+  packagingSummary?: string;
+}
+
+export interface CreatePurchaseInvoiceRequest {
+  invoiceNumber: string;
+  invoiceDate: string;
+  supplierId: string;
+  branchId: string;
+  warehouseId: string;
+  status: PurchaseInvoiceStatus;
+  paymentMethod: number;
+  subTotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentSafeId?: string;
+  purchaseOrderId?: string;
+  notes?: string;
+  items: {
+    productId: string;
+    productBarCodeId?: string;
+    quantity: number;
+    unitPrice: number;
+    discountAmount: number;
+    breakdowns?: {
+      productBarCodeId: string;
+      packageQuantity: number;
+      unitsPerPackage: number;
+      quantity: number;
+      unitPrice: number;
+    }[];
+  }[];
+}
 
 export interface PurchaseInvoiceItemDto {
   id?: string;
@@ -25,8 +111,9 @@ export interface PurchaseInvoiceItemDto {
   quantity: number;
   unitCost: number;
   discountAmount: number;
-  taxAmount: number;
-  totalCost: number;
+  taxAmount?: number;
+  totalCost?: number;
+  lineTotal?: number;
 }
 
 export interface PurchaseInvoiceDto {
@@ -42,6 +129,8 @@ export interface PurchaseInvoiceDto {
   invoiceDate: string;
   dueDate?: string;
   status: PurchaseInvoiceStatus;
+  paymentMethod?: number;
+  paymentSafeId?: string;
   subTotal: number;
   discountAmount: number;
   taxAmount: number;
@@ -50,6 +139,22 @@ export interface PurchaseInvoiceDto {
   remainingAmount: number;
   notes?: string;
   items: PurchaseInvoiceItemDto[];
+}
+
+export interface CreatePurchaseOrderItemRequest {
+  productBarCodeId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreatePurchaseOrderRequest {
+  orderNumber: string;
+  branchId: string;
+  supplierId?: string;
+  warehouseId?: string;
+  orderDate: string;
+  expectedDate?: string;
+  items: CreatePurchaseOrderItemRequest[];
 }
 
 export interface PurchaseOrderDto {
