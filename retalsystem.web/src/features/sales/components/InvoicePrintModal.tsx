@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import type { SalesInvoiceDto } from '../types/sales.types';
 import { InvoiceStatusLabels } from '../types/sales.types';
 import { IconPrinter } from '@tabler/icons-react';
 import { useThermalPrint } from '../../../shared/hooks/useThermalPrint';
+import { salesService } from '../services/salesService';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -12,8 +13,29 @@ interface InvoicePrintModalProps {
   invoice: SalesInvoiceDto | null;
 }
 
-export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, onClose, invoice }) => {
+export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, onClose, invoice: initialInvoice }) => {
   const { printDocument } = useThermalPrint();
+  const [fullInvoice, setFullInvoice] = useState<SalesInvoiceDto | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && initialInvoice) {
+      if (!initialInvoice.items || initialInvoice.items.length === 0) {
+        setIsLoading(true);
+        salesService
+          .getInvoiceById(initialInvoice.id)
+          .then((data) => setFullInvoice(data))
+          .catch(() => setFullInvoice(initialInvoice))
+          .finally(() => setIsLoading(false));
+      } else {
+        setFullInvoice(initialInvoice);
+      }
+    } else {
+      setFullInvoice(null);
+    }
+  }, [isOpen, initialInvoice]);
+
+  const invoice = fullInvoice || initialInvoice;
 
   if (!invoice) return null;
 
@@ -87,20 +109,34 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {invoice.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="py-2.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                  <td className="py-2.5 px-4 font-bold text-slate-900">{item.productName}</td>
-                  <td className="py-2.5 px-3 text-center font-bold">{item.quantity}</td>
-                  <td className="py-2.5 px-3 text-center num-ltr">{item.unitPrice.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 text-center num-ltr text-slate-500">
-                    {item.discountAmount > 0 ? `-${item.discountAmount.toFixed(2)}` : '-'}
-                  </td>
-                  <td className="py-2.5 px-4 text-left font-extrabold text-slate-900 num-ltr">
-                    {item.totalPrice.toFixed(2)} د.ل
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                    جاري تحميل بنود الفاتورة...
                   </td>
                 </tr>
-              ))}
+              ) : (invoice.items || []).length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center text-slate-400">
+                    لا توجد بنود مسجلة في الفاتورة
+                  </td>
+                </tr>
+              ) : (
+                (invoice.items || []).map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="py-2.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
+                    <td className="py-2.5 px-4 font-bold text-slate-900">{item.productName}</td>
+                    <td className="py-2.5 px-3 text-center font-bold">{item.quantity}</td>
+                    <td className="py-2.5 px-3 text-center num-ltr">{item.unitPrice.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-center num-ltr text-slate-500">
+                      {item.discountAmount > 0 ? `-${item.discountAmount.toFixed(2)}` : '-'}
+                    </td>
+                    <td className="py-2.5 px-4 text-left font-extrabold text-slate-900 num-ltr">
+                      {(item.lineTotal ?? item.totalPrice ?? (item.quantity * item.unitPrice - item.discountAmount)).toFixed(2)} د.ل
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -110,19 +146,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           <div className="text-xs text-slate-500 max-w-xs">
             <p className="font-semibold text-slate-700">ملاحظات وشروط:</p>
             <p className="mt-1 leading-relaxed">
-              تعتبر هذه الفاتورة رسمية ومعتمدة من النظام السحابي. شكراً لتعاملكم معنا.
+              {invoice.notes || 'تعتبر هذه الفاتورة رسمية ومعتمدة من النظام السحابي. شكراً لتعاملكم معنا.'}
             </p>
           </div>
 
           <div className="w-full sm:w-72 flex flex-col gap-1.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
             <div className="flex justify-between">
               <span>المجموع الفرعي:</span>
-              <span className="font-bold num-ltr">{invoice.subTotal.toFixed(2)} د.ل</span>
+              <span className="font-bold num-ltr">{(invoice.subTotal || invoice.totalAmount).toFixed(2)} د.ل</span>
             </div>
-            {invoice.discountAmount > 0 && (
+            {(invoice.discountAmount ?? 0) > 0 && (
               <div className="flex justify-between text-slate-600">
                 <span>الخصم:</span>
-                <span className="font-bold num-ltr">-{invoice.discountAmount.toFixed(2)} د.ل</span>
+                <span className="font-bold num-ltr">-{(invoice.discountAmount ?? 0).toFixed(2)} د.ل</span>
               </div>
             )}
             <div className="flex justify-between text-base font-black text-emerald-800 border-t border-slate-200 pt-2 mt-1">

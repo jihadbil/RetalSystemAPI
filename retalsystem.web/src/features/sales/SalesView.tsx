@@ -3,6 +3,7 @@ import { salesService } from './services/salesService';
 import type { SalesInvoiceDto, SalesReturnDto } from './types/sales.types';
 import { InvoiceStatusLabels } from './types/sales.types';
 import { SalesInvoiceModal } from './components/SalesInvoiceModal';
+import { SalesInvoiceDetailsModal } from './components/SalesInvoiceDetailsModal';
 import { SalesReturnModal } from './components/SalesReturnModal';
 import { InvoicePrintModal } from './components/InvoicePrintModal';
 import { Card } from '../../shared/components/ui/Card';
@@ -21,6 +22,7 @@ import {
   IconPlus,
   IconSearch,
   IconPrinter,
+  IconEye,
 } from '@tabler/icons-react';
 
 export const SalesView: React.FC = () => {
@@ -40,6 +42,7 @@ export const SalesView: React.FC = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<SalesInvoiceDto | null>(null);
+  const [selectedDetailsInvoiceId, setSelectedDetailsInvoiceId] = useState<string | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -160,7 +163,7 @@ export const SalesView: React.FC = () => {
                       <th className="py-3 px-3 text-center">المدفوع</th>
                       <th className="py-3 px-3 text-center">المتبقي</th>
                       <th className="py-3 px-3 text-center">الحالة</th>
-                      <th className="py-3 px-4 text-center w-24">معاينة</th>
+                      <th className="py-3 px-4 text-center w-28">إجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -189,14 +192,24 @@ export const SalesView: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setViewingInvoice(inv)}
-                              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                              title="معاينة وطباعة الفاتورة A4"
-                            >
-                              <IconPrinter className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailsInvoiceId(inv.id)}
+                                className="p-1.5 text-slate-500 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
+                                title="عرض تفاصيل وبنود الفاتورة"
+                              >
+                                <IconEye className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setViewingInvoice(inv)}
+                                className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                title="معاينة وطباعة الفاتورة A4"
+                              >
+                                <IconPrinter className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -267,6 +280,13 @@ export const SalesView: React.FC = () => {
             showError('خطأ أثناء حفظ الفاتورة', msg);
           }
         }}
+      />
+
+      {/* نافذة تفاصيل وبنود فاتورة المبيعات */}
+      <SalesInvoiceDetailsModal
+        isOpen={Boolean(selectedDetailsInvoiceId)}
+        onClose={() => setSelectedDetailsInvoiceId(null)}
+        invoiceId={selectedDetailsInvoiceId}
       />
 
       {/* نافذة معاينة وطباعة الفاتورة A4 */}
