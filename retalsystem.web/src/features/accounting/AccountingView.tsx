@@ -214,7 +214,7 @@ export const AccountingView: React.FC = () => {
           </div>
           <div className="text-2xl font-black mt-2 num-ltr text-right">
             {totalLiquidity.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-            <span className="text-xs font-medium text-emerald-200">ر.س</span>
+            <span className="text-xs font-medium text-emerald-200">د.ل</span>
           </div>
           <div className="text-[11px] text-emerald-300/80 mt-1">
             موزعة على {safes.length} حسابات وصناديق نقدية
@@ -226,7 +226,7 @@ export const AccountingView: React.FC = () => {
             <span className="text-xs font-bold text-slate-400">إجمالي المصروفات المسجلة</span>
             <div className="text-2xl font-black text-slate-900 num-ltr text-right mt-1">
               {totalExpensesAmount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-              <span className="text-xs font-normal">ر.س</span>
+              <span className="text-xs font-normal">د.ل</span>
             </div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-700 flex items-center justify-center">
@@ -337,7 +337,7 @@ export const AccountingView: React.FC = () => {
                       <span className="text-[11px] font-bold text-slate-400">الرصيد المتاح</span>
                       <div className="text-xl font-black text-slate-900 num-ltr text-right">
                         {safe.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-                        <span className="text-xs font-normal">ر.س</span>
+                        <span className="text-xs font-normal">د.ل</span>
                       </div>
                     </div>
 
@@ -475,7 +475,7 @@ export const AccountingView: React.FC = () => {
                       <th className="py-3 px-4">الخزينة المسدد منها</th>
                       <th className="py-3 px-4">طريقة الدفع</th>
                       <th className="py-3 px-4">البيان / الوصف</th>
-                      <th className="py-3 px-4 text-left">المبلغ (ر.س)</th>
+                      <th className="py-3 px-4 text-left">المبلغ (د.ل)</th>
                       <th className="py-3 px-4 text-center">إجراء</th>
                     </tr>
                   </thead>
@@ -528,7 +528,7 @@ export const AccountingView: React.FC = () => {
                   onChange={(e) => setSelectedSafeForTrx(e.target.value)}
                   options={safes.map((s) => ({
                     value: s.id,
-                    label: `${s.name} (${s.currentBalance.toLocaleString('ar-SA')} ر.س)`,
+                    label: `${s.name} (${s.currentBalance.toLocaleString('ar-SA')} د.ل)`,
                   }))}
                 />
               </div>

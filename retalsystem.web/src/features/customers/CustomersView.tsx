@@ -141,7 +141,7 @@ export const CustomersView: React.FC = () => {
             <span className="text-xs font-bold text-rose-500">إجمالي المديونيات المستحقة</span>
             <div className="text-2xl font-black text-rose-700 num-ltr text-right mt-1">
               {totalReceivables.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-              <span className="text-xs font-normal">ر.س</span>
+              <span className="text-xs font-normal">د.ل</span>
             </div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -291,18 +291,18 @@ export const CustomersView: React.FC = () => {
 
                     <td className="py-3 px-4 text-left num-ltr font-bold text-slate-700">
                       {c.creditLimit > 0
-                        ? `${c.creditLimit.toLocaleString('ar-SA')} ر.س`
+                        ? `${c.creditLimit.toLocaleString('ar-SA')} د.ل`
                         : 'غير محدد'}
                     </td>
 
                     <td className="py-3 px-4 text-left num-ltr">
                       {c.currentBalance > 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200/80">
-                          {c.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} ر.س
+                          {c.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} د.ل
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
-                          0.00 ر.س
+                          0.00 د.ل
                         </span>
                       )}
                     </td>

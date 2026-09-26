@@ -172,7 +172,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           />
 
           <Input
-            label="سقف الائتمان (ر.س)"
+            label="سقف الائتمان (د.ل)"
             type="number"
             placeholder="0.00"
             value={formData.creditLimit}

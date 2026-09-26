@@ -143,7 +143,7 @@ export const SuppliersView: React.FC = () => {
             <span className="text-xs font-bold text-amber-600">إجمالي المستحقات للموردين (دائن)</span>
             <div className="text-2xl font-black text-amber-800 num-ltr text-right mt-1">
               {totalPayables.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-              <span className="text-xs font-normal">ر.س</span>
+              <span className="text-xs font-normal">د.ل</span>
             </div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -289,11 +289,11 @@ export const SuppliersView: React.FC = () => {
                     <td className="py-3 px-4 text-left num-ltr">
                       {s.currentBalance > 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200/80">
-                          {s.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} ر.س
+                          {s.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} د.ل
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
-                          0.00 ر.س
+                          0.00 د.ل
                         </span>
                       )}
                     </td>

@@ -46,7 +46,7 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
       return;
     }
     if (!isInbound && amount > safe.currentBalance) {
-      setError(`المبلغ يتجاوز رصيد الخزينة الحالي (${safe.currentBalance.toLocaleString('ar-SA')} ر.س)`);
+      setError(`المبلغ يتجاوز رصيد الخزينة الحالي (${safe.currentBalance.toLocaleString('ar-SA')} د.ل)`);
       return;
     }
 
@@ -63,7 +63,7 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
 
       soundService.playSuccess();
       showSuccess(
-        `تم تسجيل عملية ${isInbound ? 'الإيداع' : 'السحب'} بمبلغ ${Number(amount).toLocaleString('ar-SA')} ر.س بنجاح`
+        `تم تسجيل عملية ${isInbound ? 'الإيداع' : 'السحب'} بمبلغ ${Number(amount).toLocaleString('ar-SA')} د.ل بنجاح`
       );
       onTransactionSuccess();
       onClose();
@@ -80,7 +80,7 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isInbound ? 'إيداع نقدي مباشر' : 'سحب نقدي مباشر'}
-      subtitle={`الحساب المتأثر: ${safe.name} (الرصيد: ${safe.currentBalance.toLocaleString('ar-SA')} ر.س)`}
+      subtitle={`الحساب المتأثر: ${safe.name} (الرصيد: ${safe.currentBalance.toLocaleString('ar-SA')} د.ل)`}
       size="md"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -120,7 +120,7 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
         </div>
 
         <Input
-          label="المبلغ (ر.س) *"
+          label="المبلغ (د.ل) *"
           type="number"
           step="0.01"
           placeholder="0.00"

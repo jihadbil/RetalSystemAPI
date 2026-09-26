@@ -109,7 +109,7 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
               <span className="text-[11px] font-bold text-slate-500">الرصيد الافتتاحي</span>
               <div className="text-base font-black text-slate-800 num-ltr text-right mt-1">
                 {statement.openingBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-                <span className="text-[10px] font-normal">ر.س</span>
+                <span className="text-[10px] font-normal">د.ل</span>
               </div>
             </div>
 
@@ -120,7 +120,7 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
               </div>
               <div className="text-base font-black text-rose-900 num-ltr text-right mt-1">
                 {statement.totalDebit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-                <span className="text-[10px] font-normal">ر.س</span>
+                <span className="text-[10px] font-normal">د.ل</span>
               </div>
             </div>
 
@@ -131,7 +131,7 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
               </div>
               <div className="text-base font-black text-emerald-900 num-ltr text-right mt-1">
                 {statement.totalCredit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-                <span className="text-[10px] font-normal">ر.س</span>
+                <span className="text-[10px] font-normal">د.ل</span>
               </div>
             </div>
 
@@ -139,7 +139,7 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
               <span className="text-[11px] font-medium text-slate-300">الرصيد الختامي المتبقي</span>
               <div className="text-base font-black text-emerald-400 num-ltr text-right mt-1">
                 {statement.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
-                <span className="text-[10px] font-normal text-slate-300">ر.س</span>
+                <span className="text-[10px] font-normal text-slate-300">د.ل</span>
               </div>
             </div>
           </div>

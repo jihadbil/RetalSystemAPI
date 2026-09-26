@@ -122,7 +122,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               }}
               options={activeSafes.map((s) => ({
                 value: s.id,
-                label: `${s.name} (${s.currentBalance.toLocaleString('ar-SA')} ر.س)`,
+                label: `${s.name} (${s.currentBalance.toLocaleString('ar-SA')} د.ل)`,
               }))}
             />
             {selectedSafe && (

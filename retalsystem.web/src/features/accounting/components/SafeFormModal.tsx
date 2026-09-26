@@ -129,7 +129,7 @@ export const SafeFormModal: React.FC<SafeFormModalProps> = ({
 
           {!safeToEdit && (
             <Input
-              label="الرصيد الافتتاحي (ر.س)"
+              label="الرصيد الافتتاحي (د.ل)"
               type="number"
               step="0.01"
               value={formData.openingBalance}
