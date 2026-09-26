@@ -7,7 +7,11 @@
     <ShouldRunBuildScript>false</ShouldRunBuildScript>
     <!-- Folder where production build objects will be placed -->
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
-    <TargetFramework>net6.0</TargetFramework>
-    <TargetPlatformIdentifier></TargetPlatformIdentifier>
+    <!-- TargetFramework aligned with .NET 10 to prevent .NETCoreApp v6.0 errors -->
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Force NuGet and IDEs (Rider / Visual Studio) to completely skip NuGet restore on the frontend project -->
+    <RestoreProjectStyle>None</RestoreProjectStyle>
+    <ResolveNuGetPackages>false</ResolveNuGetPackages>
+    <RestoreEnableGlobalPackageReference>false</RestoreEnableGlobalPackageReference>
   </PropertyGroup>
 </Project>
