@@ -263,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             noPadding
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-right text-xs min-w-[480px]">
                 <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-semibold">
                   <tr>
                     <th className="py-2.5 px-4">الصنف</th>
@@ -311,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             noPadding
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-right text-xs min-w-[480px]">
                 <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-semibold">
                   <tr>
                     <th className="py-2.5 px-4">رقم الفاتورة</th>

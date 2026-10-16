@@ -24,6 +24,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
 import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconVault,
   IconBuildingBank,
@@ -40,7 +41,14 @@ import {
 
 export const AccountingView: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const { currentBranchId } = useAuth();
+  const { currentBranchId, hasPermission } = useAuth();
+  const canCreateSafe = hasPermission(Permissions.Safes.Create);
+  const canEditSafe = hasPermission(Permissions.Safes.Edit);
+  const canTransfer = hasPermission(Permissions.Safes.Transfer);
+  const canCreateTransaction = hasPermission(Permissions.Safes.Transactions);
+  const canViewExpenses = hasPermission(Permissions.Expenses.View);
+  const canCreateExpense = hasPermission(Permissions.Expenses.Create);
+  const canDeleteExpense = hasPermission(Permissions.Expenses.Delete);
   const [activeTab, setActiveTab] = useState('safes');
 
   // بيانات الخزائن
@@ -132,9 +140,12 @@ export const AccountingView: React.FC = () => {
   }, [showError]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadSafes(); void loadExpenses(); }, 0);
+    const timer = window.setTimeout(() => {
+      void loadSafes();
+      if (canViewExpenses) void loadExpenses();
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadSafes, loadExpenses]);
+  }, [canViewExpenses, loadSafes, loadExpenses]);
 
   useEffect(() => {
     if (activeTab === 'transactions' && selectedSafeForTrx) {
@@ -155,7 +166,9 @@ export const AccountingView: React.FC = () => {
 
   const tabs: TabItem[] = [
     { id: 'safes', label: 'الخزائن والحسابات المصرفية', icon: <IconVault className="w-4 h-4" /> },
-    { id: 'expenses', label: 'سجل المصروفات والنفقات', icon: <IconReceipt className="w-4 h-4" /> },
+    ...(canViewExpenses
+      ? [{ id: 'expenses', label: 'سجل المصروفات والنفقات', icon: <IconReceipt className="w-4 h-4" /> }]
+      : []),
     { id: 'transactions', label: 'كشف حركات الصندوق', icon: <IconArrowsExchange className="w-4 h-4" /> },
     { id: 'terminals', label: 'نقاط البيع والأدراج', icon: <IconDeviceDesktop className="w-4 h-4" /> },
   ];
@@ -172,7 +185,7 @@ export const AccountingView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
+          {canTransfer && <Button
             variant="outline"
             size="sm"
             onClick={() => setIsTransferOpen(true)}
@@ -180,9 +193,9 @@ export const AccountingView: React.FC = () => {
           >
             <IconArrowsExchange className="w-4 h-4" />
             تحويل مالي
-          </Button>
+          </Button>}
 
-          <Button
+          {canCreateTransaction && <Button
             variant="outline"
             size="sm"
             onClick={() => {
@@ -192,16 +205,16 @@ export const AccountingView: React.FC = () => {
           >
             <IconArrowDownLeft className="w-4 h-4" />
             إيداع / سحب مباشر
-          </Button>
+          </Button>}
 
-          <Button
+          {canCreateExpense && <Button
             variant="primary"
             size="sm"
             onClick={() => setIsExpenseFormOpen(true)}
           >
             <IconPlus className="w-4 h-4" />
             سند مصروف جديد
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -272,7 +285,7 @@ export const AccountingView: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-800">قائمة الصناديق والحسابات البنكية</span>
-            <Button
+            {canCreateSafe && <Button
               variant="secondary"
               size="sm"
               onClick={() => {
@@ -282,7 +295,7 @@ export const AccountingView: React.FC = () => {
             >
               <IconPlus className="w-4 h-4" />
               إضافة خزينة / حساب
-            </Button>
+            </Button>}
           </div>
 
           <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -342,7 +355,7 @@ export const AccountingView: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button
+                      {canCreateTransaction && <button
                         type="button"
                         title="إيداع / سحب"
                         onClick={() => {
@@ -352,9 +365,9 @@ export const AccountingView: React.FC = () => {
                         className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
                       >
                         <IconArrowDownLeft className="w-4 h-4" />
-                      </button>
+                      </button>}
 
-                      <button
+                      {canEditSafe && <button
                         type="button"
                         title="تعديل الحساب"
                         onClick={() => {
@@ -364,7 +377,7 @@ export const AccountingView: React.FC = () => {
                         className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
                       >
                         <IconEdit className="w-4 h-4" />
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 </div>
@@ -381,7 +394,7 @@ export const AccountingView: React.FC = () => {
               <h2 className="text-sm font-bold text-slate-800">نقاط البيع المرتبطة بأدراج النقود الفعلية</h2>
               <p className="text-xs text-slate-500 mt-1">أنشئ نقطة بيع ثم ولّد رمزاً صالحاً لخمس دقائق لربط المتصفح أو برنامج سطح المكتب.</p>
             </div>
-            <Button variant="primary" size="sm" onClick={async () => {
+            {canEditSafe && <Button variant="primary" size="sm" onClick={async () => {
               const drawers = safes.filter((s) => s.type === SafeType.CashDrawer && s.isActive && (!currentBranchId || s.branchId === currentBranchId));
               if (!currentBranchId || drawers.length === 0) { showError('تعذر الإنشاء', 'اختر فرعاً وأنشئ درج نقود نشطاً فيه أولاً'); return; }
               const code = window.prompt('رمز نقطة البيع (مثال POS-01)');
@@ -397,7 +410,7 @@ export const AccountingView: React.FC = () => {
               } catch (err) { showError('فشل إنشاء نقطة البيع', err instanceof Error ? err.message : 'خطأ غير متوقع'); }
             }}>
               <IconPlus className="w-4 h-4" /> إضافة نقطة بيع
-            </Button>
+            </Button>}
           </div>
           <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <LoadingOverlay isVisible={isLoadingTerminals} />
@@ -410,12 +423,12 @@ export const AccountingView: React.FC = () => {
                 <div className="text-xs text-slate-600 mt-3 space-y-1">
                   <p>الفرع: {terminal.branchName}</p><p>درج النقود: {terminal.defaultCashDrawerName}</p>
                 </div>
-                <Button className="mt-4 w-full" variant="secondary" size="sm" onClick={async () => {
+                {canEditSafe && <Button className="mt-4 w-full" variant="secondary" size="sm" onClick={async () => {
                   try {
                     const pairing = await accountingService.generatePairingCode(terminal.id);
                     window.alert(`رمز ربط ${terminal.name}: ${pairing.pairingCode}\nصالح حتى: ${new Date(pairing.expiresAt).toLocaleTimeString('ar-LY')}`);
                   } catch (err) { showError('فشل توليد رمز الربط', err instanceof Error ? err.message : 'خطأ غير متوقع'); }
-                }}>توليد رمز ربط الجهاز</Button>
+                }}>توليد رمز ربط الجهاز</Button>}
               </div>
             ))}
           </div>
@@ -446,10 +459,10 @@ export const AccountingView: React.FC = () => {
               </div>
             </div>
 
-            <Button variant="primary" size="sm" onClick={() => setIsExpenseFormOpen(true)}>
+            {canCreateExpense && <Button variant="primary" size="sm" onClick={() => setIsExpenseFormOpen(true)}>
               <IconPlus className="w-4 h-4" />
               إضافة سند مصروف
-            </Button>
+            </Button>}
           </div>
 
           {/* جدول سندات المصروفات */}
@@ -461,12 +474,12 @@ export const AccountingView: React.FC = () => {
                 icon={<IconReceipt className="w-10 h-10 text-slate-300" />}
                 title="لا توجد سندات مصروفات مسجلة"
                 description="لم يتم قيد أي مصروفات تطابق معايير البحث المحددة."
-                actionLabel="سند مصروف جديد"
-                onAction={() => setIsExpenseFormOpen(true)}
+                actionLabel={canCreateExpense ? 'سند مصروف جديد' : undefined}
+                onAction={canCreateExpense ? () => setIsExpenseFormOpen(true) : undefined}
               />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[650px]">
                   <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold">
                     <tr>
                       <th className="py-3 px-4">رقم السند</th>
@@ -494,7 +507,7 @@ export const AccountingView: React.FC = () => {
                           {exp.amount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
+                          {canDeleteExpense && <button
                             type="button"
                             title="حذف سند المصروف"
                             onClick={async () => {
@@ -505,7 +518,7 @@ export const AccountingView: React.FC = () => {
                             className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                           >
                             <IconTrash className="w-4 h-4" />
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     ))}
@@ -542,7 +555,7 @@ export const AccountingView: React.FC = () => {
           <div className="relative bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <LoadingOverlay isVisible={isLoadingTrx} />
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-right text-xs min-w-[700px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
                   <tr>
                     <th className="py-3 px-4">التاريخ</th>

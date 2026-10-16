@@ -18,9 +18,19 @@ interface ShellProps {
 export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children }) => {
   const { isLocked, unlockScreen } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isKioskMode, setIsKioskMode] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileMenuOpen((prev) => !prev);
+    } else {
+      setIsSidebarCollapsed((prev) => !prev);
+    }
+  };
 
   // اختصار F11 لتبديل الشريط الجانبي أو وضع الكاشير
   useHotkeys({
@@ -28,24 +38,29 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
       if (currentView === 'pos') {
         setIsKioskMode((prev) => !prev);
       } else {
-        setIsSidebarCollapsed((prev) => !prev);
+        handleToggleSidebar();
       }
     },
   });
 
-  const handleUnlock = (e?: React.FormEvent) => {
+  const handleUnlock = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!pinInput.trim()) {
-      setPinError('يرجى إدخال رمز PIN');
+      setPinError('يرجى إدخال كلمة المرور');
       return;
     }
 
-    const success = unlockScreen(pinInput.trim());
-    if (success) {
-      setPinInput('');
-      setPinError('');
-    } else {
-      setPinError('رمز PIN غير صحيح (الافتراضي 1234)');
+    setIsUnlocking(true);
+    try {
+      const success = await unlockScreen(pinInput);
+      if (success) {
+        setPinInput('');
+        setPinError('');
+      } else {
+        setPinError('كلمة المرور غير صحيحة');
+      }
+    } finally {
+      setIsUnlocking(false);
     }
   };
 
@@ -60,30 +75,42 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
           <main className="flex-1 overflow-hidden">{children}</main>
         </div>
       ) : (
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen relative">
+          {/* طبقة التعتيم الخلفية عند فتح القائمة على الهواتف والشاشات الصغيرة */}
+          {isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden transition-opacity"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
           {/* القائمة الجانبية */}
           <Sidebar
             currentView={currentView}
             onNavigate={(view) => {
               onNavigate(view);
+              setIsMobileMenuOpen(false);
               if (view !== 'pos') setIsKioskMode(false);
             }}
             isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onToggleCollapse={handleToggleSidebar}
+            isMobileOpen={isMobileMenuOpen}
+            onCloseMobile={() => setIsMobileMenuOpen(false)}
           />
 
-          {/* مساحة العمل الرئيسية */}
+          {/* مساحة العمل الرئيسية: متجاوبة 100% على الهواتف بدون هامش ثابت */}
           <div
-            className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
-              isSidebarCollapsed ? 'mr-18' : 'mr-64'
+            className={`flex-1 flex flex-col min-w-0 transition-all duration-200 mr-0 ${
+              isSidebarCollapsed ? 'lg:mr-18' : 'lg:mr-64'
             }`}
           >
             <Topbar
-              onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              onToggleSidebar={handleToggleSidebar}
               onOpenPos={() => onNavigate('pos')}
             />
 
-            <main className="flex-1 p-4 sm:p-5 lg:p-6 overflow-y-auto">{children}</main>
+            <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto">{children}</main>
           </div>
         </div>
       )}
@@ -93,7 +120,7 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
         isOpen={isLocked}
         onClose={() => {}}
         title="شاشة النظام مقفلة"
-        subtitle="أدخل رمز PIN لفك القفل والعودة للمبيعات"
+        subtitle="أعد إدخال كلمة مرور حسابك لفك القفل"
         size="sm"
         closeOnBackdrop={false}
       >
@@ -103,13 +130,13 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
           </div>
 
           <p className="text-xs text-slate-500 text-center">
-            جلسة العمل محفوظة بأمان. أدخل رمز الحماية المكون من 4 أرقام للمتابعة (الافتراضي 1234).
+            جلسة العمل محفوظة. أدخل كلمة مرور حسابك الحالي للمتابعة.
           </p>
 
           <div className="w-full">
             <Input
               type="password"
-              placeholder="رمز PIN"
+              placeholder="كلمة المرور"
               value={pinInput}
               onChange={(e) => {
                 setPinInput(e.target.value);
@@ -118,12 +145,12 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
               error={pinError}
               leftIcon={<IconKey className="w-4 h-4" />}
               autoFocus
-              maxLength={8}
+              autoComplete="current-password"
               className="text-center font-mono tracking-widest text-lg"
             />
           </div>
 
-          <Button variant="primary" size="md" type="submit" className="w-full mt-2">
+          <Button variant="primary" size="md" type="submit" className="w-full mt-2" isLoading={isUnlocking}>
             فتح الشاشة ومتابعة العمل
           </Button>
         </form>

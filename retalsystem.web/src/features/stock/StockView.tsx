@@ -20,6 +20,8 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { usePagination } from '../../shared/hooks/usePagination';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconBuildingWarehouse,
   IconArrowsExchange,
@@ -30,6 +32,13 @@ import {
 
 export const StockView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canViewAdjustments = hasPermission(Permissions.StockAdjustments.View);
+  const canCreateAdjustment = hasPermission(Permissions.StockAdjustments.Create);
+  const canViewTransfers = hasPermission(Permissions.StockTransfers.View);
+  const canCreateTransfer = hasPermission(Permissions.StockTransfers.Create);
+  const canViewWarehouses = hasPermission(Permissions.Warehouses.View);
+  const canCreateWarehouse = hasPermission(Permissions.Warehouses.Create);
   const [activeTab, setActiveTab] = useState<'levels' | 'adjustments' | 'transfers' | 'warehouses'>('levels');
 
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
@@ -171,9 +180,15 @@ export const StockView: React.FC = () => {
 
   const tabs = [
     { id: 'levels', label: 'أرصدة المخزون والجرد', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: stockPagination.totalCount },
-    { id: 'adjustments', label: 'التسويات الجردية', icon: <IconAdjustments className="w-4 h-4" />, badge: adjPagination.totalCount },
-    { id: 'transfers', label: 'التحويلات بين المخازن', icon: <IconArrowsExchange className="w-4 h-4" />, badge: trfPagination.totalCount },
-    { id: 'warehouses', label: 'دليل المستودعات', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: warehouses.length },
+    ...(canViewAdjustments
+      ? [{ id: 'adjustments', label: 'التسويات الجردية', icon: <IconAdjustments className="w-4 h-4" />, badge: adjPagination.totalCount }]
+      : []),
+    ...(canViewTransfers
+      ? [{ id: 'transfers', label: 'التحويلات بين المخازن', icon: <IconArrowsExchange className="w-4 h-4" />, badge: trfPagination.totalCount }]
+      : []),
+    ...(canViewWarehouses
+      ? [{ id: 'warehouses', label: 'دليل المستودعات', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: warehouses.length }]
+      : []),
   ];
 
   return (
@@ -190,7 +205,7 @@ export const StockView: React.FC = () => {
 
         {/* أزرار الإجراءات */}
         <div className="flex items-center gap-2">
-          {activeTab === 'adjustments' && (
+          {activeTab === 'adjustments' && canCreateAdjustment && (
             <Button
               variant="primary"
               size="md"
@@ -201,7 +216,7 @@ export const StockView: React.FC = () => {
             </Button>
           )}
 
-          {activeTab === 'transfers' && (
+          {activeTab === 'transfers' && canCreateTransfer && (
             <Button
               variant="primary"
               size="md"
@@ -212,7 +227,7 @@ export const StockView: React.FC = () => {
             </Button>
           )}
 
-          {activeTab === 'warehouses' && (
+          {activeTab === 'warehouses' && canCreateWarehouse && (
             <Button
               variant="primary"
               size="md"
@@ -282,7 +297,7 @@ export const StockView: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[650px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4">الصنف</th>
@@ -364,7 +379,7 @@ export const StockView: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[550px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4">رقم التسوية</th>
@@ -429,7 +444,7 @@ export const StockView: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[600px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4">رقم التحويل</th>
@@ -485,10 +500,7 @@ export const StockView: React.FC = () => {
           {warehouses.map((wh) => (
             <Card key={wh.id} className="hover:border-emerald-300 transition-colors">
               <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{wh.name}</h4>
-                  <span className="text-xs text-slate-400 font-mono mt-0.5 block">{wh.code}</span>
-                </div>
+                <h4 className="text-sm font-bold text-slate-900">{wh.name}</h4>
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <IconBuildingWarehouse className="w-5 h-5" />
                 </div>

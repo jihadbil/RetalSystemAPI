@@ -15,8 +15,7 @@ export interface UserItemDto {
 
 export interface CreateUserRequest {
   userName: string;
-  fullName: string;
-  password?: string;
+  password: string;
   email?: string;
   phone?: string;
   role: string;

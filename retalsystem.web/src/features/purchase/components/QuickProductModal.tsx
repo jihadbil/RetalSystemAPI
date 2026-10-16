@@ -69,8 +69,6 @@ export const QuickProductModal: React.FC<QuickProductModalProps> = ({
         defaultUnitId: defaultUnitId || undefined,
         costPrice: Number(costPrice) || 0,
         salePrice: Number(salePrice) || 0,
-        minStockLevel: 5,
-        isActive: true,
         barCodes: barCode.trim() ? [{ barCode: barCode.trim(), description: 'الباركود الرئيسي' }] : undefined,
       });
 
@@ -151,7 +149,7 @@ export const QuickProductModal: React.FC<QuickProductModalProps> = ({
           >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
               </option>
             ))}
           </Select>

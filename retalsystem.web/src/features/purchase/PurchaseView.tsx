@@ -20,6 +20,8 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { usePagination } from '../../shared/hooks/usePagination';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconShoppingCart,
   IconFileInvoice,
@@ -27,11 +29,20 @@ import {
   IconPlus,
   IconSearch,
   IconEye,
+  IconEdit,
+  IconLoader2,
 } from '@tabler/icons-react';
-import { PurchaseStatusLabels } from './types/purchase.types';
+import { PurchaseStatusLabels, PurchaseInvoiceStatus } from './types/purchase.types';
 
 export const PurchaseView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreateInvoice = hasPermission(Permissions.PurchaseInvoices.Create);
+  const canEditInvoice = hasPermission(Permissions.PurchaseInvoices.Edit);
+  const canViewOrders = hasPermission(Permissions.PurchaseOrders.View);
+  const canCreateOrder = hasPermission(Permissions.PurchaseOrders.Create);
+  const canViewReturns = hasPermission(Permissions.PurchaseReturns.View);
+  const canCreateReturn = hasPermission(Permissions.PurchaseReturns.Create);
   const [activeTab, setActiveTab] = useState<'invoices' | 'orders' | 'returns'>('invoices');
 
   const [invoices, setInvoices] = useState<PurchaseInvoiceDto[]>([]);
@@ -44,12 +55,28 @@ export const PurchaseView: React.FC = () => {
   const pagination = usePagination({ initialPageSize: 10 });
   const { page, pageSize, setTotalCount } = pagination;
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoiceDto | null>(null);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const handleOpenEditInvoice = async (invoiceId: string) => {
+    try {
+      setLoadingEditId(invoiceId);
+      const fullInvoice = await purchaseService.getInvoiceById(invoiceId);
+      setEditingInvoice(fullInvoice);
+      setIsInvoiceModalOpen(true);
+    } catch (err) {
+      console.error('Failed to load invoice for editing:', err);
+      showError('خطأ', 'تعذر تحميل بيانات الفاتورة لتعديلها');
+    } finally {
+      setLoadingEditId(null);
+    }
+  };
 
   const loadPurchaseData = useCallback(async () => {
     setIsLoading(true);
@@ -85,8 +112,12 @@ export const PurchaseView: React.FC = () => {
 
   const tabs = [
     { id: 'invoices', label: 'فواتير المشتريات', icon: <IconFileInvoice className="w-4 h-4" />, badge: pagination.totalCount },
-    { id: 'orders', label: 'أوامر الشراء', icon: <IconShoppingCart className="w-4 h-4" />, badge: orders.length },
-    { id: 'returns', label: 'مرتجعات الموردين', icon: <IconArrowBackUp className="w-4 h-4" />, badge: returns.length },
+    ...(canViewOrders
+      ? [{ id: 'orders', label: 'أوامر الشراء', icon: <IconShoppingCart className="w-4 h-4" />, badge: orders.length }]
+      : []),
+    ...(canViewReturns
+      ? [{ id: 'returns', label: 'مرتجعات الموردين', icon: <IconArrowBackUp className="w-4 h-4" />, badge: returns.length }]
+      : []),
   ];
 
   return (
@@ -101,17 +132,20 @@ export const PurchaseView: React.FC = () => {
           </p>
         </div>
 
-        {activeTab === 'invoices' && (
+        {activeTab === 'invoices' && canCreateInvoice && (
           <Button
             variant="primary"
             size="md"
             leftIcon={<IconPlus className="w-4 h-4" />}
-            onClick={() => setIsInvoiceModalOpen(true)}
+            onClick={() => {
+              setEditingInvoice(null);
+              setIsInvoiceModalOpen(true);
+            }}
           >
             + فاتورة شراء جديدة
           </Button>
         )}
-        {activeTab === 'orders' && (
+        {activeTab === 'orders' && canCreateOrder && (
           <Button
             variant="primary"
             size="md"
@@ -121,7 +155,7 @@ export const PurchaseView: React.FC = () => {
             + أمر شراء جديد
           </Button>
         )}
-        {activeTab === 'returns' && (
+        {activeTab === 'returns' && canCreateReturn && (
           <Button
             variant="primary"
             size="md"
@@ -166,13 +200,16 @@ export const PurchaseView: React.FC = () => {
               <div className="py-12">
                 <EmptyState
                   isSearch={Boolean(search)}
-                  actionText="+ تسجيل أول فاتورة شراء"
-                  onAction={() => setIsInvoiceModalOpen(true)}
+                  actionText={canCreateInvoice ? '+ تسجيل أول فاتورة شراء' : undefined}
+                  onAction={canCreateInvoice ? () => {
+                    setEditingInvoice(null);
+                    setIsInvoiceModalOpen(true);
+                  } : undefined}
                 />
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[700px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4">رقم الفاتورة</th>
@@ -220,17 +257,35 @@ export const PurchaseView: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedInvoiceId(inv.id);
-                              setIsDetailsModalOpen(true);
-                            }}
-                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-emerald-700 transition-colors"
-                            title="عرض تفاصيل الفاتورة والبنود"
-                          >
-                            <IconEye className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedInvoiceId(inv.id);
+                                setIsDetailsModalOpen(true);
+                              }}
+                              className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-emerald-700 transition-colors"
+                              title="عرض تفاصيل الفاتورة والبنود"
+                            >
+                              <IconEye className="w-4 h-4" />
+                            </button>
+                            {canEditInvoice && (inv.status === PurchaseInvoiceStatus.Pending ||
+                              inv.status === PurchaseInvoiceStatus.Draft) && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditInvoice(inv.id)}
+                                disabled={loadingEditId === inv.id}
+                                className="p-1 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 transition-colors"
+                                title="تعديل الفاتورة المفتوحة وإضافة بنود"
+                              >
+                                {loadingEditId === inv.id ? (
+                                  <IconLoader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                                ) : (
+                                  <IconEdit className="w-4 h-4 text-emerald-600" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -258,13 +313,13 @@ export const PurchaseView: React.FC = () => {
             <div className="py-12">
               <EmptyState
                 isSearch={false}
-                actionText="+ إنشاء أول أمر شراء"
-                onAction={() => setIsOrderModalOpen(true)}
+                actionText={canCreateOrder ? '+ إنشاء أول أمر شراء' : undefined}
+                onAction={canCreateOrder ? () => setIsOrderModalOpen(true) : undefined}
               />
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-right text-xs min-w-[600px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                   <tr>
                     <th className="py-3 px-4">رقم الأمر</th>
@@ -331,10 +386,14 @@ export const PurchaseView: React.FC = () => {
         </Card>
       )}
 
-      {/* نافذة إنشاء فاتورة مشتريات */}
+      {/* نافذة إنشاء / تعديل فاتورة مشتريات */}
       <PurchaseInvoiceModal
         isOpen={isInvoiceModalOpen}
-        onClose={() => setIsInvoiceModalOpen(false)}
+        invoiceToEdit={editingInvoice}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setEditingInvoice(null);
+        }}
         onSave={async (data) => {
           try {
             await purchaseService.createInvoice(data);
@@ -344,6 +403,23 @@ export const PurchaseView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ فاتورة المشتريات';
             showError('خطأ أثناء حفظ الفاتورة', msg);
+          }
+        }}
+        onUpdate={async (id, data) => {
+          try {
+            await purchaseService.updateInvoice(id, data);
+            showSuccess(
+              data.status === PurchaseInvoiceStatus.Paid ? 'تم إغلاق وترحيل الفاتورة' : 'تم حفظ التعديلات',
+              data.status === PurchaseInvoiceStatus.Paid
+                ? 'تم اعتماد وإغلاق الفاتورة وترحيل القيود المالية والمخزنية بنجاح'
+                : 'تم تحديث بيانات الفاتورة وبنودها المفتوحة بنجاح'
+            );
+            loadPurchaseData();
+            setIsInvoiceModalOpen(false);
+            setEditingInvoice(null);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'فشل تحديث فاتورة المشتريات';
+            showError('خطأ أثناء تعديل الفاتورة', msg);
           }
         }}
       />
@@ -373,6 +449,12 @@ export const PurchaseView: React.FC = () => {
           setSelectedInvoiceId(null);
         }}
         invoiceId={selectedInvoiceId}
+        onEditInvoice={(inv) => {
+          setIsDetailsModalOpen(false);
+          setSelectedInvoiceId(null);
+          setEditingInvoice(inv);
+          setIsInvoiceModalOpen(true);
+        }}
       />
 
       {/* نافذة إنشاء مرتجع مشتريات */}

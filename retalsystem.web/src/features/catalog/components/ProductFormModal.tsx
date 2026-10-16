@@ -11,7 +11,6 @@ import {
   IconInfoCircle,
   IconCoin,
   IconBarcode,
-  IconPhoto,
   IconBuildingWarehouse,
   IconPlus,
   IconTrash,
@@ -48,8 +47,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [defaultUnitId, setDefaultUnitId] = useState('');
   const [costPrice, setCostPrice] = useState<number>(0);
   const [salePrice, setSalePrice] = useState<number>(0);
-  const [minStockLevel, setMinStockLevel] = useState<number>(5);
-  const [isActive, setIsActive] = useState(true);
 
   // باركودات إضافية
   const [barcodes, setBarcodes] = useState<{ barCode: string; description: string }[]>([
@@ -57,7 +54,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   ]);
 
   // أرصدة افتتاحية
-  const [openingBalances, setOpeningBalances] = useState<{ warehouseId: string; quantity: number }[]>([]);
+  const [openingBalances, setOpeningBalances] = useState<
+    { warehouseId: string; warehouseType?: number; quantity: number }[]
+  >([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -83,8 +82,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         setDefaultUnitId(productToEdit.defaultUnitId || '');
         setCostPrice(productToEdit.costPrice);
         setSalePrice(productToEdit.salePrice);
-        setMinStockLevel(productToEdit.minStockLevel);
-        setIsActive(productToEdit.isActive);
         setBarcodes(
           productToEdit.barCodes && productToEdit.barCodes.length > 0
             ? productToEdit.barCodes.map((b) => ({ barCode: b.barCode, description: b.description || '' }))
@@ -98,10 +95,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         setDefaultUnitId(units[0]?.id || '');
         setCostPrice(0);
         setSalePrice(0);
-        setMinStockLevel(5);
-        setIsActive(true);
         setBarcodes([{ barCode: '', description: 'الباركود الرئيسي' }]);
-        setOpeningBalances([{ warehouseId: 'w-1', quantity: 0 }]);
+        setOpeningBalances([]);
       }
       setActiveTab('basic');
     }
@@ -137,9 +132,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         defaultUnitId: defaultUnitId || units[0]?.id,
         costPrice: Number(costPrice) || 0,
         salePrice: Number(salePrice) || 0,
-        minStockLevel: Number(minStockLevel) || 0,
-        isActive,
         barCodes: barcodes.filter((b) => b.barCode.trim().length > 0),
+        units: defaultUnitId
+          ? [{ unitId: defaultUnitId, conversionFactor: 1, isDefault: true }]
+          : [],
         openingBalances: openingBalances.filter((o) => o.quantity > 0),
       });
       onClose();
@@ -152,8 +148,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     { id: 'basic', label: 'البيانات الأساسية', icon: <IconInfoCircle className="w-4 h-4" /> },
     { id: 'pricing', label: 'الأسعار والوحدات', icon: <IconCoin className="w-4 h-4" /> },
     { id: 'barcodes', label: 'الباركودات المتعددة', icon: <IconBarcode className="w-4 h-4" />, badge: barcodes.filter((b) => b.barCode).length },
-    { id: 'photos', label: 'الصور', icon: <IconPhoto className="w-4 h-4" /> },
-    { id: 'opening', label: 'الأرصدة الافتتاحية (اختياري)', icon: <IconBuildingWarehouse className="w-4 h-4" /> },
+    ...(!productToEdit
+      ? [{ id: 'opening', label: 'الأرصدة الافتتاحية (اختياري)', icon: <IconBuildingWarehouse className="w-4 h-4" /> }]
+      : []),
   ];
 
   return (
@@ -208,7 +205,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
                 </option>
               ))}
             </Select>
@@ -225,15 +222,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               ))}
             </Select>
 
-            <Input
-              label="حد إعادة الطلب (المخزون الحرج)"
-              type="number"
-              min="0"
-              value={minStockLevel}
-              onChange={(e) => setMinStockLevel(Number(e.target.value))}
-              isLtr
-            />
-
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold text-slate-700 block mb-1">وصف الصنف وملاحظاته</label>
               <textarea
@@ -245,18 +233,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </div>
 
-            <div className="sm:col-span-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is-active-check"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <label htmlFor="is-active-check" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                الصنف متاح للبيع ونشط في الكتالوج ونقاط البيع
-              </label>
-            </div>
           </div>
         )}
 
@@ -344,19 +320,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
         )}
 
-        {/* محتوى التبويب 4: الصور */}
-        {activeTab === 'photos' && (
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-center">
-            <IconPhoto className="w-10 h-10 text-slate-400 mb-2" />
-            <p className="text-xs font-bold text-slate-700">اسحب وأفلت صورة الصنف هنا أو انقر للاختيار</p>
-            <p className="text-[11px] text-slate-400 mt-1">تدعم صيغ PNG, JPG, WebP بنسبة مربعة 1:1</p>
-            <Button variant="secondary" size="sm" className="mt-3">
-              اختيار صورة من الجهاز
-            </Button>
-          </div>
-        )}
-
-        {/* محتوى التبويب 5: الأرصدة الافتتاحية */}
+        {/* الأرصدة الافتتاحية متاحة عند إنشاء الصنف فقط لأن API التعديل لا يغير الرصيد. */}
         {activeTab === 'opening' && (
           <div className="flex flex-col gap-3 py-2">
             <p className="text-xs text-slate-500">
@@ -373,7 +337,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     >
                       <div>
                         <span className="text-xs font-bold text-slate-800">{wh.name}</span>
-                        <span className="text-[11px] text-slate-400 font-mono block">{wh.code}</span>
+                        <span className="text-[11px] text-slate-400 block">{wh.typeName || (wh.type === 2 ? 'صالة عرض' : 'مستودع تخزيني')}</span>
                       </div>
                       <div className="w-32">
                         <Input
@@ -386,7 +350,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                             setOpeningBalances((prev) => {
                               const filtered = prev.filter((b) => b.warehouseId !== wh.id);
                               if (val > 0) {
-                                return [...filtered, { warehouseId: wh.id, quantity: val }];
+                                return [...filtered, { warehouseId: wh.id, warehouseType: wh.type, quantity: val }];
                               }
                               return filtered;
                             });

@@ -3,7 +3,6 @@
 export interface WarehouseDto {
   id: string;
   name: string;
-  code: string;
   branchId: string;
   branchName?: string;
   type?: number;

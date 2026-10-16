@@ -5,7 +5,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { BranchDto } from '../types/organization.types';
 import { organizationService, CreateBranchRequest } from '../services/organizationService';
 import { useToast } from '../../../shared/context/ToastContext';
-import { IconBuildingStore, IconBarcode, IconPhone, IconMapPin } from '@tabler/icons-react';
+import { IconBuildingStore, IconPhone, IconMapPin } from '@tabler/icons-react';
 
 interface BranchFormModalProps {
   isOpen: boolean;
@@ -25,7 +25,6 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
 
   const [formData, setFormData] = useState<CreateBranchRequest>({
     name: '',
-    code: '',
     phone: '',
     address: '',
     isActive: true,
@@ -37,7 +36,6 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
     if (branchToEdit) {
       setFormData({
         name: branchToEdit.name,
-        code: branchToEdit.code,
         phone: branchToEdit.phone || '',
         address: branchToEdit.address || '',
         isActive: branchToEdit.isActive,
@@ -45,7 +43,6 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
     } else {
       setFormData({
         name: '',
-        code: `BR-${Math.floor(10 + Math.random() * 90)}`,
         phone: '',
         address: '',
         isActive: true,
@@ -57,7 +54,6 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!formData.name.trim()) errs.name = 'اسم الفرع مطلوب';
-    if (!formData.code.trim()) errs.code = 'رمز أو كود الفرع مطلوب';
     if (formData.phone?.trim() && !/^(091|092|093|094|095)[0-9]{7}$/.test(formData.phone.trim())) {
       errs.phone = 'رقم الهاتف الليبي يجب أن يبدأ بـ (091, 092, 093, 094, 095) ويتكون من 10 أرقام';
     }
@@ -109,17 +105,7 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
           autoFocus
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="رمز الفرع (الكود) *"
-            placeholder="BR-01"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            error={errors.code}
-            leftIcon={<IconBarcode className="w-4 h-4" />}
-            className="num-ltr text-right font-mono"
-          />
-
+        <div className="grid grid-cols-1 gap-4">
           <Input
             label="رقم الهاتف"
             placeholder="091xxxxxxx"

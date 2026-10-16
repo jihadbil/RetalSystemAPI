@@ -3,7 +3,6 @@ import type { UserItemDto, CreateUserRequest, PermissionDefinition } from '../ty
 import type { PagedResult } from '../../../shared/types/api.types';
 
 export interface UpdateUserRequest {
-  fullName: string;
   email?: string;
   phone?: string;
   role: string;
@@ -22,6 +21,36 @@ interface RolePermissionsResponse {
   permissions?: string[];
 }
 
+interface UserApiDto {
+  id: string;
+  userName: string;
+  email?: string;
+  phoneNumber?: string;
+  roles?: string[];
+  branchId?: string;
+  branchName?: string;
+  isActive: boolean;
+}
+
+interface PermissionApiDto {
+  code: string;
+  name: string;
+  category: string;
+  description: string;
+}
+
+const toUserItem = (user: UserApiDto): UserItemDto => ({
+  id: user.id,
+  userName: user.userName,
+  fullName: user.userName,
+  email: user.email,
+  phone: user.phoneNumber,
+  role: user.roles?.[0] || 'User',
+  branchId: user.branchId,
+  branchName: user.branchName,
+  isActive: user.isActive,
+});
+
 export const userService = {
   async getPaged(
     pageNumber = 1,
@@ -34,7 +63,8 @@ export const userService = {
       if (search) params.search = search;
       if (branchId) params.branchId = branchId;
 
-      return await apiClient.get<PagedResult<UserItemDto>>('users', params);
+      const result = await apiClient.get<PagedResult<UserApiDto>>('users', params);
+      return { ...result, items: result.items.map(toUserItem) };
     } catch (err) {
       console.error('[userService.getPaged] Failed to fetch users:', err);
       throw err;
@@ -43,7 +73,7 @@ export const userService = {
 
   async getById(id: string): Promise<UserItemDto> {
     try {
-      return await apiClient.get<UserItemDto>(`users/${id}`);
+      return toUserItem(await apiClient.get<UserApiDto>(`users/${id}`));
     } catch (err) {
       console.error(`[userService.getById] Failed to fetch user ${id}:`, err);
       throw err;
@@ -53,10 +83,14 @@ export const userService = {
   async create(data: CreateUserRequest): Promise<UserItemDto> {
     try {
       const payload = {
-        ...data,
+        userName: data.userName,
+        password: data.password,
+        email: data.email || '',
         phoneNumber: data.phone,
+        role: data.role,
+        branchId: data.branchId,
       };
-      return await apiClient.post<UserItemDto>('users', payload);
+      return toUserItem(await apiClient.post<UserApiDto>('users', payload));
     } catch (err) {
       console.error('[userService.create] Failed to create user:', err);
       throw err;
@@ -66,10 +100,13 @@ export const userService = {
   async update(id: string, data: UpdateUserRequest): Promise<UserItemDto> {
     try {
       const payload = {
-        ...data,
+        email: data.email || '',
         phoneNumber: data.phone,
+        role: data.role,
+        branchId: data.branchId,
+        isActive: data.isActive,
       };
-      return await apiClient.put<UserItemDto>(`users/${id}`, payload);
+      return toUserItem(await apiClient.put<UserApiDto>(`users/${id}`, payload));
     } catch (err) {
       console.error(`[userService.update] Failed to update user ${id}:`, err);
       throw err;
@@ -88,9 +125,8 @@ export const userService = {
   async toggleActive(id: string, currentActive: boolean, currentUser?: UserItemDto): Promise<void> {
     try {
       await apiClient.put(`users/${id}`, {
-        fullName: currentUser?.fullName || '',
-        email: currentUser?.email,
-        phone: currentUser?.phone,
+        email: currentUser?.email || '',
+        phoneNumber: currentUser?.phone,
         role: currentUser?.role || 'User',
         branchId: currentUser?.branchId,
         isActive: !currentActive,
@@ -131,7 +167,13 @@ export const userService = {
 
   async getPermissions(): Promise<PermissionDefinition[]> {
     try {
-      return await apiClient.get<PermissionDefinition[]>('users/permissions');
+      const permissions = await apiClient.get<PermissionApiDto[]>('users/permissions');
+      return permissions.map((permission) => ({
+        key: permission.code,
+        name: permission.name,
+        category: permission.category,
+        description: permission.description,
+      }));
     } catch (err) {
       console.error('[userService.getPermissions] Failed to fetch permissions:', err);
       throw err;

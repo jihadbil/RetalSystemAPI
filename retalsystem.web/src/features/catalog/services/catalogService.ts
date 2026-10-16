@@ -3,15 +3,129 @@ import type {
   ProductDto,
   CreateProductRequest,
   CategoryDto,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
   UnitDto,
   ImportPreviewRow,
+  ProductImportResult,
 } from '../types/catalog.types';
 import type { PagedResult } from '../../../shared/types/api.types';
 
-interface ImportPreviewResponse {
-  rows?: ImportPreviewRow[];
-  previewRows?: ImportPreviewRow[];
+interface ImportValidationRow {
+  rowNumber: number;
+  itemCode?: string;
+  name: string;
+  barCode?: string;
+  categoryName?: string;
+  unitName?: string;
+  costPrice: number;
+  salePrice: number;
+  status: number;
+  message?: string;
 }
+
+interface ImportPreviewResponse {
+  rows?: ImportValidationRow[];
+  previewRows?: ImportValidationRow[];
+}
+
+interface ProductApiImage {
+  id?: string;
+  productId?: string;
+  imageUrl: string;
+  isDefault?: boolean;
+  isPrimary?: boolean;
+  displayOrder?: number;
+}
+
+export interface ProductApiDto extends Omit<ProductDto, 'code' | 'isActive' | 'images'> {
+  code?: string;
+  defaultBarCode?: string;
+  defaultImage?: string;
+  isActive?: boolean;
+  images?: ProductApiImage[];
+}
+
+const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
+
+export const normalizeProduct = (product: ProductApiDto): ProductDto => {
+  const units = product.units || [];
+  const images = (product.images || []).map((image) => ({
+    ...image,
+    isPrimary: image.isPrimary ?? image.isDefault ?? false,
+  }));
+  const defaultUnit = units.find((unit) => unit.isDefault) || units[0];
+
+  return {
+    ...product,
+    code: product.code || product.defaultBarCode || product.barCodes?.[0]?.barCode || '',
+    isActive: product.isActive ?? true,
+    defaultUnitId: product.defaultUnitId || defaultUnit?.unitId,
+    defaultUnitName: product.defaultUnitName || defaultUnit?.unitName,
+    primaryImageUrl:
+      product.primaryImageUrl ||
+      product.defaultImage ||
+      images.find((image) => image.isPrimary)?.imageUrl ||
+      images[0]?.imageUrl,
+    images,
+    units,
+  };
+};
+
+export const buildProductPayload = (request: CreateProductRequest, productId = EMPTY_GUID) => {
+  const barcodeMap = new Map<string, { barCode: string; title: string; description?: string }>();
+  const addBarcode = (barCode: string, title?: string, description?: string) => {
+    const cleanCode = barCode.trim();
+    if (!cleanCode || barcodeMap.has(cleanCode.toLowerCase())) return;
+    barcodeMap.set(cleanCode.toLowerCase(), {
+      barCode: cleanCode,
+      title: title?.trim() || description?.trim() || request.name,
+      description: description?.trim() || undefined,
+    });
+  };
+
+  addBarcode(request.code, 'الكود الرئيسي');
+  request.barCodes?.forEach((barcode) => addBarcode(barcode.barCode, barcode.title, barcode.description));
+
+  const barCodes = [...barcodeMap.values()].map((barcode) => ({
+    ...barcode,
+    productId,
+    initialQuantity: 0,
+  }));
+  const primaryBarCode = barCodes[0]?.barCode || request.code.trim();
+  const units = request.units?.length
+    ? request.units
+    : request.defaultUnitId
+      ? [{ unitId: request.defaultUnitId, conversionFactor: 1, isDefault: true }]
+      : [];
+  const openingBalances = request.openingBalances?.filter((balance) => balance.quantity > 0) || [];
+
+  return {
+    id: productId,
+    name: request.name,
+    description: request.description || undefined,
+    categoryId: request.categoryId,
+    costPrice: request.costPrice,
+    salePrice: request.salePrice,
+    barCodes,
+    units: units.map((unit) => ({
+      productId,
+      unitId: unit.unitId,
+      conversionFactor: Math.max(1, Math.trunc(unit.conversionFactor || 1)),
+      isDefault: unit.isDefault ?? unit.unitId === request.defaultUnitId,
+    })),
+    showroomInitialQuantities: openingBalances
+      .filter((balance) => balance.warehouseType === 2)
+      .map(({ warehouseId, quantity }) => ({ warehouseId, quantity: Math.trunc(quantity) })),
+    storageInitialQuantities: openingBalances
+      .filter((balance) => balance.warehouseType === 1)
+      .map(({ warehouseId, quantity }) => ({
+        warehouseId,
+        barCode: primaryBarCode,
+        quantity: Math.trunc(quantity),
+      })),
+  };
+};
 
 export const catalogService = {
   // المنتجات
@@ -26,7 +140,8 @@ export const catalogService = {
       if (cleanParams.categoryId === 'all') {
         delete cleanParams.categoryId;
       }
-      return await apiClient.get<PagedResult<ProductDto>>('catalog/products/paged', cleanParams);
+      const result = await apiClient.get<PagedResult<ProductApiDto>>('catalog/products/paged', cleanParams);
+      return { ...result, items: result.items.map(normalizeProduct) };
     } catch (err) {
       console.error('[catalogService.getProducts] Failed to fetch products:', err);
       throw err;
@@ -35,7 +150,7 @@ export const catalogService = {
 
   async getProductById(id: string): Promise<ProductDto> {
     try {
-      return await apiClient.get<ProductDto>(`catalog/products/${id}`);
+      return normalizeProduct(await apiClient.get<ProductApiDto>(`catalog/products/${id}`));
     } catch (err) {
       console.error(`[catalogService.getProductById] Failed to fetch product ${id}:`, err);
       throw err;
@@ -44,16 +159,18 @@ export const catalogService = {
 
   async createProduct(request: CreateProductRequest): Promise<ProductDto> {
     try {
-      return await apiClient.post<ProductDto>('catalog/products', request);
+      return normalizeProduct(
+        await apiClient.post<ProductApiDto>('catalog/products', buildProductPayload(request))
+      );
     } catch (err) {
       console.error('[catalogService.createProduct] Failed to create product:', err);
       throw err;
     }
   },
 
-  async updateProduct(id: string, request: Partial<CreateProductRequest>): Promise<void> {
+  async updateProduct(id: string, request: CreateProductRequest): Promise<void> {
     try {
-      await apiClient.put(`catalog/products/${id}`, request);
+      await apiClient.put(`catalog/products/${id}`, buildProductPayload(request, id));
     } catch (err) {
       console.error(`[catalogService.updateProduct] Failed to update product ${id}:`, err);
       throw err;
@@ -79,7 +196,7 @@ export const catalogService = {
     }
   },
 
-  async createCategory(category: { name: string; description?: string }): Promise<CategoryDto> {
+  async createCategory(category: CreateCategoryRequest): Promise<CategoryDto> {
     try {
       return await apiClient.post<CategoryDto>('catalog/categories', category);
     } catch (err) {
@@ -88,10 +205,30 @@ export const catalogService = {
     }
   },
 
+  async updateCategory(id: string, category: UpdateCategoryRequest): Promise<CategoryDto> {
+    try {
+      return await apiClient.put<CategoryDto>(`catalog/categories/${id}`, category);
+    } catch (err) {
+      console.error('[catalogService.updateCategory] Failed to update category:', err);
+      throw err;
+    }
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    try {
+      await apiClient.delete(`catalog/categories/${id}`);
+    } catch (err) {
+      console.error('[catalogService.deleteCategory] Failed to delete category:', err);
+      throw err;
+    }
+  },
+
   // البحث بالباركود
   async getByBarCode(barCode: string): Promise<ProductDto> {
     try {
-      return await apiClient.get<ProductDto>(`catalog/products/by-barcode/${encodeURIComponent(barCode)}`);
+      return normalizeProduct(
+        await apiClient.get<ProductApiDto>(`catalog/products/by-barcode/${encodeURIComponent(barCode)}`)
+      );
     } catch (err) {
       console.error('[catalogService.getByBarCode] Failed to fetch product by barcode:', err);
       throw err;
@@ -101,7 +238,8 @@ export const catalogService = {
   // البحث في المنتجات
   async searchProducts(query: string): Promise<ProductDto[]> {
     try {
-      return await apiClient.get<ProductDto[]>(`catalog/products/search?q=${encodeURIComponent(query)}`);
+      const products = await apiClient.get<ProductApiDto[]>(`catalog/products/search?q=${encodeURIComponent(query)}`);
+      return products.map(normalizeProduct);
     } catch (err) {
       console.error('[catalogService.searchProducts] Failed to search products:', err);
       throw err;
@@ -133,18 +271,40 @@ export const catalogService = {
       const formData = new FormData();
       formData.append('file', file);
       const res = await apiClient.post<ImportPreviewResponse>('catalog/products/validate-excel', formData);
-      return res?.rows || res?.previewRows || [];
+      const rows = res?.rows || res?.previewRows || [];
+      return rows.map((row) => ({
+        rowNumber: row.rowNumber,
+        name: row.name,
+        code: row.itemCode || '',
+        categoryName: row.categoryName || '',
+        salePrice: row.salePrice,
+        costPrice: row.costPrice,
+        barCode: row.barCode,
+        unitName: row.unitName,
+        isValid: row.status !== 2,
+        error: row.status === 2 ? row.message || 'بيانات السطر غير صالحة' : undefined,
+      }));
     } catch (err) {
       console.error('[catalogService.previewImportFile] Failed to preview Excel:', err);
       throw err;
     }
   },
 
-  async executeImport(rows: ImportPreviewRow[]): Promise<{ importedCount: number; rejectedCount: number }> {
-    const validRows = rows.filter((r) => r.isValid);
-    return {
-      importedCount: validRows.length,
-      rejectedCount: rows.length - validRows.length,
-    };
+  async executeImport(file: File): Promise<ProductImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post<ProductImportResult>('catalog/products/import-excel', formData);
+  },
+
+  async downloadImportTemplate(): Promise<void> {
+    const { blob, fileName } = await apiClient.download('catalog/products/excel-template', { singleSheet: true });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'Products_Import_Template_SingleSheet.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   },
 };

@@ -16,6 +16,8 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { usePagination } from '../../shared/hooks/usePagination';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconReceipt,
   IconArrowBackUp,
@@ -27,6 +29,11 @@ import {
 
 export const SalesView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreateInvoice = hasPermission(Permissions.SalesInvoices.Create);
+  const canCreateReturn = hasPermission(Permissions.SalesReturns.Create);
+  const canViewReturns = hasPermission(Permissions.SalesReturns.View);
+  const canPrint = hasPermission(Permissions.SalesInvoices.Print);
   const [activeTab, setActiveTab] = useState<'invoices' | 'returns'>('invoices');
 
   const [invoices, setInvoices] = useState<SalesInvoiceDto[]>([]);
@@ -77,7 +84,9 @@ export const SalesView: React.FC = () => {
 
   const tabs = [
     { id: 'invoices', label: 'فواتير المبيعات', icon: <IconReceipt className="w-4 h-4" />, badge: pagination.totalCount },
-    { id: 'returns', label: 'مرتجعات المبيعات', icon: <IconArrowBackUp className="w-4 h-4" />, badge: returns.length },
+    ...(canViewReturns
+      ? [{ id: 'returns', label: 'مرتجعات المبيعات', icon: <IconArrowBackUp className="w-4 h-4" />, badge: returns.length }]
+      : []),
   ];
 
   return (
@@ -92,7 +101,7 @@ export const SalesView: React.FC = () => {
           </p>
         </div>
 
-        {activeTab === 'invoices' ? (
+        {activeTab === 'invoices' && canCreateInvoice ? (
           <Button
             variant="primary"
             size="md"
@@ -101,7 +110,7 @@ export const SalesView: React.FC = () => {
           >
             + فاتورة بيع جديدة
           </Button>
-        ) : (
+        ) : activeTab === 'returns' && canCreateReturn ? (
           <Button
             variant="primary"
             size="md"
@@ -110,7 +119,7 @@ export const SalesView: React.FC = () => {
           >
             + تسجيل مرتجع مبيعات
           </Button>
-        )}
+        ) : null}
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={(t) => setActiveTab(t as typeof activeTab)} />
@@ -146,13 +155,13 @@ export const SalesView: React.FC = () => {
               <div className="py-12">
                 <EmptyState
                   isSearch={Boolean(search)}
-                  actionText="+ إنشاء أول فاتورة"
-                  onAction={() => setIsInvoiceModalOpen(true)}
+                  actionText={canCreateInvoice ? '+ إنشاء أول فاتورة' : undefined}
+                  onAction={canCreateInvoice ? () => setIsInvoiceModalOpen(true) : undefined}
                 />
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[700px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4">رقم الفاتورة</th>
@@ -193,14 +202,14 @@ export const SalesView: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <button
+                              {canPrint && <button
                                 type="button"
                                 onClick={() => setSelectedDetailsInvoiceId(inv.id)}
                                 className="p-1.5 text-slate-500 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
                                 title="عرض تفاصيل وبنود الفاتورة"
                               >
                                 <IconEye className="w-4 h-4" />
-                              </button>
+                              </button>}
                               <button
                                 type="button"
                                 onClick={() => setViewingInvoice(inv)}
@@ -235,7 +244,7 @@ export const SalesView: React.FC = () => {
       {activeTab === 'returns' && (
         <Card noPadding>
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
+            <table className="w-full text-right text-xs min-w-[650px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                 <tr>
                   <th className="py-3 px-4">رقم المرتجع</th>

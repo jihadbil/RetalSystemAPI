@@ -13,6 +13,8 @@ import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconPlus,
   IconSearch,
@@ -29,6 +31,10 @@ import {
 
 export const SuppliersView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(Permissions.Suppliers.Create);
+  const canEdit = hasPermission(Permissions.Suppliers.Edit);
+  const canDelete = hasPermission(Permissions.Suppliers.Delete);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -113,7 +119,7 @@ export const SuppliersView: React.FC = () => {
           </p>
         </div>
 
-        <Button
+        {canCreate && <Button
           variant="primary"
           onClick={() => {
             setSupplierToEdit(null);
@@ -123,7 +129,7 @@ export const SuppliersView: React.FC = () => {
         >
           <IconPlus className="w-4 h-4" />
           إضافة مورد جديد
-        </Button>
+        </Button>}
       </div>
 
       {/* بطاقات الإحصائيات والمؤشرات */}
@@ -231,15 +237,15 @@ export const SuppliersView: React.FC = () => {
             icon={<IconTruckDelivery className="w-10 h-10 text-slate-300" />}
             title="لا يوجد موردين مطابقين"
             description="لم يتم العثور على أي مورد مسجل يطابق معايير البحث. يمكنك إضافة مورد جديد الآن."
-            actionLabel="إضافة مورد جديد"
-            onAction={() => {
+            actionLabel={canCreate ? 'إضافة مورد جديد' : undefined}
+            onAction={canCreate ? () => {
               setSupplierToEdit(null);
               setIsFormOpen(true);
-            }}
+            } : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
+            <table className="w-full text-right text-xs min-w-[700px]">
               <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold">
                 <tr>
                   <th className="py-3 px-4">المورد والشركة</th>
@@ -306,7 +312,7 @@ export const SuppliersView: React.FC = () => {
 
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
+                        {canEdit && <button
                           type="button"
                           title="تسجيل سند صرف"
                           onClick={() => {
@@ -316,7 +322,7 @@ export const SuppliersView: React.FC = () => {
                           className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
                         >
                           <IconCash className="w-4 h-4" />
-                        </button>
+                        </button>}
 
                         <button
                           type="button"
@@ -330,7 +336,7 @@ export const SuppliersView: React.FC = () => {
                           <IconFileText className="w-4 h-4" />
                         </button>
 
-                        <button
+                        {canEdit && <button
                           type="button"
                           title="تعديل بيانات المورد"
                           onClick={() => {
@@ -340,16 +346,16 @@ export const SuppliersView: React.FC = () => {
                           className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                         >
                           <IconEdit className="w-4 h-4" />
-                        </button>
+                        </button>}
 
-                        <button
+                        {canDelete && <button
                           type="button"
                           title="حذف المورد"
                           onClick={() => setSupplierToDelete(s)}
                           className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                         >
                           <IconTrash className="w-4 h-4" />
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>

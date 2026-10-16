@@ -10,9 +10,9 @@ export const LoginView: React.FC = () => {
   const { login } = useAuth();
   const { showError, showSuccess } = useToast();
 
-  const [userName, setUserName] = useState('admin');
-  const [password, setPassword] = useState('admin');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [userName, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -107,7 +107,6 @@ export const LoginView: React.FC = () => {
                 <span>تذكرني على هذا الجهاز</span>
               </label>
 
-              <span className="text-slate-400">PIN: 1234</span>
             </div>
 
             {error && (
@@ -127,8 +126,8 @@ export const LoginView: React.FC = () => {
             </Button>
           </form>
 
-          {/* أزرار التجربة السريعة */}
-          <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2">
+          {/* حسابات التطوير لا تظهر مطلقاً في بناء الإنتاج */}
+          {import.meta.env.DEV && <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2">
             <span className="text-[11px] font-semibold text-slate-400 text-center">حسابات تجريبية سريعة:</span>
             <div className="flex items-center gap-2">
               <button
@@ -146,7 +145,7 @@ export const LoginView: React.FC = () => {
                 كاشير (Cashier)
               </button>
             </div>
-          </div>
+          </div>}
         </div>
 
         <p className="text-[11px] text-slate-400 mt-6 text-center">

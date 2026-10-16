@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
-import { Badge } from '../../../shared/components/ui/Badge';
 import { purchaseService } from '../services/purchaseService';
 import type { PurchaseInvoiceDto } from '../types/purchase.types';
-import { PurchaseStatusLabels } from '../types/purchase.types';
-import { IconFileInvoice, IconPrinter, IconX } from '@tabler/icons-react';
+import { PurchaseInvoiceStatus } from '../types/purchase.types';
+import { IconPrinter, IconEdit } from '@tabler/icons-react';
 
 interface PurchaseInvoiceDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceId?: string | null;
+  onEditInvoice?: (invoice: PurchaseInvoiceDto) => void;
 }
 
 export const PurchaseInvoiceDetailsModal: React.FC<PurchaseInvoiceDetailsModalProps> = ({
   isOpen,
   onClose,
   invoiceId,
+  onEditInvoice,
 }) => {
   const [invoice, setInvoice] = useState<PurchaseInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,8 +42,6 @@ export const PurchaseInvoiceDetailsModal: React.FC<PurchaseInvoiceDetailsModalPr
 
   if (!isOpen) return null;
 
-  const statusInfo = invoice?.status !== undefined ? PurchaseStatusLabels[invoice.status] : null;
-
   return (
     <Modal
       isOpen={isOpen}
@@ -52,14 +51,29 @@ export const PurchaseInvoiceDetailsModal: React.FC<PurchaseInvoiceDetailsModalPr
       size="2xl"
       footer={
         <div className="flex justify-between items-center w-full">
-          <Button
-            variant="outline"
-            size="md"
-            leftIcon={<IconPrinter className="w-4 h-4" />}
-            onClick={() => window.print()}
-          >
-            طباعة الفاتورة
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<IconPrinter className="w-4 h-4" />}
+              onClick={() => window.print()}
+            >
+              طباعة الفاتورة
+            </Button>
+            {invoice &&
+              (invoice.status === PurchaseInvoiceStatus.Pending ||
+                invoice.status === PurchaseInvoiceStatus.Draft) &&
+              onEditInvoice && (
+                <Button
+                  variant="primary"
+                  size="md"
+                  leftIcon={<IconEdit className="w-4 h-4" />}
+                  onClick={() => onEditInvoice(invoice)}
+                >
+                  تعديل الفاتورة المفتوحة
+                </Button>
+              )}
+          </div>
           <Button variant="secondary" size="md" onClick={onClose}>
             إغلاق
           </Button>

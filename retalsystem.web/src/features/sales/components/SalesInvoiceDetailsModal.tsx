@@ -4,7 +4,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { salesService } from '../services/salesService';
 import type { SalesInvoiceDto } from '../types/sales.types';
 import { InvoiceStatusLabels } from '../types/sales.types';
-import { IconPrinter, IconFileInvoice, IconAlertCircle } from '@tabler/icons-react';
+import { IconPrinter, IconAlertCircle } from '@tabler/icons-react';
 
 interface SalesInvoiceDetailsModalProps {
   isOpen: boolean;

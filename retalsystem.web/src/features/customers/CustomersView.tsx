@@ -13,6 +13,8 @@ import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconPlus,
   IconSearch,
@@ -28,6 +30,10 @@ import {
 
 export const CustomersView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(Permissions.Customers.Create);
+  const canEdit = hasPermission(Permissions.Customers.Edit);
+  const canDelete = hasPermission(Permissions.Customers.Delete);
   const [customers, setCustomers] = useState<CustomerDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -111,7 +117,7 @@ export const CustomersView: React.FC = () => {
           </p>
         </div>
 
-        <Button
+        {canCreate && <Button
           variant="primary"
           onClick={() => {
             setCustomerToEdit(null);
@@ -121,7 +127,7 @@ export const CustomersView: React.FC = () => {
         >
           <IconPlus className="w-4 h-4" />
           إضافة عميل جديد
-        </Button>
+        </Button>}
       </div>
 
       {/* بطاقات المؤشرات الإحصائية */}
@@ -229,15 +235,15 @@ export const CustomersView: React.FC = () => {
             icon={<IconUsers className="w-10 h-10 text-slate-300" />}
             title="لا يوجد عملاء مطابقين"
             description="لم يتم العثور على أي عميل يطابق معايير البحث المحددة. يمكنك إضافة عميل جديد الآن."
-            actionLabel="إضافة عميل جديد"
-            onAction={() => {
+            actionLabel={canCreate ? 'إضافة عميل جديد' : undefined}
+            onAction={canCreate ? () => {
               setCustomerToEdit(null);
               setIsFormOpen(true);
-            }}
+            } : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
+            <table className="w-full text-right text-xs min-w-[700px]">
               <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold">
                 <tr>
                   <th className="py-3 px-4">العميل</th>
@@ -315,7 +321,7 @@ export const CustomersView: React.FC = () => {
 
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
+                        {canEdit && <button
                           type="button"
                           title="تسجيل سند قبض"
                           onClick={() => {
@@ -325,7 +331,7 @@ export const CustomersView: React.FC = () => {
                           className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
                         >
                           <IconCash className="w-4 h-4" />
-                        </button>
+                        </button>}
 
                         <button
                           type="button"
@@ -339,7 +345,7 @@ export const CustomersView: React.FC = () => {
                           <IconFileText className="w-4 h-4" />
                         </button>
 
-                        <button
+                        {canEdit && <button
                           type="button"
                           title="تعديل بيانات العميل"
                           onClick={() => {
@@ -349,16 +355,16 @@ export const CustomersView: React.FC = () => {
                           className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                         >
                           <IconEdit className="w-4 h-4" />
-                        </button>
+                        </button>}
 
-                        <button
+                        {canDelete && <button
                           type="button"
                           title="حذف العميل"
                           onClick={() => setCustomerToDelete(c)}
                           className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                         >
                           <IconTrash className="w-4 h-4" />
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>

@@ -52,6 +52,8 @@ class ApiClient {
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { params, timeoutMs = 30000, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
+    const cleanEndpoint = endpoint.replace(/^\/+/, '').toLowerCase();
+    const isLoginRequest = cleanEndpoint === 'auth/login';
 
     const headers = new Headers(fetchOptions.headers);
     if (!headers.has('Content-Type') && !(fetchOptions.body instanceof FormData)) {
@@ -60,7 +62,7 @@ class ApiClient {
     headers.set('Accept', 'application/json');
 
     const token = this.getAuthToken();
-    if (token) {
+    if (token && !isLoginRequest) {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
@@ -89,7 +91,7 @@ class ApiClient {
 
       clearTimeout(id);
 
-      if (response.status === 401) {
+      if (response.status === 401 && !isLoginRequest) {
         window.dispatchEvent(new CustomEvent('retal:unauthorized'));
         throw new ApiError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 401, 'UNAUTHORIZED');
       }
@@ -194,6 +196,71 @@ class ApiClient {
 
   delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  }
+
+  async download(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined | null>,
+    timeoutMs = 30000
+  ): Promise<{ blob: Blob; fileName?: string }> {
+    const url = this.buildUrl(endpoint, params);
+    const headers = new Headers({ Accept: 'application/octet-stream' });
+
+    const token = this.getAuthToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+
+    const branchId = this.getBranchId();
+    if (branchId) headers.set('X-Branch-Id', branchId);
+
+    const tenantId = this.getTenantId();
+    if (tenantId) headers.set('X-Tenant-Id', tenantId);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('retal:unauthorized'));
+        throw new ApiError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 401, 'UNAUTHORIZED');
+      }
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+          ? await response.json()
+          : await response.text();
+        const apiResponse = data as ApiResponse;
+        const message =
+          (typeof data === 'string' && data) ||
+          apiResponse?.message ||
+          'تعذر تنزيل الملف من الخادم';
+        throw new ApiError(message, response.status, apiResponse?.errorCode, apiResponse?.errors);
+      }
+
+      const disposition = response.headers.get('content-disposition') || '';
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+      const encodedName = utf8Match?.[1] || plainMatch?.[1];
+      const fileName = encodedName ? decodeURIComponent(encodedName) : undefined;
+
+      return { blob: await response.blob(), fileName };
+    } catch (err: unknown) {
+      if (err instanceof ApiError) throw err;
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiError('انتهت مهلة تنزيل الملف', 408, 'TIMEOUT');
+      }
+      const message = err instanceof Error ? err.message : 'تعذر تنزيل الملف من الخادم';
+      throw new ApiError(message, 0, 'NETWORK_ERROR');
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 }
 

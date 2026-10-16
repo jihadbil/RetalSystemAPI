@@ -8,6 +8,8 @@ import { Badge } from '../../shared/components/ui/Badge';
 import { Tabs, TabItem } from '../../shared/components/ui/Tabs';
 import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconBuildingStore,
   IconSettings,
@@ -27,6 +29,13 @@ interface OrganizationViewProps {
 
 export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab = 'branches' }) => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canViewBranches = hasPermission(Permissions.Branches.View);
+  const canCreateBranch = hasPermission(Permissions.Branches.Create);
+  const canEditBranch = hasPermission(Permissions.Branches.Edit);
+  const canDeleteBranch = hasPermission(Permissions.Branches.Delete);
+  const canViewTenant = hasPermission(Permissions.Tenants.View);
+  const canEditTenant = hasPermission(Permissions.Tenants.Edit);
   const [activeTab, setActiveTab] = useState<'branches' | 'settings'>(initialTab);
 
   useEffect(() => {
@@ -78,9 +87,9 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
   }, [showError]);
 
   useEffect(() => {
-    loadBranches();
-    loadProfile();
-  }, [loadBranches, loadProfile]);
+    if (canViewBranches) loadBranches();
+    if (canViewTenant) loadProfile();
+  }, [canViewBranches, canViewTenant, loadBranches, loadProfile]);
 
   const handleDeleteBranch = async () => {
     if (!branchToDelete) return;
@@ -110,8 +119,12 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
   };
 
   const tabs: TabItem[] = [
-    { id: 'branches', label: 'فروع ومنافذ المؤسسة', icon: <IconBuildingStore className="w-4 h-4" /> },
-    { id: 'settings', label: 'إعدادات المنشأة والهوية', icon: <IconSettings className="w-4 h-4" /> },
+    ...(canViewBranches
+      ? [{ id: 'branches', label: 'فروع ومنافذ المؤسسة', icon: <IconBuildingStore className="w-4 h-4" /> }]
+      : []),
+    ...(canViewTenant
+      ? [{ id: 'settings', label: 'إعدادات المنشأة والهوية', icon: <IconSettings className="w-4 h-4" /> }]
+      : []),
   ];
 
   return (
@@ -125,7 +138,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
           </p>
         </div>
 
-        {activeTab === 'branches' && (
+        {activeTab === 'branches' && canCreateBranch && (
           <Button
             variant="primary"
             onClick={() => {
@@ -174,10 +187,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                       <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                         <IconBuildingStore className="w-5 h-5" />
                       </div>
-                      <div>
-                        <h3 className="font-extrabold text-sm text-slate-900 leading-tight">{b.name}</h3>
-                        <span className="text-[11px] font-mono text-emerald-700 font-bold">{b.code}</span>
-                      </div>
+                      <h3 className="font-extrabold text-sm text-slate-900 leading-tight">{b.name}</h3>
                     </div>
 
                     <Badge variant={b.isActive ? 'success' : 'neutral'}>
@@ -202,7 +212,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-1.5">
-                  <button
+                  {canEditBranch && <button
                     type="button"
                     title="تعديل بيانات الفرع"
                     onClick={() => {
@@ -212,16 +222,16 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                     className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     <IconEdit className="w-4 h-4" />
-                  </button>
+                  </button>}
 
-                  <button
+                  {canDeleteBranch && <button
                     type="button"
                     title="حذف الفرع"
                     onClick={() => setBranchToDelete(b)}
                     className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                   >
                     <IconTrash className="w-4 h-4" />
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))}
@@ -242,6 +252,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 value={tenantProfile.companyName}
                 onChange={(e) => setTenantProfile({ ...tenantProfile, companyName: e.target.value })}
                 leftIcon={<IconBuildingStore className="w-4 h-4" />}
+                disabled={!canEditTenant}
               />
 
               <Input
@@ -250,6 +261,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 onChange={(e) => setTenantProfile({ ...tenantProfile, taxNumber: e.target.value })}
                 leftIcon={<IconReceiptTax className="w-4 h-4" />}
                 className="num-ltr text-right font-mono"
+                disabled={!canEditTenant}
               />
 
               <Input
@@ -258,6 +270,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 onChange={(e) => setTenantProfile({ ...tenantProfile, commercialRegister: e.target.value })}
                 leftIcon={<IconBuildingBank className="w-4 h-4" />}
                 className="num-ltr text-right font-mono"
+                disabled={!canEditTenant}
               />
 
               <Input
@@ -266,6 +279,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 onChange={(e) => setTenantProfile({ ...tenantProfile, phone: e.target.value })}
                 leftIcon={<IconPhone className="w-4 h-4" />}
                 className="num-ltr text-right"
+                disabled={!canEditTenant}
               />
 
               <Input
@@ -273,11 +287,13 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 value={tenantProfile.email || ''}
                 onChange={(e) => setTenantProfile({ ...tenantProfile, email: e.target.value })}
                 className="num-ltr text-right"
+                disabled={!canEditTenant}
               />
 
               <Input
                 label="رمز العملة الافتراضية"
                 value={tenantProfile.currencySymbol}
+                disabled={!canEditTenant}
                 onChange={(e) => setTenantProfile({ ...tenantProfile, currencySymbol: e.target.value })}
               />
 
@@ -289,6 +305,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                   setTenantProfile({ ...tenantProfile, defaultTaxRate: parseFloat(e.target.value) || 0 })
                 }
                 className="num-ltr text-right"
+                disabled={!canEditTenant}
               />
 
               <Input
@@ -296,6 +313,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 value={tenantProfile.address || ''}
                 onChange={(e) => setTenantProfile({ ...tenantProfile, address: e.target.value })}
                 leftIcon={<IconMapPin className="w-4 h-4" />}
+                disabled={!canEditTenant}
               />
             </div>
 
@@ -309,6 +327,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 <textarea
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none h-24"
                   value={tenantProfile.receiptHeader || ''}
+                  disabled={!canEditTenant}
                   onChange={(e) => setTenantProfile({ ...tenantProfile, receiptHeader: e.target.value })}
                 />
               </div>
@@ -318,17 +337,18 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
                 <textarea
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none h-24"
                   value={tenantProfile.receiptFooter || ''}
+                  disabled={!canEditTenant}
                   onChange={(e) => setTenantProfile({ ...tenantProfile, receiptFooter: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-100">
+            {canEditTenant && <div className="flex justify-end pt-4 border-t border-slate-100">
               <Button variant="primary" type="submit" isLoading={isSavingProfile}>
                 <IconCheck className="w-4 h-4" />
                 حفظ التغييرات
               </Button>
-            </div>
+            </div>}
           </div>
         </form>
       )}

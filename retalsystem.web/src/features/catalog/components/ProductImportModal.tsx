@@ -29,6 +29,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; rejected: number } | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,17 +49,34 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
   };
 
   const handleStartImport = async () => {
+    if (!file) {
+      showError('تعذر الاستيراد', 'اختر ملف Excel أولاً');
+      return;
+    }
     setIsLoading(true);
     setStep(4);
     try {
-      const res = await catalogService.executeImport(previewRows);
-      setImportResult({ imported: res.importedCount, rejected: res.rejectedCount });
-      showSuccess('اكتمل الاستيراد', `تم استيراد ${res.importedCount} صنف بنجاح`);
+      const res = await catalogService.executeImport(file);
+      setImportResult({ imported: res.productsImported, rejected: res.failedRowsCount });
+      showSuccess('اكتمل الاستيراد', `تم استيراد ${res.productsImported} صنف بنجاح`);
       onSuccess();
     } catch {
       showError('فشل الاستيراد', 'حدث خطأ أثناء حفظ الأصناف');
+      setStep(3);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
+    try {
+      await catalogService.downloadImportTemplate();
+      showSuccess('تنزيل القالب', 'تم تنزيل قالب استيراد الأصناف');
+    } catch (err: unknown) {
+      showError('تعذر تنزيل القالب', err instanceof Error ? err.message : 'حدث خطأ أثناء تنزيل القالب');
+    } finally {
+      setIsDownloadingTemplate(false);
     }
   };
 
@@ -131,11 +149,12 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 
             <button
               type="button"
-              onClick={() => showSuccess('تنزيل القالب', 'تم تنزيل قالب استيراد الأصناف النموذجي')}
+              onClick={handleDownloadTemplate}
+              disabled={isDownloadingTemplate}
               className="flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 underline font-semibold cursor-pointer"
             >
               <IconDownload className="w-4 h-4" />
-              تنزيل قالب إكسل فارغ نموذجي (.xlsx)
+              {isDownloadingTemplate ? 'جاري تنزيل القالب...' : 'تنزيل قالب إكسل فارغ نموذجي (.xlsx)'}
             </button>
           </div>
         )}

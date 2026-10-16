@@ -153,7 +153,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
   }, [branchId, paymentSafeId]);
 
   // ── 3. Reset Item Entry ──
-  const resetItemEntry = () => {
+  function resetItemEntry() {
     setSelectedProduct(null);
     setSelectedProductId('');
     setSearchBarcode('');
@@ -161,7 +161,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
     setUnitPriceToAdd(0);
     setDiscountToAdd(0);
     setSearchErrorMessage(null);
-  };
+  }
 
   // ── 4. On Product Selected ──
   const handleSelectProduct = useCallback((product: ProductDto) => {

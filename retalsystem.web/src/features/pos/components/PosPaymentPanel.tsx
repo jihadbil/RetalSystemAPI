@@ -10,6 +10,8 @@ import {
   IconReceipt,
   IconPrinter,
 } from '@tabler/icons-react';
+import { useAuth } from '../../../shared/context/AuthContext';
+import { Permissions } from '../../../shared/auth/permissions';
 
 interface PosPaymentPanelProps {
   onOpenDraftsModal: () => void;
@@ -20,6 +22,9 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
   onOpenDraftsModal,
   onOpenDiscountModal,
 }) => {
+  const { hasPermission } = useAuth();
+  const canCreateSale = hasPermission(Permissions.Pos.CreateSale);
+  const canApplyDiscount = hasPermission(Permissions.Pos.ApplyDiscount);
   const {
     cartItems,
     subtotal,
@@ -71,13 +76,15 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
         </div>
 
         <div className="flex justify-between items-center text-slate-600">
-          <button
-            type="button"
-            onClick={onOpenDiscountModal}
-            className="text-emerald-700 hover:text-emerald-800 underline font-medium cursor-pointer"
-          >
-            الخصم المطبق (F3):
-          </button>
+          {canApplyDiscount ? (
+            <button
+              type="button"
+              onClick={onOpenDiscountModal}
+              className="text-emerald-700 hover:text-emerald-800 underline font-medium cursor-pointer"
+            >
+              الخصم المطبق (F3):
+            </button>
+          ) : <span>الخصم المطبق:</span>}
           <span className="font-semibold text-slate-800 num-ltr">
             {discountAmount > 0 ? `-${discountAmount.toFixed(2)}` : '0.00'} د.ل
           </span>
@@ -214,7 +221,7 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
       {/* الأزرار التنفيذية السفلية */}
       <div className="mt-auto flex flex-col gap-2 pt-2">
         {/* زر إتمام البيع والطباعة الفورية (F10) */}
-        <Button
+        {canCreateSale && <Button
           variant="primary"
           size="lg"
           onClick={completeSale}
@@ -224,7 +231,7 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
           className="w-full text-base font-extrabold h-12 shadow-md bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800"
         >
           إتمام البيع والطباعة (F10)
-        </Button>
+        </Button>}
 
         {/* أزرار تعليق واسترجاع الطلب (F5 / F6) */}
         <div className="grid grid-cols-2 gap-2">

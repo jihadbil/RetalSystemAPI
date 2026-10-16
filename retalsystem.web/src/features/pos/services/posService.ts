@@ -1,10 +1,10 @@
 import { apiClient, ApiError } from '../../../shared/services/apiClient';
 import type { CartItem, PosDraft, QuickProductItem } from '../types/pos.types';
-import type { ProductDto } from '../../catalog/types/catalog.types';
-import type { PagedResult } from '../../../shared/types/api.types';
-import { stockService } from '../../stock/services/stockService';
+import { catalogService } from '../../catalog/services/catalogService';
 
-const DRAFTS_STORAGE_KEY = 'retal_pos_held_drafts';
+const DRAFTS_STORAGE_PREFIX = 'retal_pos_held_drafts';
+
+const getDraftsStorageKey = (scope: string) => `${DRAFTS_STORAGE_PREFIX}:${scope}`;
 
 export interface CashSessionInfo {
   id: string;
@@ -52,18 +52,18 @@ export const posService = {
   },
 
   // حفظ قائمة المسودات محلياً
-  saveDrafts(drafts: PosDraft[]): void {
+  saveDrafts(scope: string, drafts: PosDraft[]): void {
     try {
-      localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+      localStorage.setItem(getDraftsStorageKey(scope), JSON.stringify(drafts));
     } catch {
       // إهمال أخطاء التخزين
     }
   },
 
   // استرجاع المسودات المعلقة المحفوظة
-  loadDrafts(): PosDraft[] {
+  loadDrafts(scope: string): PosDraft[] {
     try {
-      const stored = localStorage.getItem(DRAFTS_STORAGE_KEY);
+      const stored = localStorage.getItem(getDraftsStorageKey(scope));
       if (!stored) return [];
       return JSON.parse(stored);
     } catch {
@@ -74,14 +74,17 @@ export const posService = {
   // البحث السريع عن الصنف بواسطة الباركود
   async findProductByBarcode(barcode: string): Promise<CartItem | null> {
     try {
-      const product = await apiClient.get<ProductDto>(
-        `catalog/products/by-barcode/${encodeURIComponent(barcode)}`
-      );
+      const product = await catalogService.getByBarCode(barcode);
 
       if (!product || !product.id) return null;
 
+      const matchedBarcode = product.barCodes?.find(
+        (entry) => entry.barCode.toLowerCase() === barcode.toLowerCase()
+      );
       return {
+        lineId: matchedBarcode?.id || matchedBarcode?.barCode || product.id,
         productId: product.id,
+        productBarCodeId: matchedBarcode?.id,
         productName: product.name,
         code: product.code,
         barCode: barcode,
@@ -103,7 +106,7 @@ export const posService = {
   // جلب قائمة الأصناف السريعة (Quick Items)
   async getQuickItems(): Promise<QuickProductItem[]> {
     try {
-      const paged = await apiClient.get<PagedResult<ProductDto>>('catalog/products/paged', {
+      const paged = await catalogService.getProducts({
         pageNumber: 1,
         pageSize: 30,
       });
@@ -131,10 +134,7 @@ export const posService = {
         payload.invoiceNumber = `POS-${Date.now()}`;
       }
       if (!payload.warehouseId) {
-        const warehouses = await stockService.getWarehouses().catch(() => []);
-        if (warehouses && warehouses.length > 0) {
-          payload.warehouseId = warehouses[0].id;
-        }
+        throw new ApiError('يجب تحديد المستودع الذي ستُخصم منه مبيعات نقطة البيع', 400, 'WAREHOUSE_REQUIRED');
       }
 
       const res = await apiClient.post<CheckoutResponse>('sales-invoices', payload);

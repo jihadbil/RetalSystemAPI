@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { UserDto, LoginResponse } from '../../features/auth/types/auth.types';
+import { authService } from '../../features/auth/services/authService';
+import { isPrivilegedUser, userHasPermission } from '../auth/authorization';
 
 interface AuthContextType {
   user: UserDto | null;
@@ -9,17 +11,16 @@ interface AuthContextType {
   currentBranchId: string | null;
   currentTenantId: string | null;
   login: (response: LoginResponse, rememberMe?: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   lockScreen: () => void;
-  unlockScreen: (pin: string) => boolean;
+  unlockScreen: (password: string) => Promise<boolean>;
   switchBranch: (branchId: string, branchName?: string) => void;
   isCashier: boolean;
   canAccessAdmin: boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const DEFAULT_PIN = '1234';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('retal_tenant_id') || sessionStorage.getItem('retal_tenant_id') || user?.tenantId || null;
   });
 
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     localStorage.removeItem('retal_token');
     localStorage.removeItem('retal_user');
     localStorage.removeItem('retal_branch_id');
@@ -67,17 +68,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentTenantId(null);
   }, []);
 
+  const logout = useCallback(async () => {
+    try {
+      if (token) await authService.logout();
+    } catch {
+      // إنهاء الجلسة محلياً حتى عند تعذر الوصول إلى الخادم.
+    } finally {
+      clearSession();
+    }
+  }, [clearSession, token]);
+
   // الاستماع لحدث 401 للخروج التلقائي
   useEffect(() => {
     const handleUnauthorized = () => {
-      logout();
+      clearSession();
     };
     window.addEventListener('retal:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('retal:unauthorized', handleUnauthorized);
-  }, [logout]);
+  }, [clearSession]);
 
-  const login = useCallback((response: LoginResponse, rememberMe = true) => {
+  const login = useCallback((response: LoginResponse, rememberMe = false) => {
     const storage = rememberMe ? localStorage : sessionStorage;
+
+    localStorage.removeItem('retal_token');
+    localStorage.removeItem('retal_user');
+    localStorage.removeItem('retal_branch_id');
+    localStorage.removeItem('retal_tenant_id');
+    sessionStorage.removeItem('retal_token');
+    sessionStorage.removeItem('retal_user');
+    sessionStorage.removeItem('retal_branch_id');
+    sessionStorage.removeItem('retal_tenant_id');
     
     const rawUser = response.user;
     const branchId = rawUser.branchId ? String(rawUser.branchId) : null;
@@ -105,14 +125,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessionStorage.setItem('retal_locked', 'true');
   }, []);
 
-  const unlockScreen = useCallback((pin: string): boolean => {
-    if (pin === DEFAULT_PIN || pin === '0000') {
+  const unlockScreen = useCallback(async (password: string): Promise<boolean> => {
+    if (!user?.userName || !password) return false;
+    try {
+      const activeBranchId = currentBranchId;
+      const activeBranchName = user.branchName;
+      const response = await authService.login({ userName: user.userName, password });
+      const rememberMe = Boolean(localStorage.getItem('retal_token'));
+      login(response, rememberMe);
+      if (activeBranchId && activeBranchId !== response.user.branchId) {
+        const storage = rememberMe ? localStorage : sessionStorage;
+        const updatedUser = {
+          ...response.user,
+          branchId: activeBranchId,
+          branchName: activeBranchName,
+        };
+        storage.setItem('retal_branch_id', activeBranchId);
+        storage.setItem('retal_user', JSON.stringify(updatedUser));
+        setCurrentBranchId(activeBranchId);
+        setUser(updatedUser);
+      }
       setIsLocked(false);
       sessionStorage.removeItem('retal_locked');
       return true;
+    } catch {
+      return false;
     }
-    return false;
-  }, []);
+  }, [currentBranchId, login, user]);
 
   const switchBranch = useCallback((branchId: string, branchName?: string) => {
     setCurrentBranchId(branchId);
@@ -131,8 +170,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   // فحص الصلاحيات بمبدأ المنع الافتراضي Deny by default
-  const isCashier = Boolean(user?.roles?.some((r) => r.toLowerCase().includes('cashier')) || user?.isCashier);
-  const canAccessAdmin = Boolean(user?.roles?.some((r) => ['admin', 'manager', 'owner'].some((adm) => r.toLowerCase().includes(adm))));
+  const normalizedRoles = user?.roles?.map((role) => role.toLowerCase()) || [];
+  const isPrivileged = isPrivilegedUser(user);
+  const hasPermission = (permission: string) => userHasPermission(user, permission);
+  const isCashier = Boolean(normalizedRoles.includes('cashier') || user?.isCashier);
+  const canAccessAdmin = isPrivileged || hasPermission('Permissions.Users.View') || hasPermission('Permissions.Branches.View');
 
   return (
     <AuthContext.Provider
@@ -150,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switchBranch,
         isCashier,
         canAccessAdmin,
+        hasPermission,
       }}
     >
       {children}

@@ -28,7 +28,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
 
   const [branches, setBranches] = useState<BranchDto[]>([]);
   const [userName, setUserName] = useState('');
-  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Cashier');
   const [branchId, setBranchId] = useState('');
@@ -58,7 +57,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   useEffect(() => {
     if (userToEdit) {
       setUserName(userToEdit.userName);
-      setFullName(userToEdit.fullName);
       setPassword('');
       setRole(userToEdit.role);
       setBranchId(userToEdit.branchId || '');
@@ -67,7 +65,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
       setIsActive(userToEdit.isActive);
     } else {
       setUserName('');
-      setFullName('');
       setPassword('');
       setRole('Cashier');
       setBranchId('');
@@ -81,9 +78,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!userName.trim()) errs.userName = 'اسم المستخدم (تسجيل الدخول) مطلوب';
-    if (!fullName.trim()) errs.fullName = 'الاسم الكامل مطلوب';
-    if (!userToEdit && (!password || password.length < 4)) {
-      errs.password = 'كلمة المرور يجب أن لا تقل عن 4 خانات';
+    if (!userToEdit && (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password))) {
+      errs.password = '10 خانات على الأقل وتشمل حرفاً كبيراً وصغيراً ورقماً ورمزاً';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -97,7 +93,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
       setIsSubmitting(true);
       if (userToEdit) {
         await userService.update(userToEdit.id, {
-          fullName,
           role,
           branchId,
           email: email.trim() || undefined,
@@ -108,7 +103,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
       } else {
         await userService.create({
           userName: userName.trim(),
-          fullName: fullName.trim(),
           password,
           role,
           branchId,
@@ -147,14 +141,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
             leftIcon={<IconUser className="w-4 h-4" />}
             autoFocus={!userToEdit}
             className="num-ltr text-right font-mono"
-          />
-
-          <Input
-            label="الاسم الكامل للموظف *"
-            placeholder="مثال: فهد سالم الدوسري"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            error={errors.fullName}
           />
 
           {!userToEdit && (

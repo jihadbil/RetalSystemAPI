@@ -108,12 +108,22 @@ export interface PurchaseInvoiceItemDto {
   productName: string;
   code?: string;
   unitName?: string;
+  productBarCodeId?: string;
+  barCode?: string;
   quantity: number;
   unitCost: number;
+  unitPrice?: number;
   discountAmount: number;
   taxAmount?: number;
   totalCost?: number;
   lineTotal?: number;
+  breakdowns?: {
+    productBarCodeId: string;
+    packageQuantity: number;
+    unitsPerPackage: number;
+    quantity: number;
+    unitPrice: number;
+  }[];
 }
 
 export interface PurchaseInvoiceDto {

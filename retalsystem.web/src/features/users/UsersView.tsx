@@ -14,6 +14,8 @@ import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconUsers,
   IconShield,
@@ -30,6 +32,13 @@ import {
 
 export const UsersView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(Permissions.Users.Create);
+  const canEdit = hasPermission(Permissions.Users.Edit);
+  const canDelete = hasPermission(Permissions.Users.Delete);
+  const canResetPassword = hasPermission(Permissions.Users.ResetPassword);
+  const canViewRoles = hasPermission(Permissions.Roles.View);
+  const canManageRoles = hasPermission(Permissions.Roles.Manage);
   const [activeTab, setActiveTab] = useState('users');
 
   // المستخدمين
@@ -105,7 +114,9 @@ export const UsersView: React.FC = () => {
 
   const tabs: TabItem[] = [
     { id: 'users', label: 'المستخدمين والموظفين', icon: <IconUsers className="w-4 h-4" /> },
-    { id: 'roles', label: 'الأدوار ومصفوفة الصلاحيات (RBAC)', icon: <IconShield className="w-4 h-4" /> },
+    ...(canViewRoles
+      ? [{ id: 'roles', label: 'الأدوار ومصفوفة الصلاحيات (RBAC)', icon: <IconShield className="w-4 h-4" /> }]
+      : []),
   ];
 
   const getRoleBadgeVariant = (role: string) => {
@@ -134,7 +145,7 @@ export const UsersView: React.FC = () => {
           </p>
         </div>
 
-        {activeTab === 'users' && (
+        {activeTab === 'users' && canCreate && (
           <Button
             variant="primary"
             onClick={() => {
@@ -185,19 +196,18 @@ export const UsersView: React.FC = () => {
                 icon={<IconUsers className="w-10 h-10 text-slate-300" />}
                 title="لا يوجد مستخدمين مطابقين"
                 description="لم يتم العثور على أي حساب مستخدم يطابق معايير البحث."
-                actionLabel="إضافة مستخدم"
-                onAction={() => {
+                actionLabel={canCreate ? 'إضافة مستخدم' : undefined}
+                onAction={canCreate ? () => {
                   setUserToEdit(null);
                   setIsFormOpen(true);
-                }}
+                } : undefined}
               />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[650px]">
                   <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold">
                     <tr>
                       <th className="py-3 px-4">المستخدم</th>
-                      <th className="py-3 px-4">الاسم الكامل</th>
                       <th className="py-3 px-4">الدور الوظيفي</th>
                       <th className="py-3 px-4">الفرع المخصص</th>
                       <th className="py-3 px-4">الاتصال</th>
@@ -211,7 +221,6 @@ export const UsersView: React.FC = () => {
                         <td className="py-3 px-4 font-mono font-bold text-slate-800 num-ltr text-right">
                           @{u.userName}
                         </td>
-                        <td className="py-3 px-4 font-extrabold text-slate-900">{u.fullName}</td>
                         <td className="py-3 px-4">
                           <Badge variant={getRoleBadgeVariant(u.role)}>
                             {roles.find((r) => r.name === u.role)?.label || u.role}
@@ -244,7 +253,7 @@ export const UsersView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button
+                            {canResetPassword && <button
                               type="button"
                               title="إعادة تعيين كلمة المرور"
                               onClick={() => {
@@ -254,9 +263,9 @@ export const UsersView: React.FC = () => {
                               className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition-colors"
                             >
                               <IconKey className="w-4 h-4" />
-                            </button>
+                            </button>}
 
-                            <button
+                            {canEdit && <button
                               type="button"
                               title="تعديل المستخدم"
                               onClick={() => {
@@ -266,9 +275,9 @@ export const UsersView: React.FC = () => {
                               className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                             >
                               <IconEdit className="w-4 h-4" />
-                            </button>
+                            </button>}
 
-                            {u.userName !== 'admin' && (
+                            {canDelete && u.userName !== 'admin' && (
                               <button
                                 type="button"
                                 title="حذف المستخدم"
@@ -332,7 +341,7 @@ export const UsersView: React.FC = () => {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end">
-                <Button
+                {canManageRoles && <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -342,7 +351,7 @@ export const UsersView: React.FC = () => {
                 >
                   <IconShield className="w-4 h-4" />
                   إدارة وتعديل الصلاحيات
-                </Button>
+                </Button>}
               </div>
             </div>
           ))}

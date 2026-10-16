@@ -9,6 +9,7 @@ interface AuthApiResponse {
   userId?: string;
   userName?: string;
   roles?: string[];
+  permissions?: string[];
   tenantId?: string;
   tenantName?: string;
   branchId?: string;
@@ -22,7 +23,14 @@ export const authService = {
       
       // إذا كانت الاستجابة تحتوي مسبقاً على كائن user
       if (raw && raw.user) {
-        return raw as LoginResponse;
+        return {
+          ...(raw as LoginResponse),
+          user: {
+            ...raw.user,
+            roles: raw.user.roles || [],
+            permissions: raw.user.permissions || [],
+          },
+        };
       }
 
       // إذا كانت الاستجابة مسطحة قادمة من الـ API الخلفي (AuthResponseDto)
@@ -39,6 +47,7 @@ export const authService = {
           userName: raw.userName || credentials.userName,
           fullName: raw.userName || credentials.userName,
           roles: roles.length > 0 ? roles : ['User'],
+          permissions: raw.permissions || [],
           tenantId: raw.tenantId ? String(raw.tenantId) : undefined,
           tenantName: raw.tenantName || 'شركة ريتال',
           branchId: raw.branchId ? String(raw.branchId) : undefined,
@@ -51,5 +60,9 @@ export const authService = {
       console.error('[authService.login] Authentication failed:', err);
       throw err;
     }
+  },
+
+  async logout(): Promise<void> {
+    await apiClient.post('auth/logout');
   },
 };

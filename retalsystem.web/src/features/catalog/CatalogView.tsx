@@ -16,6 +16,8 @@ import { Tabs } from '../../shared/components/ui/Tabs';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { usePagination } from '../../shared/hooks/usePagination';
 import { useToast } from '../../shared/context/ToastContext';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconPlus,
   IconFileSpreadsheet,
@@ -31,6 +33,11 @@ import {
 
 export const CatalogView: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { hasPermission } = useAuth();
+  const canCreateProduct = hasPermission(Permissions.Products.Create);
+  const canEditProduct = hasPermission(Permissions.Products.Edit);
+  const canDeleteProduct = hasPermission(Permissions.Products.Delete);
+  const canImportExport = hasPermission(Permissions.Products.ExportImport);
   const [activeMainTab, setActiveMainTab] = useState<'products' | 'categories' | 'units'>('products');
 
   // بيانات المنتجات
@@ -130,7 +137,7 @@ export const CatalogView: React.FC = () => {
       `"${p.categoryName || ''}"`,
       p.salePrice,
       p.costPrice,
-      p.currentStock || 0,
+      p.currentStock ?? '',
       `"${p.barCodes?.[0]?.barCode || ''}"`,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
@@ -146,8 +153,12 @@ export const CatalogView: React.FC = () => {
 
   const mainTabs = [
     { id: 'products', label: 'دليل الأصناف والمنتجات', icon: <IconPackage className="w-4 h-4" />, badge: pagination.totalCount },
-    { id: 'categories', label: 'التصنيفات', icon: <IconCategory className="w-4 h-4" /> },
-    { id: 'units', label: 'وحدات القياس', icon: <IconScale className="w-4 h-4" /> },
+    ...(hasPermission(Permissions.Categories.View)
+      ? [{ id: 'categories', label: 'التصنيفات', icon: <IconCategory className="w-4 h-4" /> }]
+      : []),
+    ...(hasPermission(Permissions.Units.View)
+      ? [{ id: 'units', label: 'وحدات القياس', icon: <IconScale className="w-4 h-4" /> }]
+      : []),
   ];
 
   return (
@@ -166,7 +177,7 @@ export const CatalogView: React.FC = () => {
         {/* أزرار الإجراءات الأساسية */}
         {activeMainTab === 'products' && (
           <div className="flex items-center gap-2">
-            <Button
+            {canImportExport && <Button
               variant="outline"
               size="md"
               leftIcon={<IconFileSpreadsheet className="w-4 h-4 text-emerald-600" />}
@@ -174,9 +185,9 @@ export const CatalogView: React.FC = () => {
               title="استيراد أصناف من ملف إكسل"
             >
               استيراد Excel
-            </Button>
+            </Button>}
 
-            <Button
+            {canCreateProduct && <Button
               variant="primary"
               size="md"
               leftIcon={<IconPlus className="w-4 h-4" />}
@@ -186,7 +197,7 @@ export const CatalogView: React.FC = () => {
               }}
             >
               + إضافة صنف جديد
-            </Button>
+            </Button>}
           </div>
         )}
       </div>
@@ -232,13 +243,13 @@ export const CatalogView: React.FC = () => {
                 <option value="all">كافة التصنيفات</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <Button
+            {canImportExport && <Button
               variant="secondary"
               size="sm"
               leftIcon={<IconDownload className="w-3.5 h-3.5 text-slate-500" />}
@@ -246,7 +257,7 @@ export const CatalogView: React.FC = () => {
               title="تصدير قائمة المنتجات الحالية"
             >
               تصدير CSV
-            </Button>
+            </Button>}
           </div>
 
           {/* جدول المنتجات */}
@@ -259,8 +270,8 @@ export const CatalogView: React.FC = () => {
               <div className="py-12">
                 <EmptyState
                   isSearch={Boolean(search || selectedCategory !== 'all')}
-                  actionText={search ? 'مسح الفلاتر' : '+ إضافة أول صنف'}
-                  onAction={() => {
+                  actionText={search ? 'مسح الفلاتر' : canCreateProduct ? '+ إضافة أول صنف' : undefined}
+                  onAction={(search || selectedCategory !== 'all' || canCreateProduct) ? () => {
                     if (search || selectedCategory !== 'all') {
                       setSearch('');
                       setSelectedCategory('all');
@@ -268,12 +279,12 @@ export const CatalogView: React.FC = () => {
                       setEditingProduct(null);
                       setIsFormOpen(true);
                     }
-                  }}
+                  } : undefined}
                 />
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
+                <table className="w-full text-right text-xs min-w-[650px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold select-none">
                     <tr>
                       <th className="py-3 px-4 w-14 text-center">صورة</th>
@@ -339,28 +350,34 @@ export const CatalogView: React.FC = () => {
 
                         {/* الرصيد المتوفر */}
                         <td className="py-3 px-3 text-center">
-                          <span
-                            className={`font-bold num-ltr ${
-                              (item.currentStock || 0) <= 0
-                                ? 'text-rose-600'
-                                : (item.currentStock || 0) <= item.minStockLevel
-                                ? 'text-amber-600'
-                                : 'text-slate-800'
-                            }`}
-                          >
-                            {item.currentStock || 0}
-                          </span>
-                          {(item.currentStock || 0) <= item.minStockLevel && (
-                            <span className="block text-[10px] text-rose-500 font-bold mt-0.5">
-                              {(item.currentStock || 0) <= 0 ? 'نفد المخزون' : 'مخزون حرج'}
-                            </span>
+                          {item.currentStock === undefined ? (
+                            <span className="text-[11px] text-slate-400">راجع شاشة المخزون</span>
+                          ) : (
+                            <>
+                              <span
+                                className={`font-bold num-ltr ${
+                                  item.currentStock <= 0
+                                    ? 'text-rose-600'
+                                    : item.currentStock <= (item.minStockLevel ?? 0)
+                                      ? 'text-amber-600'
+                                      : 'text-slate-800'
+                                }`}
+                              >
+                                {item.currentStock}
+                              </span>
+                              {item.currentStock <= (item.minStockLevel ?? 0) && (
+                                <span className="block text-[10px] text-rose-500 font-bold mt-0.5">
+                                  {item.currentStock <= 0 ? 'نفد المخزون' : 'مخزون حرج'}
+                                </span>
+                              )}
+                            </>
                           )}
                         </td>
 
                         {/* أزرار التعديل والحذف */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <button
+                            {canEditProduct && <button
                               type="button"
                               onClick={() => {
                                 setEditingProduct(item);
@@ -370,16 +387,16 @@ export const CatalogView: React.FC = () => {
                               title="تعديل الصنف"
                             >
                               <IconEdit className="w-4 h-4" />
-                            </button>
+                            </button>}
 
-                            <button
+                            {canDeleteProduct && <button
                               type="button"
                               onClick={() => setProductToDelete(item)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="حذف الصنف"
                             >
                               <IconTrash className="w-4 h-4" />
-                            </button>
+                            </button>}
                           </div>
                         </td>
                       </tr>
@@ -409,8 +426,19 @@ export const CatalogView: React.FC = () => {
           categories={categories}
           onAddCategory={async (cat) => {
             await catalogService.createCategory(cat);
-            loadMetadata();
+            await loadMetadata();
           }}
+          onUpdateCategory={async (id, cat) => {
+            await catalogService.updateCategory(id, cat);
+            await loadMetadata();
+          }}
+          onDeleteCategory={async (id) => {
+            await catalogService.deleteCategory(id);
+            await loadMetadata();
+          }}
+          canCreate={hasPermission(Permissions.Categories.Create)}
+          canEdit={hasPermission(Permissions.Categories.Edit)}
+          canDelete={hasPermission(Permissions.Categories.Delete)}
         />
       )}
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { CartItem, PosDraft, QuickProductItem, ReceiptData } from '../types/pos.types';
 import { PaymentMethod } from '../types/pos.types';
 import { posService } from '../services/posService';
@@ -7,6 +7,9 @@ import { soundService } from '../../../shared/services/soundService';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
 import { useThermalPrint } from '../../../shared/hooks/useThermalPrint';
+import { stockService } from '../../stock/services/stockService';
+import type { WarehouseDto } from '../../stock/types/stock.types';
+import { Permissions } from '../../../shared/auth/permissions';
 
 interface PosContextType {
   cartItems: CartItem[];
@@ -21,6 +24,9 @@ interface PosContextType {
   lastReceipt: ReceiptData | null;
   isCheckingOut: boolean;
   deviceContext: PosDeviceContext | null;
+  warehouses: WarehouseDto[];
+  selectedWarehouseId: string;
+  setSelectedWarehouseId: (warehouseId: string) => void;
   pairDevice: (pairingCode: string) => Promise<boolean>;
   openCashSession: (openingFloat: number) => Promise<boolean>;
   closeCashSession: (countedBalance: number, notes?: string) => Promise<boolean>;
@@ -59,9 +65,12 @@ interface PosContextType {
 const PosContext = createContext<PosContextType | null>(null);
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, currentBranchId, currentTenantId } = useAuth();
+  const { user, currentBranchId, currentTenantId, hasPermission } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
   const { printDocument } = useThermalPrint();
+  const draftScope = `${currentTenantId || 'no-tenant'}:${currentBranchId || 'no-branch'}:${user?.id || 'anonymous'}`;
+  const draftScopeRef = useRef(draftScope);
+  const skipNextDraftSaveRef = useRef(false);
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<{ id?: string; name: string; phone?: string }>({
@@ -72,11 +81,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.Cash);
   const [notes, setNotes] = useState<string>('');
-  const [heldDrafts, setHeldDrafts] = useState<PosDraft[]>(() => posService.loadDrafts());
+  const [heldDrafts, setHeldDrafts] = useState<PosDraft[]>(() => posService.loadDrafts(draftScope));
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
   const [lastReceipt, setLastReceipt] = useState<ReceiptData | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [deviceContext, setDeviceContext] = useState<PosDeviceContext | null>(null);
+  const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
 
   const refreshDeviceContext = useCallback(async () => {
     try { setDeviceContext(await posService.getDeviceContext()); }
@@ -95,19 +106,76 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentTenantId, refreshDeviceContext, showError]);
 
   const openCashSession = useCallback(async (openingFloat: number) => {
+    if (!hasPermission(Permissions.Pos.OpenSession)) {
+      showWarning('الإجراء غير مسموح', 'لا تملك صلاحية فتح وردية نقدية');
+      return false;
+    }
     try { await posService.openCashSession(openingFloat); await refreshDeviceContext(); return true; }
     catch (err) { showError('فشل فتح الوردية', err instanceof Error ? err.message : 'تعذر فتح الوردية'); return false; }
-  }, [refreshDeviceContext, showError]);
+  }, [hasPermission, refreshDeviceContext, showError, showWarning]);
 
   const closeCashSession = useCallback(async (countedBalance: number, closingNotes?: string) => {
+    if (!hasPermission(Permissions.Pos.CloseSession)) {
+      showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إغلاق الوردية النقدية');
+      return false;
+    }
     try { await posService.closeCashSession(countedBalance, closingNotes); await refreshDeviceContext(); return true; }
     catch (err) { showError('فشل إغلاق الوردية', err instanceof Error ? err.message : 'تعذر إغلاق الوردية'); return false; }
-  }, [refreshDeviceContext, showError]);
+  }, [hasPermission, refreshDeviceContext, showError, showWarning]);
 
-  // مزامنة المسودات في التخزين المحلي
+  const applyDiscount = useCallback((value: number) => {
+    if (!hasPermission(Permissions.Pos.ApplyDiscount)) {
+      showWarning('الإجراء غير مسموح', 'لا تملك صلاحية تطبيق خصم في نقطة البيع');
+      return;
+    }
+    setDiscount(value);
+  }, [hasPermission, showWarning]);
+
   useEffect(() => {
-    posService.saveDrafts(heldDrafts);
-  }, [heldDrafts]);
+    if (draftScopeRef.current !== draftScope) {
+      draftScopeRef.current = draftScope;
+      skipNextDraftSaveRef.current = true;
+      setHeldDrafts(posService.loadDrafts(draftScope));
+    }
+  }, [draftScope]);
+
+  // مزامنة المسودات في تخزين معزول لكل مستأجر وفرع ومستخدم.
+  useEffect(() => {
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
+    posService.saveDrafts(draftScope, heldDrafts);
+  }, [draftScope, heldDrafts]);
+
+  useEffect(() => {
+    const branchId = deviceContext?.terminal.branchId || currentBranchId;
+    if (!branchId) {
+      setWarehouses([]);
+      setSelectedWarehouseId('');
+      return;
+    }
+
+    let isCancelled = false;
+    void stockService.getWarehouses()
+      .then((allWarehouses) => {
+        if (isCancelled) return;
+        const branchWarehouses = allWarehouses.filter((warehouse) => warehouse.isActive && warehouse.branchId === branchId);
+        setWarehouses(branchWarehouses);
+        setSelectedWarehouseId((current) => {
+          if (branchWarehouses.some((warehouse) => warehouse.id === current)) return current;
+          return branchWarehouses.length === 1 ? branchWarehouses[0].id : '';
+        });
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setWarehouses([]);
+          setSelectedWarehouseId('');
+        }
+      });
+
+    return () => { isCancelled = true; };
+  }, [currentBranchId, deviceContext?.terminal.branchId]);
 
   // الحسابات المالية اللحظية
   const subtotal = useMemo(() => {
@@ -141,9 +209,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const price = 'price' in product ? product.price : (product as CartItem).unitPrice;
     const name = 'name' in product ? product.name : (product as CartItem).productName;
     const barCode = product.barCode || '';
+    const productBarCodeId = 'productBarCodeId' in product ? product.productBarCodeId : undefined;
+    const lineId = ('lineId' in product && product.lineId) || productBarCodeId || barCode || pId;
 
     setCartItems((prevItems) => {
-      const existingIdx = prevItems.findIndex((item) => item.productId === pId);
+      const existingIdx = prevItems.findIndex(
+        (item) => (item.lineId || item.productBarCodeId || item.barCode || item.productId) === lineId
+      );
       if (existingIdx >= 0) {
         const updated = [...prevItems];
         const current = updated[existingIdx];
@@ -158,7 +230,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const newItem: CartItem = {
+        lineId,
         productId: pId,
+        productBarCodeId,
         productName: name,
         code: product.code,
         barCode: barCode,
@@ -198,14 +272,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addCartItem, showWarning, showError]);
 
   // تعديل كمية صنف
-  const updateQuantity = useCallback((productId: string, newQty: number) => {
+  const updateQuantity = useCallback((lineId: string, newQty: number) => {
     if (newQty <= 0) {
-      setCartItems((prev) => prev.filter((item) => item.productId !== productId));
+      setCartItems((prev) => prev.filter(
+        (item) => (item.lineId || item.productBarCodeId || item.barCode || item.productId) !== lineId
+      ));
       return;
     }
     setCartItems((prev) =>
       prev.map((item) => {
-        if (item.productId === productId) {
+        if ((item.lineId || item.productBarCodeId || item.barCode || item.productId) === lineId) {
           return {
             ...item,
             quantity: newQty,
@@ -236,10 +312,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [selectedItemIndex]);
 
   // خصم صنف فردي
-  const updateItemDiscount = useCallback((productId: string, discountAmt: number) => {
+  const updateItemDiscount = useCallback((lineId: string, discountAmt: number) => {
     setCartItems((prev) =>
       prev.map((item) => {
-        if (item.productId === productId) {
+        if ((item.lineId || item.productBarCodeId || item.barCode || item.productId) === lineId) {
           const validDisc = Math.max(0, Math.min(discountAmt, item.quantity * item.unitPrice));
           return {
             ...item,
@@ -253,8 +329,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // حذف صنف من السلة
-  const removeItem = useCallback((productId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.productId !== productId));
+  const removeItem = useCallback((lineId: string) => {
+    setCartItems((prev) => prev.filter(
+      (item) => (item.lineId || item.productBarCodeId || item.barCode || item.productId) !== lineId
+    ));
   }, []);
 
   // تفريغ السلة
@@ -338,6 +416,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // إتمام البيع والطباعة (F10)
   const completeSale = useCallback(async (): Promise<boolean> => {
+    if (!hasPermission(Permissions.Pos.CreateSale)) {
+      showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إتمام المبيعات من نقطة البيع');
+      return false;
+    }
+
+    if (discountAmount > 0 && !hasPermission(Permissions.Pos.ApplyDiscount)) {
+      showWarning('الخصم غير مسموح', 'أزل الخصم أو اطلب من مستخدم مخوّل إتمام العملية');
+      return false;
+    }
+
     if (cartItems.length === 0) {
       soundService.playErrorBuzz();
       showWarning('السلة فارغة', 'أضف أصنافاً أولاً لإتمام الفاتورة');
@@ -355,17 +443,32 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    const effectiveBranchId = deviceContext?.terminal.branchId || currentBranchId;
+    if (!effectiveBranchId) {
+      showWarning('الفرع غير محدد', 'حدد فرع نقطة البيع قبل إتمام العملية');
+      return false;
+    }
+
+    if (!selectedWarehouseId || !warehouses.some((warehouse) => warehouse.id === selectedWarehouseId)) {
+      showWarning('المستودع غير محدد', 'اختر مستودعاً نشطاً تابعاً لفرع نقطة البيع');
+      return false;
+    }
+
     setIsCheckingOut(true);
     try {
+      const invoicePaidAmount = paymentMethod === PaymentMethod.Cash || paymentMethod === PaymentMethod.Card
+        ? grandTotal
+        : Math.min(grandTotal, Math.max(0, paidAmount));
       const invoicePayload = {
-        branchId: currentBranchId,
+        branchId: effectiveBranchId,
+        warehouseId: selectedWarehouseId,
         customerId: customer.id,
         paymentMethod,
         subTotal: subtotal,
         discountAmount,
         taxAmount,
         totalAmount: grandTotal,
-        paidAmount: paymentMethod === PaymentMethod.Card ? grandTotal : paidAmount,
+        paidAmount: invoicePaidAmount,
         cashSessionId: paymentMethod === PaymentMethod.Cash ? deviceContext?.currentSession?.id : undefined,
         notes,
         items: cartItems.map((item) => ({
@@ -445,13 +548,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showWarning,
     showError,
     deviceContext,
+    selectedWarehouseId,
+    warehouses,
+    hasPermission,
   ]);
 
   const printLastReceipt = useCallback(() => {
+    if (!hasPermission(Permissions.Pos.Reprint)) {
+      showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إعادة طباعة الإيصالات');
+      return;
+    }
     if (lastReceipt) {
       printDocument();
     }
-  }, [lastReceipt, printDocument]);
+  }, [hasPermission, lastReceipt, printDocument, showWarning]);
 
   return (
     <PosContext.Provider
@@ -468,6 +578,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastReceipt,
         isCheckingOut,
         deviceContext,
+        warehouses,
+        selectedWarehouseId,
+        setSelectedWarehouseId,
         pairDevice,
         openCashSession,
         closeCashSession,
@@ -486,7 +599,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearCart,
         setSelectedItemIndex,
         setCustomer,
-        setDiscount,
+        setDiscount: applyDiscount,
         setPaidAmount,
         setPaymentMethod,
         setNotes,

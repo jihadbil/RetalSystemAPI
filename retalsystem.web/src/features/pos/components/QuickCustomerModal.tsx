@@ -6,6 +6,8 @@ import { IconUser, IconPhone, IconPlus, IconCheck, IconSearch } from '@tabler/ic
 import { useToast } from '../../../shared/context/ToastContext';
 import { customerService } from '../../customers/services/customerService';
 import type { CustomerDto } from '../../customers/types/customer.types';
+import { useAuth } from '../../../shared/context/AuthContext';
+import { Permissions } from '../../../shared/auth/permissions';
 
 interface QuickCustomerModalProps {
   isOpen: boolean;
@@ -20,6 +22,8 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
   currentCustomerName,
   onSelectCustomer,
 }) => {
+  const { hasPermission } = useAuth();
+  const canCreateCustomer = hasPermission(Permissions.Customers.Create);
   const { showSuccess, showError } = useToast();
   const [search, setSearch] = useState('');
   const [customers, setCustomers] = useState<CustomerDto[]>([]);
@@ -58,7 +62,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
   const handleCreateNew = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!canCreateCustomer || !newName.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -107,14 +111,14 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
                 />
               </div>
 
-              <Button
+              {canCreateCustomer && <Button
                 variant="secondary"
                 size="md"
                 leftIcon={<IconPlus className="w-4 h-4 text-emerald-600" />}
                 onClick={() => setIsAddingNew(true)}
               >
                 عميل جديد
-              </Button>
+              </Button>}
             </div>
 
             {loadError && (
@@ -177,7 +181,9 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
               {!isLoading && customers.length === 0 && !loadError && (
                 <div className="p-6 text-center text-xs text-slate-400">
-                  لا يوجد عملاء مسجلين بهذا الاسم. يمكنك الضغط على "عميل جديد" لإضافته.
+                  {canCreateCustomer
+                    ? 'لا يوجد عملاء مسجلون بهذا الاسم. يمكنك الضغط على "عميل جديد" لإضافته.'
+                    : 'لا يوجد عملاء مسجلون بهذا الاسم.'}
                 </div>
               )}
             </div>

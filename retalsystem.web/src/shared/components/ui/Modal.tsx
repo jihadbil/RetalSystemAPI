@@ -54,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
       <div
         className="fixed inset-0"
         onClick={() => closeOnBackdrop && onClose()}
@@ -62,14 +62,14 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       <div
-        className={`relative z-10 w-full bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden ${sizeClasses[size]} animate-in zoom-in-95 duration-200`}
+        className={`relative z-10 w-full bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] overflow-hidden ${sizeClasses[size]} animate-in zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >
         {/* ترويسة النافذة */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-snug">{title}</h3>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">{title}</h3>
             {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
           </div>
           <button
@@ -83,11 +83,11 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* جسم النافذة القابل للتمرير */}
-        <div className="p-5 overflow-y-auto flex-1">{children}</div>
+        <div className="p-3.5 sm:p-5 overflow-y-auto flex-1">{children}</div>
 
         {/* تذييل النافذة */}
         {footer && (
-          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="flex items-center justify-end gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border-t border-slate-100 bg-slate-50/50 shrink-0">
             {footer}
           </div>
         )}

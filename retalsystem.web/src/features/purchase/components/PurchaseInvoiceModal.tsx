@@ -11,6 +11,7 @@ import { accountingService } from '../../accounting/services/accountingService';
 import { organizationService } from '../../organization/services/organizationService';
 import { catalogService } from '../../catalog/services/catalogService';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { Permissions } from '../../../shared/auth/permissions';
 import type { WarehouseDto } from '../../stock/types/stock.types';
 import type { SupplierDto } from '../../suppliers/types/supplier.types';
 import type { SafeDto } from '../../accounting/types/accounting.types';
@@ -19,6 +20,7 @@ import type { ProductDto, CategoryDto, UnitDto } from '../../catalog/types/catal
 import {
   PurchaseInvoiceStatus,
   PurchasePaymentMethod,
+  type PurchaseInvoiceDto,
   type CreatePurchaseInvoiceItemRequest,
   type CreatePurchaseInvoiceRequest,
   type PackagingUnitOption,
@@ -30,29 +32,39 @@ import {
   IconPlus,
   IconTrash,
   IconSearch,
-  IconBuildingStore,
-  IconUsers,
-  IconBuildingWarehouse,
-  IconCash,
-  IconCoin,
-  IconTrendingUp,
   IconCheck,
   IconAlertCircle,
-  IconScale,
 } from '@tabler/icons-react';
+
+interface MasterDataCache {
+  branches: BranchDto[];
+  suppliers: SupplierDto[];
+  warehouses: WarehouseDto[];
+  safes: SafeDto[];
+  categories: CategoryDto[];
+  units: UnitDto[];
+}
+
+let masterDataCache: MasterDataCache | null = null;
 
 interface PurchaseInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: CreatePurchaseInvoiceRequest) => Promise<void>;
+  invoiceToEdit?: PurchaseInvoiceDto | null;
+  onUpdate?: (id: string, data: CreatePurchaseInvoiceRequest) => Promise<void>;
 }
 
 export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  invoiceToEdit,
+  onUpdate,
 }) => {
-  const { currentBranchId } = useAuth();
+  const { currentBranchId, hasPermission } = useAuth();
+  const canCreateProduct = hasPermission(Permissions.Products.Create);
+  const canCreateUnit = hasPermission(Permissions.Units.Create);
 
   // ════════ Master Data Lists ════════
   const [branches, setBranches] = useState<BranchDto[]>([]);
@@ -71,7 +83,6 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<number>(PurchasePaymentMethod.Cash);
   const [paymentSafeId, setPaymentSafeId] = useState<string>('');
   const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState<PurchaseInvoiceStatus>(PurchaseInvoiceStatus.Paid);
 
   // ════════ Items Table State ════════
   const [items, setItems] = useState<CreatePurchaseInvoiceItemRequest[]>([]);
@@ -118,45 +129,91 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const now = new Date();
-    const dateFormatted = now.toISOString().slice(0, 10);
-    const randCode = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-      now.getDate()
-    ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(
-      now.getMinutes()
-    ).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    if (invoiceToEdit) {
+      setInvoiceNumber(invoiceToEdit.invoiceNumber || '');
+      setInvoiceDate(
+        invoiceToEdit.invoiceDate
+          ? invoiceToEdit.invoiceDate.slice(0, 10)
+          : new Date().toISOString().slice(0, 10)
+      );
+      setBranchId(invoiceToEdit.branchId || '');
+      setSupplierId(invoiceToEdit.supplierId || '');
+      setWarehouseId(invoiceToEdit.warehouseId || '');
+      setPaymentMethod(invoiceToEdit.paymentMethod ?? PurchasePaymentMethod.Cash);
+      setPaymentSafeId(invoiceToEdit.paymentSafeId || '');
+      setNotes(invoiceToEdit.notes || '');
+      setDiscountAmount(invoiceToEdit.discountAmount || 0);
+      setPaidAmount(invoiceToEdit.paidAmount || 0);
+      setIsPaidManuallyModified(true);
+      resetProductForm();
+      setFormError(null);
 
-    setInvoiceNumber(`PINV-${randCode}`);
-    setInvoiceDate(dateFormatted);
-    setPaymentMethod(PurchasePaymentMethod.Cash);
-    setStatus(PurchaseInvoiceStatus.Paid);
-    setNotes('');
-    setItems([]);
-    setDiscountAmount(0);
-    setPaidAmount(0);
-    setIsPaidManuallyModified(false);
-    resetProductForm();
-    setFormError(null);
+      const loadedItems: CreatePurchaseInvoiceItemRequest[] = (invoiceToEdit.items || []).map((it) => {
+        const q = Number(it.quantity) || 1;
+        const uCost = Number(it.unitCost ?? it.unitPrice ?? 0);
+        const disc = Number(it.discountAmount) || 0;
+        const lTotal = Number(it.lineTotal ?? it.totalCost ?? (q * uCost - disc));
+        return {
+          productId: it.productId,
+          productName: it.productName || 'صنف',
+          productBarCodeId: it.productBarCodeId,
+          barCode: it.barCode || it.code || '',
+          packageUnitName: it.unitName || 'قطعة',
+          packageQuantity: q,
+          unitsPerPackage: 1,
+          invoicePackagePrice: uCost,
+          quantity: q,
+          unitPrice: uCost,
+          salePrice: 0,
+          discountAmount: disc,
+          lineTotal: lTotal,
+          profitPerPiece: 0,
+          profitMarginPercentage: 0,
+          packagingSummary: `${q} ${it.unitName || 'قطعة'}`,
+          flavorsSummaryText: it.barCode || it.code || 'افتراضي',
+          breakdowns: it.breakdowns,
+        };
+      });
+      setItems(loadedItems);
+    } else {
+      const now = new Date();
+      const dateFormatted = now.toISOString().slice(0, 10);
+      const randCode = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
+        now.getDate()
+      ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(
+        now.getMinutes()
+      ).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
-    setIsLoadingData(true);
-    Promise.all([
-      organizationService.getBranches().catch(() => []),
-      supplierService.getAll().catch(() => []),
-      stockService.getWarehouses().catch(() => []),
-      accountingService.getSafes().catch(() => []),
-      catalogService.getCategories().catch(() => []),
-      catalogService.getUnits().catch(() => []),
-    ])
-      .then(([bList, sList, wList, sfList, cList, uList]) => {
-        setBranches(bList);
-        const activeSuppliers = sList.filter((s) => s.isActive);
-        setSuppliers(activeSuppliers);
-        const activeWarehouses = wList.filter((w) => w.isActive);
-        setWarehouses(activeWarehouses);
-        setCategories(cList);
-        setUnits(uList);
+      setInvoiceNumber(`PINV-${randCode}`);
+      setInvoiceDate(dateFormatted);
+      setPaymentMethod(PurchasePaymentMethod.Cash);
+      setNotes('');
+      setItems([]);
+      setDiscountAmount(0);
+      setPaidAmount(0);
+      setIsPaidManuallyModified(false);
+      resetProductForm();
+      setFormError(null);
+    }
 
-        // Set initial branch
+    const applyMasterData = (
+      bList: BranchDto[],
+      sList: SupplierDto[],
+      wList: WarehouseDto[],
+      sfList: SafeDto[],
+      cList: CategoryDto[],
+      uList: UnitDto[]
+    ) => {
+      setBranches(bList);
+      const activeSuppliers = sList.filter((s) => s.isActive);
+      setSuppliers(activeSuppliers);
+      const activeWarehouses = wList.filter((w) => w.isActive);
+      setWarehouses(activeWarehouses);
+      setCategories(cList);
+      setUnits(uList);
+
+      if (!invoiceToEdit) {
+        // Set initial branch for new invoice
         let initialBranchId = currentBranchId || (bList.length > 0 ? bList[0].id : '');
         if (!initialBranchId && bList.length > 0) initialBranchId = bList[0].id;
         setBranchId(initialBranchId);
@@ -168,30 +225,74 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         const branchSafes = sfList.filter((s) => s.isActive && (!initialBranchId || s.branchId === initialBranchId));
         setSafes(branchSafes);
         if (branchSafes.length > 0) setPaymentSafeId(branchSafes[0].id);
-      })
-      .catch((err) => {
-        console.error('Failed to load initial purchase invoice master data:', err);
-        setFormError('تعذر تحميل بيانات الفروع أو المستودعات أو الموردين');
-      })
-      .finally(() => setIsLoadingData(false));
-  }, [isOpen, currentBranchId]);
+      } else {
+        // Maintain the branch safes for the existing invoice
+        const bId = invoiceToEdit.branchId;
+        const branchSafes = sfList.filter((s) => s.isActive && (!bId || s.branchId === bId));
+        setSafes(branchSafes);
+        if (invoiceToEdit.paymentSafeId) {
+          setPaymentSafeId(invoiceToEdit.paymentSafeId);
+        } else if (branchSafes.length > 0) {
+          setPaymentSafeId(branchSafes[0].id);
+        }
+      }
+    };
+
+    if (masterDataCache) {
+      applyMasterData(
+        masterDataCache.branches,
+        masterDataCache.suppliers,
+        masterDataCache.warehouses,
+        masterDataCache.safes,
+        masterDataCache.categories,
+        masterDataCache.units
+      );
+    } else {
+      setIsLoadingData(true);
+      Promise.all([
+        organizationService.getBranches().catch(() => []),
+        supplierService.getAll().catch(() => []),
+        stockService.getWarehouses().catch(() => []),
+        accountingService.getSafes().catch(() => []),
+        catalogService.getCategories().catch(() => []),
+        catalogService.getUnits().catch(() => []),
+      ])
+        .then(([bList, sList, wList, sfList, cList, uList]) => {
+          masterDataCache = {
+            branches: bList,
+            suppliers: sList,
+            warehouses: wList,
+            safes: sfList,
+            categories: cList,
+            units: uList,
+          };
+          applyMasterData(bList, sList, wList, sfList, cList, uList);
+        })
+        .catch((err) => {
+          console.error('Failed to load initial purchase invoice master data:', err);
+          setFormError('تعذر تحميل بيانات الفروع أو المستودعات أو الموردين');
+        })
+        .finally(() => setIsLoadingData(false));
+    }
+  }, [isOpen, invoiceToEdit, currentBranchId]);
 
   // ── Reload safes when selected branch changes ──
   useEffect(() => {
-    if (!branchId) return;
+    if (!isOpen || !branchId) return;
     accountingService
       .getSafes(branchId, undefined, true)
       .then((sfList) => {
         setSafes(sfList);
-        if (sfList.length > 0 && (!paymentSafeId || !sfList.some((s) => s.id === paymentSafeId))) {
-          setPaymentSafeId(sfList[0].id);
-        }
+        setPaymentSafeId((prev) => {
+          if (prev && sfList.some((s) => s.id === prev)) return prev;
+          return sfList.length > 0 ? sfList[0].id : '';
+        });
       })
       .catch(() => {});
-  }, [branchId, paymentSafeId]);
+  }, [isOpen, branchId]);
 
   // ── Helper to reset item entry form ──
-  const resetProductForm = () => {
+  function resetProductForm() {
     setSelectedProduct(null);
     setSearchBarcode('');
     setPreviousCostPrice(0);
@@ -207,7 +308,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
     setTargetSalePrice(0);
     setItemDiscount(0);
     setBarcodeSearchMessage(null);
-  };
+  }
 
   // ── 2. On Product Selected / Loaded: Calculate Packaging & Flavors ──
   const handleProductLoaded = useCallback(
@@ -522,7 +623,11 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         })),
       };
 
-      await onSave(payload);
+      if (invoiceToEdit && onUpdate) {
+        await onUpdate(invoiceToEdit.id, payload);
+      } else {
+        await onSave(payload);
+      }
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل حفظ وترحيل فاتورة المشتريات';
@@ -537,8 +642,16 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="فاتورة مشتريات بضاعة"
-        subtitle="إدخال بضائع الموردين وتفكيك العبوات واحتساب الأرباح والترحيل الفوري للمخازن"
+        title={
+          invoiceToEdit
+            ? `تعديل فاتورة مشتريات مفتوحة #${invoiceToEdit.invoiceNumber}`
+            : 'فاتورة مشتريات بضاعة'
+        }
+        subtitle={
+          invoiceToEdit
+            ? 'تعديل أو استكمال إدخال الأصناف والمبالغ ثم حفظها كمسودة أو إغلاقها وترحيلها'
+            : 'إدخال بضائع الموردين وتفكيك العبوات واحتساب الأرباح والترحيل الفوري للمخازن'
+        }
         size="4xl"
         footer={
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
@@ -551,23 +664,23 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="md" onClick={onClose} disabled={isSubmitting}>
+              <Button variant="secondary" size="md" onClick={onClose} disabled={isSubmitting || isLoadingData}>
                 إلغاء النافذة
               </Button>
-              <Button
+              {canCreateProduct && <Button
                 variant="outline"
                 size="md"
                 onClick={() => handleSubmit(PurchaseInvoiceStatus.Pending)}
-                disabled={isSubmitting || items.length === 0}
+                disabled={isSubmitting || isLoadingData || items.length === 0}
               >
-                حفظ كمسودة معلقة
-              </Button>
+                {invoiceToEdit ? 'حفظ التعديلات (معلقة)' : 'حفظ كمسودة معلقة'}
+              </Button>}
               <Button
                 variant="primary"
                 size="md"
                 leftIcon={<IconCheck className="w-4 h-4" />}
                 onClick={() => handleSubmit(PurchaseInvoiceStatus.Paid)}
-                isLoading={isSubmitting}
+                isLoading={isSubmitting || isLoadingData}
                 disabled={items.length === 0}
               >
                 إغلاق وترحيل الفاتورة للمخازن
@@ -581,9 +694,19 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500">حالة الفاتورة:</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                مفتوحة قيد الإدخال والاعتماد
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  invoiceToEdit
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                    : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    invoiceToEdit ? 'bg-amber-600' : 'bg-emerald-600'
+                  }`}
+                ></span>
+                {invoiceToEdit ? 'فاتورة جارية قيد التعديل والإدخال' : 'مفتوحة قيد الإدخال والاعتماد'}
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs">
@@ -596,6 +719,15 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               </span>
             </div>
           </div>
+
+          {invoiceToEdit && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50/80 border border-amber-200 rounded-xl text-amber-800 text-xs">
+              <IconAlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>
+                أنت تقوم بتعديل فاتورة مفتوحة. بيانات الفرع والمورد والمستودع ثابتة لضمان صحة رصيد المخزن. يمكنك إضافة أصناف جديدة، تعديل الكميات والأسعار، ثم حفظ التعديلات أو إغلاق الفاتورة وترحيلها.
+              </span>
+            </div>
+          )}
 
           {/* ════════ 1. MAIN INVOICE HEADER FIELDS ════════ */}
           <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -612,6 +744,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 label="الفرع المستلم *"
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
+                disabled={Boolean(invoiceToEdit)}
                 required
               >
                 {branches.map((b) => (
@@ -625,6 +758,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 label="المورد *"
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
+                disabled={Boolean(invoiceToEdit)}
                 required
               >
                 {suppliers.map((s) => (
@@ -638,6 +772,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 label="المستودع / الصالة المستلمة *"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
+                disabled={Boolean(invoiceToEdit)}
                 required
               >
                 {warehouses.map((w) => (
@@ -675,7 +810,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 label="الخزينة / الحساب للسداد"
                 value={paymentSafeId}
                 onChange={(e) => setPaymentSafeId(e.target.value)}
-                disabled={paymentMethod === PurchasePaymentMethod.Credit}
+                disabled={paymentMethod === PurchasePaymentMethod.Credit || Boolean(invoiceToEdit?.paymentSafeId)}
               >
                 {safes.map((sf) => (
                   <option key={sf.id} value={sf.id}>
@@ -806,14 +941,14 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               <div className="col-span-2 sm:col-span-1">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700">طريقة التنزيل / الوحدة</label>
-                  <button
+                  {canCreateUnit && <button
                     type="button"
                     onClick={() => setIsQuickUnitOpen(true)}
                     className="text-[10px] text-emerald-700 hover:underline font-bold flex items-center gap-0.5"
                     title="إضافة وحدة قياس جديدة"
                   >
                     <IconPlus className="w-3 h-3" /> وحدة
-                  </button>
+                  </button>}
                 </div>
                 <Select
                   value={selectedUnitOption?.name || ''}
@@ -1161,7 +1296,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
       </Modal>
 
       {/* ── Sub-dialogs ── */}
-      <QuickProductModal
+      {canCreateProduct && <QuickProductModal
         isOpen={isQuickProductOpen}
         onClose={() => setIsQuickProductOpen(false)}
         prefillBarcode={searchBarcode}
@@ -1171,9 +1306,9 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
           handleProductLoaded(prod, prod.barCodes?.[0]?.barCode || searchBarcode);
           setIsQuickProductOpen(false);
         }}
-      />
+      />}
 
-      <QuickUnitModal
+      {canCreateUnit && <QuickUnitModal
         isOpen={isQuickUnitOpen}
         onClose={() => setIsQuickUnitOpen(false)}
         onUnitCreated={(newUnit) => {
@@ -1188,7 +1323,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
           setUnitsPerPackage(1);
           setIsQuickUnitOpen(false);
         }}
-      />
+      />}
     </>
   );
 };

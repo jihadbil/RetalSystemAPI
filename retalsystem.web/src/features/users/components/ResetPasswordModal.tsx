@@ -28,8 +28,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || password.length < 4) {
-      setError('كلمة المرور يجب أن لا تقل عن 4 خانات');
+    if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError('10 خانات على الأقل وتشمل حرفاً كبيراً وصغيراً ورقماً ورمزاً');
       return;
     }
     if (password !== confirmPassword) {
@@ -57,7 +57,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="إعادة تعيين كلمة المرور"
-      subtitle={`تعيين كلمة سر جديدة للمستخدم: ${user.fullName} (@${user.userName})`}
+      subtitle={`تعيين كلمة سر جديدة للمستخدم: @${user.userName}`}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

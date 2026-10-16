@@ -12,6 +12,7 @@ export interface UserDto {
   fullName: string;
   email?: string;
   roles: string[];
+  permissions: string[];
   tenantId?: string;
   tenantName?: string;
   branchId?: string;

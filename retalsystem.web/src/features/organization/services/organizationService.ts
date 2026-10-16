@@ -3,7 +3,6 @@ import type { BranchDto, TenantSettingsDto } from '../types/organization.types';
 
 export interface CreateBranchRequest {
   name: string;
-  code: string;
   phone?: string;
   address?: string;
   isActive: boolean;
@@ -33,7 +32,6 @@ export const organizationService = {
       return list.map((b) => ({
         id: b.id,
         name: b.name,
-        code: b.code || `BR-${b.id?.slice(0, 4)}`,
         phone: b.phones?.[0]?.phoneNumber || b.phone || '',
         address: b.address || '',
         isActive: b.isActive !== false,

@@ -12,15 +12,24 @@ import { Modal } from '../../shared/components/ui/Modal';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { useHotkeys } from '../../shared/hooks/useHotkeys';
+import { useAuth } from '../../shared/context/AuthContext';
+import { Permissions } from '../../shared/auth/permissions';
 import {
   IconBarcode,
   IconDiscount2,
   IconPackage,
   IconUser,
   IconClock,
+  IconShoppingCart,
+  IconCash,
 } from '@tabler/icons-react';
 
 const PosContent: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canCreateSale = hasPermission(Permissions.Pos.CreateSale);
+  const canApplyDiscount = hasPermission(Permissions.Pos.ApplyDiscount);
+  const canOpenSession = hasPermission(Permissions.Pos.OpenSession);
+  const canCloseSession = hasPermission(Permissions.Pos.CloseSession);
   const {
     cartItems,
     selectedItemIndex,
@@ -44,9 +53,14 @@ const PosContent: React.FC = () => {
     pairDevice,
     openCashSession,
     closeCashSession,
+    warehouses,
+    selectedWarehouseId,
+    setSelectedWarehouseId,
+    grandTotal,
   } = usePos();
 
   const [barcodeInput, setBarcodeInput] = useState('');
+  const [mobilePosTab, setMobilePosTab] = useState<'cart' | 'payment'>('cart');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isQuickItemsModalOpen, setIsQuickItemsModalOpen] = useState(false);
   const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
@@ -102,7 +116,7 @@ const PosContent: React.FC = () => {
       setCardPayment();
     },
     F10: () => {
-      completeSale().then(() => focusBarcode());
+      if (canCreateSale) completeSale().then(() => focusBarcode());
     },
     Escape: () => {
       // إغلاق أي نافذة مفتوحة بأمان دون مسح السلة
@@ -128,6 +142,7 @@ const PosContent: React.FC = () => {
   };
 
   const handleApplyDiscount = () => {
+    if (!canApplyDiscount) return;
     const val = parseFloat(discountVal);
     setDiscount(isNaN(val) ? 0 : Math.max(0, val));
     setIsDiscountModalOpen(false);
@@ -146,13 +161,13 @@ const PosContent: React.FC = () => {
             {deviceContext.currentSession ? (
               <>
                 <span className="font-bold text-emerald-700">وردية مفتوحة</span>
-                <Button size="sm" variant="secondary" onClick={() => {
+                {canCloseSession && <Button size="sm" variant="secondary" onClick={() => {
                   const value = window.prompt('أدخل الرصيد الفعلي المعدود عند الإغلاق');
                   if (value !== null && Number.isFinite(Number(value))) void closeCashSession(Number(value));
-                }}>إغلاق الوردية</Button>
+                }}>إغلاق الوردية</Button>}
               </>
             ) : (
-              <Button size="sm" variant="primary" onClick={() => {
+              canOpenSession && <Button size="sm" variant="primary" onClick={() => {
                 const value = window.prompt('أدخل الرصيد الافتتاحي المعدود في الدرج');
                 if (value !== null && Number.isFinite(Number(value))) void openCashSession(Number(value));
               }}>فتح وردية</Button>
@@ -165,7 +180,51 @@ const PosContent: React.FC = () => {
             <Button size="sm" variant="primary" onClick={() => void pairDevice(pairingCode)}>ربط الجهاز</Button>
           </>
         )}
+        {deviceContext && (
+          <label className="mr-auto flex items-center gap-2 font-semibold text-slate-600">
+            <span>مستودع البيع:</span>
+            <select
+              value={selectedWarehouseId}
+              onChange={(event) => setSelectedWarehouseId(event.target.value)}
+              className="h-8 min-w-44 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">اختر المستودع</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
+
+      {/* محول التبويب السريع للشاشات الصغيرة والهواتف */}
+      <div className="flex lg:hidden items-center p-1 bg-slate-200/80 rounded-xl gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobilePosTab('cart')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobilePosTab === 'cart'
+              ? 'bg-white text-emerald-800 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <IconShoppingCart className="w-4 h-4" />
+          <span>السلة ({cartItems.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobilePosTab('payment')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobilePosTab === 'payment'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <IconCash className="w-4 h-4" />
+          <span>الدفع ({grandTotal.toFixed(2)} د.ل)</span>
+        </button>
+      </div>
+
       {/* الشريط العلوي للباركود والاختصارات السريعة */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
         {/* حقل مسح الباركود السريع (F1) */}
@@ -222,23 +281,45 @@ const PosContent: React.FC = () => {
         </div>
       </div>
 
-      {/* مساحة العمل: السلة على اليمين ولوحة الدفع على اليسار، وتتحول لعمود تحت 780px */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-0 overflow-hidden">
+      {/* مساحة العمل: السلة ولوحة الدفع (جنباً إلى جنب في الشاشات الكبيرة، وتبويبات مريحة على الهواتف) */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* سلة البيع الواسعة */}
-        <PosCart
-          onOpenCustomerModal={() => setIsCustomerModalOpen(true)}
-          onOpenNumpadModal={() => setIsNumpadModalOpen(true)}
-          onClearCartConfirm={() => setIsClearCartConfirmOpen(true)}
-        />
+        <div className={`flex-1 flex flex-col min-h-0 ${mobilePosTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
+          <PosCart
+            onOpenCustomerModal={() => setIsCustomerModalOpen(true)}
+            onOpenNumpadModal={() => setIsNumpadModalOpen(true)}
+            onClearCartConfirm={() => setIsClearCartConfirmOpen(true)}
+          />
 
-        {/* لوحة الحسابات والدفع الثابتة */}
-        <PosPaymentPanel
-          onOpenDraftsModal={() => setIsDraftsModalOpen(true)}
-          onOpenDiscountModal={() => {
-            setDiscountVal(String(discount || ''));
-            setIsDiscountModalOpen(true);
-          }}
-        />
+          {/* شريط الإشعار العائم للانتقال السريع للدفع على الهواتف */}
+          {cartItems.length > 0 && (
+            <div className="lg:hidden p-2.5 bg-white border border-slate-200 mt-2 rounded-xl flex items-center justify-between shadow-xs">
+              <div>
+                <span className="text-[11px] text-slate-500">الإجمالي المستحق:</span>
+                <span className="font-extrabold text-emerald-800 mr-1.5 text-sm num-ltr">{grandTotal.toFixed(2)} د.ل</span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setMobilePosTab('payment')}
+              >
+                متابعة للدفع ←
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* لوحة الحسابات والدفع */}
+        <div className={`w-full lg:w-96 flex flex-col shrink-0 ${mobilePosTab === 'payment' ? 'flex' : 'hidden lg:flex'}`}>
+          <PosPaymentPanel
+            onOpenDraftsModal={() => setIsDraftsModalOpen(true)}
+            onOpenDiscountModal={() => {
+              if (!canApplyDiscount) return;
+              setDiscountVal(String(discount || ''));
+              setIsDiscountModalOpen(true);
+            }}
+          />
+        </div>
       </div>
 
       {/* شريط الإرشادات السريعة للاختصارات في أسفل الشاشة */}

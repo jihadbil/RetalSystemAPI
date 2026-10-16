@@ -70,7 +70,7 @@ export const PosCart: React.FC<PosCartProps> = ({
       </div>
 
       {/* جدول بنود السلة */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-auto">
         {cartItems.length === 0 ? (
           <div className="py-16">
             <EmptyState
@@ -80,7 +80,7 @@ export const PosCart: React.FC<PosCartProps> = ({
             />
           </div>
         ) : (
-          <table className="w-full text-right text-xs">
+          <table className="w-full text-right text-xs min-w-[540px]">
             <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-slate-500 font-semibold select-none">
               <tr>
                 <th className="py-3 px-3 w-10 text-center">#</th>
@@ -95,9 +95,10 @@ export const PosCart: React.FC<PosCartProps> = ({
             <tbody className="divide-y divide-slate-100">
               {cartItems.map((item, index) => {
                 const isSelected = selectedItemIndex === index;
+                const lineId = item.lineId || item.productBarCodeId || item.barCode || item.productId;
                 return (
                   <tr
-                    key={item.productId}
+                    key={lineId}
                     onClick={() => setSelectedItemIndex(index)}
                     className={`transition-colors cursor-pointer ${
                       isSelected ? 'bg-emerald-50/60 font-medium' : 'hover:bg-slate-50/60'
@@ -134,7 +135,7 @@ export const PosCart: React.FC<PosCartProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            updateQuantity(item.productId, item.quantity - 1);
+                            updateQuantity(lineId, item.quantity - 1);
                           }}
                           className="w-7 h-7 rounded-md bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
                           title="إنقاص الكمية"
@@ -159,7 +160,7 @@ export const PosCart: React.FC<PosCartProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            updateQuantity(item.productId, item.quantity + 1);
+                            updateQuantity(lineId, item.quantity + 1);
                           }}
                           className="w-7 h-7 rounded-md bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
                           title="زيادة الكمية"
@@ -185,7 +186,7 @@ export const PosCart: React.FC<PosCartProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeItem(item.productId);
+                          removeItem(lineId);
                         }}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="حذف الصنف من السلة"

@@ -19,6 +19,7 @@ export const PaymentMethodLabels: Record<PaymentMethod, string> = {
 };
 
 export interface CartItem {
+  lineId?: string;
   productId: string;
   productName: string;
   code?: string;

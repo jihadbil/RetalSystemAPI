@@ -3,7 +3,6 @@
 export interface BranchDto {
   id: string;
   name: string;
-  code: string;
   phone?: string;
   address?: string;
   isActive: boolean;

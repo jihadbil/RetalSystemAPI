@@ -56,7 +56,6 @@ export const stockService = {
       return list.map((w) => ({
         id: w.id,
         name: w.name,
-        code: w.code || `WH-${w.id?.slice(0, 4)}`,
         branchId: w.branchId,
         branchName: w.branchName,
         type: w.type,

@@ -22,6 +22,12 @@ jobs:
           cache: true
           cache-dependency-path: '**/*.csproj'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: retalsystem.web/package-lock.json
+
       - name: Restore
         run: dotnet restore RetalSystemAPI.slnx
 
@@ -36,3 +42,23 @@ jobs:
 
       - name: Audit NuGet packages
         run: dotnet list RetalSystemAPI.slnx package --vulnerable --include-transitive
+
+      - name: Install web dependencies
+        working-directory: retalsystem.web
+        run: npm ci
+
+      - name: Lint web
+        working-directory: retalsystem.web
+        run: npm run lint
+
+      - name: Test web
+        working-directory: retalsystem.web
+        run: npm test
+
+      - name: Build web
+        working-directory: retalsystem.web
+        run: npm run build
+
+      - name: Audit web packages
+        working-directory: retalsystem.web
+        run: npm audit --audit-level=high
