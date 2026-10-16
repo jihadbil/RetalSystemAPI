@@ -1,0 +1,160 @@
+using Microsoft.EntityFrameworkCore;
+using RetalSystemAPI.DataAccess.Context;
+using RetalSystemAPI.DataAccess.Repositories.Implementations;
+using RetalSystemAPI.DataAccess.Specifications;
+using RetalSystemAPI.Models.Accounting;
+using RetalSystemAPI.Models.Catalog;
+using RetalSystemAPI.Models.Warehouses;
+using Xunit;
+
+namespace RetalSystemAPI.SecurityTests;
+
+// Audit diagnostics, 2026-10-16: assertions describe observed defects, not desired behavior.
+public sealed class DataAccessAuditReproductionTests
+{
+    [Fact]
+    public void Stock_paging_generates_arbitrary_ordering_in_sql()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=unused;Database=MetadataOnly;Integrated Security=True").Options);
+        var spec = new RetalSystemAPI.Services.Warehouses.Specifications.StorgeStockWithDetailsSpec(Guid.NewGuid(), 2, 10);
+        var sql = SpecificationEvaluator<StorgeStock>.GetQuery(db.StorgeStocks, spec).AsSplitQuery().ToQueryString();
+        Assert.Contains("ORDER BY (SELECT 1)", sql);
+    }
+
+    [Fact]
+    public async Task FindById_returns_tracked_soft_deleted_record()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        var item = new Category { Name = "category" };
+        db.Add(item);
+        await db.SaveChangesAsync();
+        var repo = new Repository<Category>(db);
+        repo.SoftDelete(item);
+        await db.SaveChangesAsync();
+        Assert.Null(await repo.FirstOrDefaultAsync(x => x.Id == item.Id));
+        Assert.Same(item, await repo.GetByIdAsync(item.Id));
+    }
+
+    [Fact]
+    public async Task FindById_returns_tracked_record_from_another_tenant()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        var foreign = new Category { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), Name = "foreign", RowVersion = [1] };
+        db.Attach(foreign);
+        var repo = new Repository<Category>(db);
+        Assert.Null(await repo.FirstOrDefaultAsync(x => x.Id == foreign.Id));
+        Assert.Same(foreign, await repo.GetByIdAsync(foreign.Id));
+    }
+
+    [Fact]
+    public async Task Update_accepts_stale_version_when_another_instance_is_tracked()
+    {
+        var tenantId = Guid.NewGuid();
+        await using var db = ModelIntegrityTests.CreateContext(tenantId);
+        var current = new Category { Name = "latest", RowVersion = [2] };
+        db.Add(current);
+        await db.SaveChangesAsync();
+        var stale = new Category { Id = current.Id, TenantId = tenantId, Name = "stale overwrites latest", RowVersion = [1] };
+        var repo = new Repository<Category>(db);
+        repo.Update(stale);
+        Assert.Equal(new byte[] { 2 }, db.Entry(current).Property(x => x.RowVersion).OriginalValue);
+        await db.SaveChangesAsync();
+        Assert.Equal(stale.Name, (await repo.FirstOrDefaultAsync(x => x.Id == current.Id))!.Name);
+    }
+
+    [Fact]
+    public async Task Update_changes_pending_insert_to_update_and_save_fails()
+    {
+        var tenantId = Guid.NewGuid();
+        await using var db = ModelIntegrityTests.CreateContext(tenantId);
+        var repo = new Repository<Category>(db);
+        var item = new Category { TenantId = tenantId, Name = "new", RowVersion = [1] };
+        await repo.AddAsync(item);
+        repo.Update(item);
+        Assert.Equal(EntityState.Modified, db.Entry(item).State);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Product_delete_leaves_zero_storage_stock_visible_but_details_query_hides_it()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        var product = new Product { Name = "product", Category = new Category { Name = "category" } };
+        var barcode = new ProductBarCode { Product = product, BarCode = "123", Title = "barcode" };
+        var warehouse = new Warehouse { Name = "storage", Type = RetalSystemAPI.Models.Enums.WarehouseType.Storge,
+            Branch = new RetalSystemAPI.Models.Branchs.Branch { Name = "branch" } };
+        db.Add(new StorgeStock { ProductBarcode = barcode, Warehouse = warehouse, Quantity = 0 });
+        await db.SaveChangesAsync();
+        await using var uow = new UnitOfWork(db);
+        var service = new RetalSystemAPI.Services.Catalog.Implementations.ProductService(uow, ModelIntegrityTests.CreateMapper());
+        Assert.True((await service.DeleteAsync(product.Id)).IsSuccess);
+        db.ChangeTracker.Clear();
+        Assert.False(await db.Products.AnyAsync());
+        Assert.False(await db.ProductBarCodes.AnyAsync());
+        Assert.True(await db.StorgeStocks.AnyAsync());
+        var count = await uow.Stock.CountStorgeStockAsync(new RetalSystemAPI.Services.Warehouses.Specifications.StorgeStockCountSpec(warehouse.Id));
+        var details = await uow.Stock.FindStorgeStocksAsync(new RetalSystemAPI.Services.Warehouses.Specifications.StorgeStockWithDetailsSpec(warehouse.Id));
+        Assert.Equal(1, count);
+        Assert.Empty(details);
+    }
+
+    [Fact]
+    public async Task Stock_count_counts_the_page_instead_of_all_matches()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        for (var i = 0; i < 5; i++) db.Add(new ShowroomStock { Quantity = i });
+        await db.SaveChangesAsync();
+        var repo = new StockRepository(db);
+        Assert.Equal(5, await repo.CountShowroomStockAsync(new AllStock()));
+        Assert.Equal(2, await repo.CountShowroomStockAsync(new PagedStock()));
+    }
+
+    [Fact]
+    public async Task Generic_repository_applies_paging_twice()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        for (var i = 0; i < 5; i++) db.Add(new Category { Name = $"C{i}" });
+        await db.SaveChangesAsync();
+        var result = await new Repository<Category>(db).GetPagedAsync(new PagedCategories(), 2, 2);
+        Assert.Equal(5, result.TotalCount);
+        Assert.Empty(result.Items);
+    }
+
+    [Fact]
+    public async Task Expense_category_name_check_allows_name_reserved_by_unfiltered_unique_index()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        var item = new ExpenseCategory { Name = "rent" };
+        db.Add(item);
+        await db.SaveChangesAsync();
+        var repo = new AccountingRepository(db);
+        repo.SoftDeleteExpenseCategory(item);
+        await db.SaveChangesAsync();
+        Assert.False(await repo.ExpenseCategoryNameExistsAsync("rent"));
+        using var sql = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=unused;Database=MetadataOnly;Integrated Security=True").Options);
+        var index = sql.Model.FindEntityType(typeof(ExpenseCategory))!.GetIndexes()
+            .Single(x => x.IsUnique && x.Properties.Any(p => p.Name == "Name"));
+        Assert.Null(index.GetFilter());
+    }
+
+    [Fact]
+    public async Task Rollback_leaves_pending_writes_in_the_change_tracker()
+    {
+        await using var db = ModelIntegrityTests.CreateContext(Guid.NewGuid());
+        await using var uow = new UnitOfWork(db);
+        await uow.BeginTransactionAsync();
+        var item = new Category { Name = "cancelled operation" };
+        await uow.Categories.AddAsync(item);
+        await uow.RollbackTransactionAsync();
+        Assert.Equal(EntityState.Added, db.Entry(item).State);
+        // Only tracker behavior is tested; InMemory does not implement database rollback.
+    }
+
+    private sealed class PagedCategories : BaseSpecification<Category>
+    { public PagedCategories() { ApplyOrderBy(x => x.Name); ApplyPaging(2, 2); } }
+    private sealed class PagedStock : BaseSpecification<ShowroomStock>
+    { public PagedStock() { ApplyOrderBy(x => x.Quantity); ApplyPaging(2, 2); } }
+    private sealed class AllStock : BaseSpecification<ShowroomStock> { }
+}

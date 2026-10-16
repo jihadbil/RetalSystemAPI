@@ -1,0 +1,2032 @@
+[
+  {
+    "file": "RetalSystemAPI.Services/Accounting/Implementations/ExpenseService.cs",
+    "line": 113,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Accounting/Implementations/SafeService.cs",
+    "line": 117,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Auth/Implementations/AuthService.cs",
+    "line": 103,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.IsActiveForTenantAsync",
+    "serviceMethod": "RegisterAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 46,
+    "old": "_unitOfWork.Branches.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Branches.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 66,
+    "old": "_unitOfWork.Branches.FindAsync",
+    "new": "_unitOfWork.Branches.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 82,
+    "old": "_unitOfWork.Branches.GetPagedAsync",
+    "new": "_unitOfWork.Branches.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 98,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 130,
+    "old": "_unitOfWork.Branches.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Branches.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 143,
+    "old": "_unitOfWork.Branches.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Branches.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 153,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 203,
+    "old": "_unitOfWork.Branches.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Branches.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Branch/Implementations/BranchService.cs",
+    "line": 216,
+    "old": "_unitOfWork.Branches.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Branches.GetDetailsForDeleteAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 43,
+    "old": "_unitOfWork.Categories.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Categories.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 61,
+    "old": "_unitOfWork.Categories.FindAsync",
+    "new": "_unitOfWork.Categories.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 72,
+    "old": "_unitOfWork.Categories.FindAsync",
+    "new": "_unitOfWork.Categories.GetRootsAsync",
+    "serviceMethod": "GetRootCategoriesAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 83,
+    "old": "_unitOfWork.Categories.FindAsync",
+    "new": "_unitOfWork.Categories.GetChildrenAsync",
+    "serviceMethod": "GetSubCategoriesAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 96,
+    "old": "_unitOfWork.Categories.GetPagedAsync",
+    "new": "_unitOfWork.Categories.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 111,
+    "old": "_unitOfWork.Categories.ExistsAsync",
+    "new": "_unitOfWork.Categories.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 123,
+    "old": "_unitOfWork.Categories.ExistsAsync",
+    "new": "_unitOfWork.Categories.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 140,
+    "old": "_unitOfWork.Categories.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Categories.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 161,
+    "old": "_unitOfWork.Categories.ExistsAsync",
+    "new": "_unitOfWork.Categories.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 202,
+    "old": "_unitOfWork.Categories.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Categories.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/CategoryService.cs",
+    "line": 214,
+    "old": "_unitOfWork.Categories.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Categories.GetDetailsAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 87,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.SearchBarcodesAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 101,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesWithDetailsAsync",
+    "serviceMethod": "GetByProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 116,
+    "old": "_unitOfWork.Products.ExistsAsync",
+    "new": "_unitOfWork.Products.ExistsByIdAsync",
+    "serviceMethod": "AddBarCodeAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 125,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarCodeExistsAsync",
+    "serviceMethod": "AddBarCodeAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 144,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "AddBarCodeAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductBarCodeService.cs",
+    "line": 184,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarCodeExistsAsync",
+    "serviceMethod": "UpdateBarCodeAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 54,
+    "old": "_unitOfWork.Products.SelectAsync",
+    "new": "_unitOfWork.Products.GetExportRowsAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 56,
+    "old": "_unitOfWork.Products.SelectBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodeExportRowsAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 58,
+    "old": "_unitOfWork.Categories.SelectAsync",
+    "new": "_unitOfWork.Categories.GetLookupAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 60,
+    "old": "_unitOfWork.Units.SelectAsync",
+    "new": "_unitOfWork.Units.GetLookupAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 61,
+    "old": "_unitOfWork.Products.SelectUnitsAsync",
+    "new": "_unitOfWork.Products.GetUnitExportRowsAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 63,
+    "old": "_unitOfWork.Stock.SelectShowroomStocksAsync",
+    "new": "_unitOfWork.Stock.GetShowroomExportRowsAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 65,
+    "old": "_unitOfWork.Stock.SelectStorgeStocksAsync",
+    "new": "_unitOfWork.Stock.GetStorageExportRowsAsync",
+    "serviceMethod": "ExportProductsToExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 175,
+    "old": "_unitOfWork.Categories.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Categories.GetSampleAsync",
+    "serviceMethod": "DownloadTemplateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 299,
+    "old": "_unitOfWork.Products.SelectAsync",
+    "new": "_unitOfWork.Products.GetLookupAsync",
+    "serviceMethod": "ValidateExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 300,
+    "old": "_unitOfWork.Products.SelectBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodeLookupAsync",
+    "serviceMethod": "ValidateExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 301,
+    "old": "_unitOfWork.Categories.SelectAsync",
+    "new": "_unitOfWork.Categories.GetNamesAsync",
+    "serviceMethod": "ValidateExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 683,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "ImportProductsFromExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 686,
+    "old": "_unitOfWork.Warehouses.GetAllAsync",
+    "new": "_unitOfWork.Warehouses.ListLookupAsync",
+    "serviceMethod": "ImportProductsFromExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 692,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "ImportProductsFromExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 695,
+    "old": "_unitOfWork.Warehouses.GetAllAsync",
+    "new": "_unitOfWork.Warehouses.ListLookupAsync",
+    "serviceMethod": "ImportProductsFromExcelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 818,
+    "old": "_unitOfWork.Categories.GetAllTrackedAsync",
+    "new": "_unitOfWork.Categories.GetImportCandidatesForUpdateAsync",
+    "serviceMethod": "ProcessSingleSheetImportAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 821,
+    "old": "_unitOfWork.Units.GetAllTrackedAsync",
+    "new": "_unitOfWork.Units.GetImportCandidatesForUpdateAsync",
+    "serviceMethod": "ProcessSingleSheetImportAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 824,
+    "old": "_unitOfWork.Products.GetAllTrackedAsync",
+    "new": "_unitOfWork.Products.GetImportCandidatesForUpdateAsync",
+    "serviceMethod": "ProcessSingleSheetImportAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 1176,
+    "old": "_unitOfWork.Categories.GetAllTrackedAsync",
+    "new": "_unitOfWork.Categories.GetImportCandidatesForUpdateAsync",
+    "serviceMethod": "ProcessMultiSheetImportAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductExcelService.cs",
+    "line": 1234,
+    "old": "_unitOfWork.Products.GetAllTrackedAsync",
+    "new": "_unitOfWork.Products.GetImportCandidatesForUpdateAsync",
+    "serviceMethod": "ProcessMultiSheetImportAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 50,
+    "old": "_unitOfWork.Products.FindImagesAsync",
+    "new": "_unitOfWork.Products.GetImagesByProductAsync",
+    "serviceMethod": "GetByProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 65,
+    "old": "_unitOfWork.Products.ExistsAsync",
+    "new": "_unitOfWork.Products.ExistsByIdAsync",
+    "serviceMethod": "AddImageAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 77,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarcodeBelongsToProductAsync",
+    "serviceMethod": "AddImageAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 88,
+    "old": "_unitOfWork.Products.ImageExistsAsync",
+    "new": "_unitOfWork.Products.HasImagesAsync",
+    "serviceMethod": "AddImageAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 103,
+    "old": "_unitOfWork.Products.FindImagesTrackedAsync",
+    "new": "_unitOfWork.Products.GetDefaultImagesForUpdateAsync",
+    "serviceMethod": "AddImageAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductImageService.cs",
+    "line": 164,
+    "old": "_unitOfWork.Products.FindImagesTrackedAsync",
+    "new": "_unitOfWork.Products.GetImagesForUpdateAsync",
+    "serviceMethod": "SetDefaultImageAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 48,
+    "old": "_unitOfWork.Products.FindAsync",
+    "new": "_unitOfWork.Products.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 59,
+    "old": "_unitOfWork.Products.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Products.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 83,
+    "old": "_unitOfWork.Products.GetPagedAsync",
+    "new": "_unitOfWork.Products.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 107,
+    "old": "_unitOfWork.Products.FindAsync",
+    "new": "_unitOfWork.Products.ListAsync",
+    "serviceMethod": "SearchAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 128,
+    "old": "_unitOfWork.Products.FirstOrDefaultBarCodeAsync",
+    "new": "_unitOfWork.Products.GetBarcodeByValueAsync",
+    "serviceMethod": "GetByBarCodeAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 148,
+    "old": "_unitOfWork.Categories.ExistsAsync",
+    "new": "_unitOfWork.Categories.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 197,
+    "old": "_unitOfWork.Products.FirstOrDefaultBarCodeAsync",
+    "new": "_unitOfWork.Products.GetFirstMatchingBarcodeAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 224,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 229,
+    "old": "_unitOfWork.Warehouses.GetAllAsync",
+    "new": "_unitOfWork.Warehouses.ListLookupAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 277,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 282,
+    "old": "_unitOfWork.Warehouses.GetAllAsync",
+    "new": "_unitOfWork.Warehouses.ListLookupAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 349,
+    "old": "_unitOfWork.Products.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Products.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 366,
+    "old": "_unitOfWork.Products.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.Products.GetDetailsForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 378,
+    "old": "_unitOfWork.Categories.ExistsAsync",
+    "new": "_unitOfWork.Categories.ExistsByIdAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 409,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarcodesExistOutsideProductAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 484,
+    "old": "_unitOfWork.SalesInvoices.ItemExistsAsync",
+    "new": "_unitOfWork.SalesInvoices.HasBarcodeReferencesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 486,
+    "old": "_unitOfWork.SalesReturns.ItemExistsAsync",
+    "new": "_unitOfWork.SalesReturns.HasBarcodeReferencesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 488,
+    "old": "_unitOfWork.PurchaseInvoices.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseInvoices.HasBarcodeReferencesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 490,
+    "old": "_unitOfWork.PurchaseReturns.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseReturns.HasBarcodeReferencesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 492,
+    "old": "_unitOfWork.PurchaseOrders.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 494,
+    "old": "_unitOfWork.Stock.StorgeStockExistsAsync",
+    "new": "_unitOfWork.Stock.HasNonzeroStorageByBarcodesAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 508,
+    "old": "_unitOfWork.Products.FindImagesTrackedAsync",
+    "new": "_unitOfWork.Products.GetImagesByBarcodesForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 517,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageByBarcodesForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 569,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.GetByTypeAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 573,
+    "old": "_unitOfWork.Warehouses.GetAllAsync",
+    "new": "_unitOfWork.Warehouses.ListLookupAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 628,
+    "old": "_unitOfWork.Products.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Products.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 649,
+    "old": "_unitOfWork.SalesInvoices.ItemExistsAsync",
+    "new": "_unitOfWork.SalesInvoices.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 650,
+    "old": "_unitOfWork.SalesReturns.ItemExistsAsync",
+    "new": "_unitOfWork.SalesReturns.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 651,
+    "old": "_unitOfWork.PurchaseInvoices.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseInvoices.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 652,
+    "old": "_unitOfWork.PurchaseReturns.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseReturns.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 653,
+    "old": "_unitOfWork.StockTransfers.ItemExistsAsync",
+    "new": "_unitOfWork.StockTransfers.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 654,
+    "old": "_unitOfWork.StockAdjustments.ItemExistsAsync",
+    "new": "_unitOfWork.StockAdjustments.HasProductReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 657,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 662,
+    "old": "_unitOfWork.PurchaseOrders.ItemExistsAsync",
+    "new": "_unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 666,
+    "old": "_unitOfWork.Stock.StorgeStockExistsAsync",
+    "new": "_unitOfWork.Stock.HasNonzeroStorageByBarcodesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 669,
+    "old": "_unitOfWork.Stock.ShowroomStockExistsAsync",
+    "new": "_unitOfWork.Stock.HasNonzeroShowroomByProductAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 685,
+    "old": "_unitOfWork.Products.FindImagesTrackedAsync",
+    "new": "_unitOfWork.Products.GetImagesForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 692,
+    "old": "_unitOfWork.Products.FindBarCodesTrackedAsync",
+    "new": "_unitOfWork.Products.GetBarcodesForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 699,
+    "old": "_unitOfWork.Products.FindUnitsTrackedAsync",
+    "new": "_unitOfWork.Products.GetUnitsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 705,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageByBarcodesForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductService.cs",
+    "line": 713,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomByProductForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 60,
+    "old": "_unitOfWork.Products.FindUnitsAsync",
+    "new": "_unitOfWork.Products.GetUnitsWithDetailsAsync",
+    "serviceMethod": "GetByProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 75,
+    "old": "_unitOfWork.Products.ExistsAsync",
+    "new": "_unitOfWork.Products.ExistsByIdAsync",
+    "serviceMethod": "AddUnitToProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 84,
+    "old": "_unitOfWork.Units.ExistsAsync",
+    "new": "_unitOfWork.Units.ExistsByIdAsync",
+    "serviceMethod": "AddUnitToProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 93,
+    "old": "_unitOfWork.Products.UnitExistsAsync",
+    "new": "_unitOfWork.Products.ProductUnitExistsAsync",
+    "serviceMethod": "AddUnitToProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 109,
+    "old": "_unitOfWork.Products.UnitExistsAsync",
+    "new": "_unitOfWork.Products.HasUnitsAsync",
+    "serviceMethod": "AddUnitToProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 124,
+    "old": "_unitOfWork.Products.FindUnitsTrackedAsync",
+    "new": "_unitOfWork.Products.GetDefaultUnitsForUpdateAsync",
+    "serviceMethod": "AddUnitToProductAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/ProductUnitService.cs",
+    "line": 187,
+    "old": "_unitOfWork.Products.FindUnitsTrackedAsync",
+    "new": "_unitOfWork.Products.GetUnitsForUpdateAsync",
+    "serviceMethod": "SetDefaultUnitAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/UnitService.cs",
+    "line": 59,
+    "old": "_unitOfWork.Units.GetAllAsync",
+    "new": "_unitOfWork.Units.ListLookupAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/UnitService.cs",
+    "line": 70,
+    "old": "_unitOfWork.Units.ExistsAsync",
+    "new": "_unitOfWork.Units.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/UnitService.cs",
+    "line": 104,
+    "old": "_unitOfWork.Units.ExistsAsync",
+    "new": "_unitOfWork.Units.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Catalog/Implementations/UnitService.cs",
+    "line": 141,
+    "old": "_unitOfWork.Products.UnitExistsAsync",
+    "new": "_unitOfWork.Products.IsUnitInUseAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 50,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 73,
+    "old": "_unitOfWork.Customers.FindAsync",
+    "new": "_unitOfWork.Customers.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 89,
+    "old": "_unitOfWork.Customers.GetPagedAsync",
+    "new": "_unitOfWork.Customers.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 108,
+    "old": "_unitOfWork.Customers.ExistsAsync",
+    "new": "_unitOfWork.Customers.CodeExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 144,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 157,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 170,
+    "old": "_unitOfWork.Customers.ExistsAsync",
+    "new": "_unitOfWork.Customers.CodeExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 236,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 272,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "ToggleActiveStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 301,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "AddPhoneAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 343,
+    "old": "_unitOfWork.Customers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Customers.GetDetailsAsync",
+    "serviceMethod": "AddPhoneAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 428,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "AddPaymentAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Customers/Implementations/CustomerService.cs",
+    "line": 524,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "AddAdjustmentAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 137,
+    "old": "_unitOfWork.PurchaseInvoices.GetPagedAsync",
+    "new": "_unitOfWork.PurchaseInvoices.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 151,
+    "old": "_unitOfWork.PurchaseInvoices.SelectFirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetReadResultAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 193,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 211,
+    "old": "_unitOfWork.PurchaseInvoices.ExistsAsync",
+    "new": "_unitOfWork.PurchaseInvoices.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 349,
+    "old": "_unitOfWork.PurchaseInvoices.SelectFirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetReadResultAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 375,
+    "old": "_unitOfWork.PurchaseInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 453,
+    "old": "_unitOfWork.PurchaseInvoices.FindBreakdownsTrackedAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetBreakdownsByItemIdsForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 456,
+    "old": "_unitOfWork.PurchaseInvoices.FindItemsTrackedAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetItemsByIdsForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 555,
+    "old": "_unitOfWork.PurchaseInvoices.SelectFirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetReadResultAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 597,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductIdsAsync",
+    "serviceMethod": "AdjustInvoiceItemsStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 632,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "AdjustInvoiceItemsStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 719,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "AdjustInvoiceItemsStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 767,
+    "old": "_unitOfWork.Products.FindTrackedAsync",
+    "new": "_unitOfWork.Products.GetByIdsForUpdateAsync",
+    "serviceMethod": "UpdateProductsCostAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 798,
+    "old": "_unitOfWork.PurchaseInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetDetailsAsync",
+    "serviceMethod": "CancelAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 888,
+    "old": "_unitOfWork.Products.ExistsAsync",
+    "new": "_unitOfWork.Products.ExistsByIdAsync",
+    "serviceMethod": "ValidateItemsAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 890,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarcodeBelongsToProductAsync",
+    "serviceMethod": "ValidateItemsAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 909,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarcodeBelongsToProductAsync",
+    "serviceMethod": "ValidateItemsAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 925,
+    "old": "_unitOfWork.PurchaseInvoices.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseInvoiceService.cs",
+    "line": 934,
+    "old": "_unitOfWork.PurchaseReturns.ExistsAsync",
+    "new": "_unitOfWork.PurchaseReturns.HasInvoiceReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 48,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 68,
+    "old": "_unitOfWork.PurchaseOrders.FindAsync",
+    "new": "_unitOfWork.PurchaseOrders.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 82,
+    "old": "_unitOfWork.PurchaseOrders.GetPagedAsync",
+    "new": "_unitOfWork.PurchaseOrders.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 100,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 112,
+    "old": "_unitOfWork.Suppliers.ExistsAsync",
+    "new": "_unitOfWork.Suppliers.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 125,
+    "old": "_unitOfWork.Warehouses.ExistsAsync",
+    "new": "_unitOfWork.Warehouses.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 135,
+    "old": "_unitOfWork.PurchaseOrders.ExistsAsync",
+    "new": "_unitOfWork.PurchaseOrders.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 183,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 198,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 220,
+    "old": "_unitOfWork.Suppliers.ExistsAsync",
+    "new": "_unitOfWork.Suppliers.ExistsByIdAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 236,
+    "old": "_unitOfWork.Warehouses.ExistsAsync",
+    "new": "_unitOfWork.Warehouses.ExistsByIdAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 289,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 301,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 379,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByIdsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 385,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 440,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByIdsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 453,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 593,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseOrderService.cs",
+    "line": 605,
+    "old": "_unitOfWork.PurchaseOrders.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.PurchaseOrders.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 52,
+    "old": "_unitOfWork.PurchaseReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 70,
+    "old": "_unitOfWork.PurchaseReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetByNumberAsync",
+    "serviceMethod": "GetByReturnNumberAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 99,
+    "old": "_unitOfWork.PurchaseReturns.FindAsync",
+    "new": "_unitOfWork.PurchaseReturns.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 124,
+    "old": "_unitOfWork.PurchaseReturns.GetPagedAsync",
+    "new": "_unitOfWork.PurchaseReturns.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 148,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 175,
+    "old": "_unitOfWork.PurchaseReturns.ExistsAsync",
+    "new": "_unitOfWork.PurchaseReturns.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 189,
+    "old": "_unitOfWork.PurchaseInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseInvoices.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 225,
+    "old": "_unitOfWork.Products.FindAsync",
+    "new": "_unitOfWork.Products.GetByIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 237,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 314,
+    "old": "_unitOfWork.PurchaseReturns.FindItemsAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetReturnedItemsByInvoiceAndBarcodeAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 341,
+    "old": "_unitOfWork.PurchaseReturns.FindItemsAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetReturnedItemsByInvoiceAndBarcodesAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 373,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 481,
+    "old": "_unitOfWork.PurchaseReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 494,
+    "old": "_unitOfWork.PurchaseReturns.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.PurchaseReturns.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Purchase/Implementations/PurchaseReturnService.cs",
+    "line": 536,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 55,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 75,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetByNumberAsync",
+    "serviceMethod": "GetByInvoiceNumberAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 107,
+    "old": "_unitOfWork.SalesInvoices.FindAsync",
+    "new": "_unitOfWork.SalesInvoices.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 134,
+    "old": "_unitOfWork.SalesInvoices.GetPagedAsync",
+    "new": "_unitOfWork.SalesInvoices.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 150,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 180,
+    "old": "_unitOfWork.SalesInvoices.ExistsAsync",
+    "new": "_unitOfWork.SalesInvoices.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 195,
+    "old": "_unitOfWork.Products.FindAsync",
+    "new": "_unitOfWork.Products.GetByIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 256,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 285,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 317,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 384,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 406,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 457,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 470,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 521,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductIdsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 546,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 602,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 700,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 713,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 772,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 797,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 844,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 857,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 867,
+    "old": "_unitOfWork.SalesReturns.ExistsAsync",
+    "new": "_unitOfWork.SalesReturns.HasInvoiceReferencesAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 891,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesInvoiceService.cs",
+    "line": 916,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 63,
+    "old": "_unitOfWork.SalesReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesReturns.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 83,
+    "old": "_unitOfWork.SalesReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesReturns.GetByNumberAsync",
+    "serviceMethod": "GetByReturnNumberAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 114,
+    "old": "_unitOfWork.SalesReturns.FindAsync",
+    "new": "_unitOfWork.SalesReturns.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 140,
+    "old": "_unitOfWork.SalesReturns.GetPagedAsync",
+    "new": "_unitOfWork.SalesReturns.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 156,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 168,
+    "old": "_unitOfWork.SalesInvoices.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesInvoices.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 220,
+    "old": "_unitOfWork.SalesReturns.ExistsAsync",
+    "new": "_unitOfWork.SalesReturns.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 244,
+    "old": "_unitOfWork.SalesReturns.FindItemsAsync",
+    "new": "_unitOfWork.SalesReturns.GetReturnedItemsByInvoiceAndProductsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 320,
+    "old": "_unitOfWork.Products.FindBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodesByProductIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 338,
+    "old": "_unitOfWork.Products.FindAsync",
+    "new": "_unitOfWork.Products.GetByIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 392,
+    "old": "_unitOfWork.SalesReturns.FindAsync",
+    "new": "_unitOfWork.SalesReturns.GetByInvoiceAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 430,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 465,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 529,
+    "old": "_unitOfWork.SalesReturns.FirstOrDefaultAsync",
+    "new": "_unitOfWork.SalesReturns.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 542,
+    "old": "_unitOfWork.SalesReturns.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.SalesReturns.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 579,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Sales/Implementations/SalesReturnService.cs",
+    "line": 602,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 50,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 70,
+    "old": "_unitOfWork.Suppliers.FindAsync",
+    "new": "_unitOfWork.Suppliers.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 86,
+    "old": "_unitOfWork.Suppliers.GetPagedAsync",
+    "new": "_unitOfWork.Suppliers.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 102,
+    "old": "_unitOfWork.Suppliers.ExistsAsync",
+    "new": "_unitOfWork.Suppliers.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 135,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 148,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 158,
+    "old": "_unitOfWork.Suppliers.ExistsAsync",
+    "new": "_unitOfWork.Suppliers.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 180,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 216,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "AddPhoneAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 243,
+    "old": "_unitOfWork.Suppliers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Suppliers.GetDetailsAsync",
+    "serviceMethod": "AddPhoneAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 326,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "AddPaymentAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Suppliers/Implementations/SupplierService.cs",
+    "line": 429,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "AddAdjustmentAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Tenant/Implementations/TenantService.cs",
+    "line": 75,
+    "old": "_unitOfWork.Tenants.GetAllAsync",
+    "new": "_unitOfWork.Tenants.ListLookupAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Tenant/Implementations/TenantService.cs",
+    "line": 88,
+    "old": "_unitOfWork.Tenants.GetPagedAsync",
+    "new": "_unitOfWork.Tenants.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Tenant/Implementations/TenantService.cs",
+    "line": 109,
+    "old": "_unitOfWork.Tenants.ExistsAsync",
+    "new": "_unitOfWork.Tenants.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Tenant/Implementations/TenantService.cs",
+    "line": 148,
+    "old": "_unitOfWork.Tenants.ExistsAsync",
+    "new": "_unitOfWork.Tenants.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 46,
+    "old": "_unitOfWork.StockAdjustments.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockAdjustments.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 66,
+    "old": "_unitOfWork.StockAdjustments.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockAdjustments.GetByNumberAsync",
+    "serviceMethod": "GetByAdjustmentNumberAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 95,
+    "old": "_unitOfWork.StockAdjustments.FindAsync",
+    "new": "_unitOfWork.StockAdjustments.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 119,
+    "old": "_unitOfWork.StockAdjustments.GetPagedAsync",
+    "new": "_unitOfWork.StockAdjustments.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 145,
+    "old": "_unitOfWork.StockAdjustments.ExistsAsync",
+    "new": "_unitOfWork.StockAdjustments.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 194,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 237,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 280,
+    "old": "_unitOfWork.StockAdjustments.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockAdjustments.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockAdjustmentService.cs",
+    "line": 293,
+    "old": "_unitOfWork.StockAdjustments.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.StockAdjustments.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 52,
+    "old": "_unitOfWork.Stock.FirstOrDefaultStorgeStockAsync",
+    "new": "_unitOfWork.Stock.GetStorageDetailsAsync",
+    "serviceMethod": "GetStorgeStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 72,
+    "old": "_unitOfWork.Products.SelectBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodeOwnershipAsync",
+    "serviceMethod": "GetStorgeStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 75,
+    "old": "_unitOfWork.Stock.SelectStorgeStocksAsync",
+    "new": "_unitOfWork.Stock.GetStorageKeysAsync",
+    "serviceMethod": "GetStorgeStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 108,
+    "old": "_unitOfWork.Stock.FindStorgeStocksAsync",
+    "new": "_unitOfWork.Stock.ListStorageAsync",
+    "serviceMethod": "GetStorgeStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 139,
+    "old": "_unitOfWork.Stock.CountStorgeStockAsync",
+    "new": "_unitOfWork.Stock.SearchStorageAsync",
+    "serviceMethod": "GetPagedStorgeStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 145,
+    "old": "_unitOfWork.Stock.FindStorgeStocksAsync",
+    "new": "_unitOfWork.Stock.SearchStorageAsync",
+    "serviceMethod": "GetPagedStorgeStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 171,
+    "old": "_unitOfWork.Products.BarCodeExistsAsync",
+    "new": "_unitOfWork.Products.BarcodeIdExistsAsync",
+    "serviceMethod": "SetStorgeStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 181,
+    "old": "_unitOfWork.Stock.FirstOrDefaultStorgeStockAsync",
+    "new": "_unitOfWork.Stock.GetStorageAsync",
+    "serviceMethod": "SetStorgeStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 216,
+    "old": "_unitOfWork.Stock.FirstOrDefaultStorgeStockAsync",
+    "new": "_unitOfWork.Stock.GetStorageDetailsAsync",
+    "serviceMethod": "SetStorgeStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 232,
+    "old": "_unitOfWork.Stock.FindStorgeStocksAsync",
+    "new": "_unitOfWork.Stock.GetLowStorageAsync",
+    "serviceMethod": "GetLowStorgeStockAlertsAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 250,
+    "old": "_unitOfWork.Stock.FirstOrDefaultShowroomStockAsync",
+    "new": "_unitOfWork.Stock.GetShowroomDetailsAsync",
+    "serviceMethod": "GetShowroomStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 270,
+    "old": "_unitOfWork.Products.SelectAsync",
+    "new": "_unitOfWork.Products.GetOwnershipAsync",
+    "serviceMethod": "GetShowroomStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 273,
+    "old": "_unitOfWork.Stock.SelectShowroomStocksAsync",
+    "new": "_unitOfWork.Stock.GetShowroomKeysAsync",
+    "serviceMethod": "GetShowroomStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 306,
+    "old": "_unitOfWork.Stock.FindShowroomStocksAsync",
+    "new": "_unitOfWork.Stock.ListShowroomAsync",
+    "serviceMethod": "GetShowroomStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 337,
+    "old": "_unitOfWork.Stock.CountShowroomStockAsync",
+    "new": "_unitOfWork.Stock.SearchShowroomAsync",
+    "serviceMethod": "GetPagedShowroomStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 343,
+    "old": "_unitOfWork.Stock.FindShowroomStocksAsync",
+    "new": "_unitOfWork.Stock.SearchShowroomAsync",
+    "serviceMethod": "GetPagedShowroomStocksByWarehouseAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 369,
+    "old": "_unitOfWork.Products.ExistsAsync",
+    "new": "_unitOfWork.Products.ExistsByIdAsync",
+    "serviceMethod": "SetShowroomStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 379,
+    "old": "_unitOfWork.Stock.FirstOrDefaultShowroomStockAsync",
+    "new": "_unitOfWork.Stock.GetShowroomAsync",
+    "serviceMethod": "SetShowroomStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 414,
+    "old": "_unitOfWork.Stock.FirstOrDefaultShowroomStockAsync",
+    "new": "_unitOfWork.Stock.GetShowroomDetailsAsync",
+    "serviceMethod": "SetShowroomStockAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockService.cs",
+    "line": 430,
+    "old": "_unitOfWork.Stock.FindShowroomStocksAsync",
+    "new": "_unitOfWork.Stock.GetLowShowroomAsync",
+    "serviceMethod": "GetLowShowroomStockAlertsAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 46,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 66,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockTransfers.GetByNumberAsync",
+    "serviceMethod": "GetByTransferNumberAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 96,
+    "old": "_unitOfWork.StockTransfers.FindAsync",
+    "new": "_unitOfWork.StockTransfers.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 121,
+    "old": "_unitOfWork.StockTransfers.GetPagedAsync",
+    "new": "_unitOfWork.StockTransfers.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 162,
+    "old": "_unitOfWork.StockTransfers.ExistsAsync",
+    "new": "_unitOfWork.StockTransfers.NumberExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 206,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 219,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 262,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 314,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 347,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 378,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 404,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 433,
+    "old": "_unitOfWork.Stock.FindStorgeStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetStorageForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 475,
+    "old": "_unitOfWork.Stock.FindShowroomStockTrackedAsync",
+    "new": "_unitOfWork.Stock.GetShowroomForUpdateAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 516,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsAsync",
+    "serviceMethod": "UpdateStatusAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/StockTransferService.cs",
+    "line": 529,
+    "old": "_unitOfWork.StockTransfers.FirstOrDefaultTrackedAsync",
+    "new": "_unitOfWork.StockTransfers.GetDetailsForUpdateAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 46,
+    "old": "_unitOfWork.Warehouses.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Warehouses.GetDetailsAsync",
+    "serviceMethod": "GetByIdAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 69,
+    "old": "_unitOfWork.Warehouses.FindAsync",
+    "new": "_unitOfWork.Warehouses.ListAsync",
+    "serviceMethod": "GetAllAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 85,
+    "old": "_unitOfWork.Warehouses.GetPagedAsync",
+    "new": "_unitOfWork.Warehouses.SearchAsync",
+    "serviceMethod": "GetPagedAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 101,
+    "old": "_unitOfWork.Branches.ExistsAsync",
+    "new": "_unitOfWork.Branches.ExistsByIdAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 111,
+    "old": "_unitOfWork.Warehouses.ExistsAsync",
+    "new": "_unitOfWork.Warehouses.NameExistsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 136,
+    "old": "_unitOfWork.Products.SelectBarCodesAsync",
+    "new": "_unitOfWork.Products.GetBarcodeIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 160,
+    "old": "_unitOfWork.Products.SelectAsync",
+    "new": "_unitOfWork.Products.GetIdsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 183,
+    "old": "_unitOfWork.Warehouses.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Warehouses.GetDetailsAsync",
+    "serviceMethod": "CreateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 196,
+    "old": "_unitOfWork.Warehouses.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Warehouses.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 206,
+    "old": "_unitOfWork.Warehouses.ExistsAsync",
+    "new": "_unitOfWork.Warehouses.NameExistsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 228,
+    "old": "_unitOfWork.Warehouses.FirstOrDefaultAsync",
+    "new": "_unitOfWork.Warehouses.GetDetailsAsync",
+    "serviceMethod": "UpdateAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 251,
+    "old": "_unitOfWork.Stock.StorgeStockExistsAsync",
+    "new": "_unitOfWork.Stock.HasPositiveStorageByWarehouseAsync",
+    "serviceMethod": "DeleteAsync"
+  },
+  {
+    "file": "RetalSystemAPI.Services/Warehouses/Implementations/WarehouseService.cs",
+    "line": 254,
+    "old": "_unitOfWork.Stock.ShowroomStockExistsAsync",
+    "new": "_unitOfWork.Stock.HasPositiveShowroomByWarehouseAsync",
+    "serviceMethod": "DeleteAsync"
+  }
+]
