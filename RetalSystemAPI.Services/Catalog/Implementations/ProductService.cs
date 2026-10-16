@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
@@ -11,11 +8,9 @@ using RetalSystemAPI.Models.DTOs.Catalog.Product;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
-using RetalSystemAPI.Services.Catalog.Specifications;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة كتالوج المنتجات والأصناف والباركودات وتوليد سجلات الأرصدة الافتتاحية في المخازن والصالات.
 /// </summary>
@@ -25,12 +20,11 @@ public class ProductService : IProductService
     private readonly IUnitOfWork _unitOfWork;
     // محول البيانات لتحويل الكيانات إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
-
     /// <summary>
     /// تهيئة خدمة المنتجات مع حقن وحدة العمل وAutoMapper.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
-    /// <param name="mapper">خدمة تحويل النماذج</param>
+    /// <param name = "unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
+    /// <param name = "mapper">خدمة تحويل النماذج</param>
     public ProductService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         // تعيين مرجع وحدة العمل
@@ -39,24 +33,23 @@ public class ProductService : IProductService
         _mapper = mapper;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<ProductSummaryDto>>> GetAllAsync(Guid? categoryId = null, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام ملخص المنتجات مع فلتر التصنيف الاختياري
-        var spec = new ProductSummarySpec(categoryId);
         // جلب قائمة المنتجات المطابقة للمواصفة
-        var products = await _unitOfWork.Products.FindAsync(spec, ct);
+        var products = await _unitOfWork.Products.ListAsync(new ProductQuery { CategoryId = categoryId }, ct);
         // تحويل الكيانات إلى قائمة ملخصات DTO
         var result = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(products);
         // إرجاع النتيجة الناجحة
         return ServiceResult<IReadOnlyList<ProductSummaryDto>>.Success(result);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<ProductResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام المنتج بالمعرف مع تفاصيل الوحدات والباركودات والصور
-        var product = await _unitOfWork.Products.FirstOrDefaultAsync(new ProductWithDetailsSpec(id), ct);
+        var product = await _unitOfWork.Products.GetDetailsAsync(id, ct);
         // التحقق من وجود المنتج في قاعدة البيانات
         if (product is null)
         {
@@ -70,28 +63,21 @@ public class ProductService : IProductService
         return ServiceResult<ProductResponseDto>.Success(result);
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(
-        int pageNumber,
-        int pageSize,
-        Guid? categoryId = null,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام المنتجات للترقيم مع فلتر التصنيف
-        var spec = new ProductSummarySpec(categoryId);
         // تنفيذ الاستعلام الصفحي لجلب سجلات الصفحة الحالية والعدد الإجمالي
-        var (items, totalCount) = await _unitOfWork.Products.GetPagedAsync(spec, pageNumber, pageSize, ct);
-
+        var(items, totalCount) = await _unitOfWork.Products.SearchAsync(new ProductQuery { CategoryId = categoryId, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل عناصر الصفحة إلى قائمة ملخصات
         var dtos = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(items);
         // إنشاء كائن النتيجة المصفحة مع احتساب إجمالي الصفحات
         var pagedResult = PagedResult<ProductSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة المصفحة بنجاح
         return ServiceResult<PagedResult<ProductSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<ProductSummaryDto>>> SearchAsync(string query, CancellationToken ct = default)
     {
         // التحقق من تزويد كلمة للبحث
@@ -102,30 +88,21 @@ public class ProductService : IProductService
         }
 
         // بناء مواصفة البحث بالاسم والباركود
-        var spec = new ProductSearchSpec(query);
         // جلب المنتجات المطابقة للبحث
-        var products = await _unitOfWork.Products.FindAsync(spec, ct);
-
+        var products = await _unitOfWork.Products.ListAsync(new ProductQuery { Search = query }, ct);
         // التطابق التام للباركود أولاً ثم الأسماء التي تبدأ بالكلمة ثم بقية النتائج مع حد أقصى 100 نتيجة
-        var ordered = products
-            .OrderBy(p => p.ProductBarCodes.Any(b => b.BarCode == query) ? 0 : 1)
-            .ThenBy(p => p.Name.StartsWith(query) ? 0 : 1)
-            .ThenBy(p => p.Name)
-            .Take(100)
-            .ToList();
-
+        var ordered = products.OrderBy(p => p.ProductBarCodes.Any(b => b.BarCode == query) ? 0 : 1).ThenBy(p => p.Name.StartsWith(query) ? 0 : 1).ThenBy(p => p.Name).Take(100).ToList();
         // تحويل النتائج المرتبة إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(ordered);
-
         // إرجاع قائمة نتائج البحث بنجاح
         return ServiceResult<IReadOnlyList<ProductSummaryDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<ProductResponseDto>> GetByBarCodeAsync(string barCode, CancellationToken ct = default)
     {
         // الاستعلام عن سجل الباركود في جدول باركودات المنتجات
-        var barCodeEntry = await _unitOfWork.Products.FirstOrDefaultBarCodeAsync(b => b.BarCode == barCode, ct);
+        var barCodeEntry = await _unitOfWork.Products.GetBarcodeByValueAsync(barCode, ct);
         // التحقق من وجود الباركود
         if (barCodeEntry is null)
         {
@@ -137,11 +114,30 @@ public class ProductService : IProductService
         return await GetByIdAsync(barCodeEntry.ProductId, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<ProductResponseDto>> CreateAsync(CreateProductDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ProductResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
+        if (dto.ShowroomInitialQuantities?.Select(q => q.WarehouseId).Distinct().Count() != dto.ShowroomInitialQuantities?.Count ||
+            dto.StorageInitialQuantities?.Select(q => (q.WarehouseId, q.BarCode.Trim().ToUpperInvariant())).Distinct().Count() != dto.StorageInitialQuantities?.Count)
+            return ServiceResult<ProductResponseDto>.Failure("الأرصدة الافتتاحية تحتوي مفاتيح مخازن أو باركودات مكررة", ErrorCodes.ValidationError);
+        var requestedWarehouses = (dto.ShowroomInitialQuantities ?? []).Select(q => (q.WarehouseId, WarehouseType.Show))
+            .Concat((dto.StorageInitialQuantities ?? []).Select(q => (q.WarehouseId, WarehouseType.Storge)));
+        foreach (var (warehouseId, type) in requestedWarehouses.Distinct())
+        {
+            var warehouse = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(warehouseId, ct);
+            if (warehouse is null || warehouse.Type != type)
+                return ServiceResult<ProductResponseDto>.Failure("مخزن الرصيد الافتتاحي غير موجود أو نوعه غير صحيح", ErrorCodes.ValidationError);
+        }
+        var suppliedBarcodes = (dto.BarCodes ?? []).Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (dto.StorageInitialQuantities?.Any(q => !suppliedBarcodes.Contains(q.BarCode.Trim())) == true)
+            return ServiceResult<ProductResponseDto>.Failure("باركود الرصيد الافتتاحي غير موجود ضمن باركودات الصنف", ErrorCodes.ValidationError);
+        if (dto.Units is not null && (dto.Units.Count(u => u.IsDefault) > 1 || dto.Units.Any(u => u.ConversionFactor <= 0) || dto.Units.Select(u => u.UnitId).Distinct().Count() != dto.Units.Count))
+            return ServiceResult<ProductResponseDto>.Failure("وحدات الصنف مكررة أو تحتوي معامل تحويل غير صحيح أو أكثر من وحدة افتراضية", ErrorCodes.ValidationError);
         // التحقق من صحة وجود التصنيف التابع له المنتج
-        bool categoryExists = await _unitOfWork.Categories.ExistsAsync(c => c.Id == dto.CategoryId, ct);
+        bool categoryExists = await _unitOfWork.Categories.ExistsByIdAsync(dto.CategoryId, ct);
         // في حال عدم وجود التصنيف
         if (!categoryExists)
         {
@@ -158,20 +154,16 @@ public class ProductService : IProductService
 
         // تحويل بيانات الإدخال إلى كيان المنتج
         var product = _mapper.Map<Product>(dto);
-
         // معالجة وحدات القياس المسندة للمنتج
         if (dto.Units != null && dto.Units.Count > 0)
         {
             // إنشاء كيانات ProductUnit لكل وحدة مدخلة
-            product.ProductUnits = dto.Units.Select(u => new ProductUnit
-            {
-                // معرف الوحدة
-                UnitId = u.UnitId,
-                // معامل التحويل
-                ConversionFactor = u.ConversionFactor > 0 ? u.ConversionFactor : 1,
-                // تحديد ما إذا كانت افتراضية
-                IsDefault = u.IsDefault
-            }).ToList();
+            product.ProductUnits = dto.Units.Select(u => new ProductUnit { // معرف الوحدة
+ UnitId = u.UnitId, // معامل التحويل
+ ConversionFactor = u.ConversionFactor > 0 ? u.ConversionFactor : 1, // تحديد ما إذا كانت افتراضية
+ IsDefault = u.IsDefault }).ToList();
+            if (!product.ProductUnits.Any(u => u.IsDefault))
+                product.ProductUnits.First().IsDefault = true;
         }
 
         // معالجة الباركودات والنكهات والتحقق من عدم تكرارها
@@ -189,8 +181,7 @@ public class ProductService : IProductService
             }
 
             // فحص ما إذا كان أي من الباركودات مسجلاً مسبقاً لصنف آخر في النظام
-            var existingBarcode = await _unitOfWork.Products.FirstOrDefaultBarCodeAsync(
-                b => barCodeStrings.Contains(b.BarCode), ct);
+            var existingBarcode = await _unitOfWork.Products.GetFirstMatchingBarcodeAsync(barCodeStrings, ct);
             // في حال وجود الباركود مسبقاً
             if (existingBarcode != null)
             {
@@ -199,34 +190,27 @@ public class ProductService : IProductService
             }
 
             // إنشاء كيانات ProductBarCode للباركودات
-            product.ProductBarCodes = dto.BarCodes.Select(b => new ProductBarCode
-            {
-                // رقم الباركود
-                BarCode = b.BarCode.Trim(),
-                // عنوان النكهة أو الصنف
-                Title = string.IsNullOrWhiteSpace(b.Title) ? dto.Name : b.Title,
-                // وصف إضافي
-                Description = b.Description
-            }).ToList();
+            product.ProductBarCodes = dto.BarCodes.Select(b => new ProductBarCode { // رقم الباركود
+ BarCode = b.BarCode.Trim(), // عنوان النكهة أو الصنف
+ Title = string.IsNullOrWhiteSpace(b.Title) ? dto.Name : b.Title, // وصف إضافي
+ Description = b.Description }).ToList();
         }
 
         // إضافة المنتج الجديد إلى المستودع
         await _unitOfWork.Products.AddAsync(product, ct);
         // حفظ التغييرات في قاعدة البيانات لتوليد المعرفات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // 1. توليد سجل مخزون الصالة لكل صالة عرض قائمة (مع التراجع لجلب كافة المخازن إن لم تتوفر صالات مصنفة)
-        var showrooms = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Show, ct);
+        var showrooms = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Show, ct);
         // في حال عدم وجود صالات عرض مصنفة
         if (showrooms.Count == 0)
         {
             // التراجع لجلب كافة المستودعات
-            showrooms = await _unitOfWork.Warehouses.GetAllAsync(ct);
+            showrooms = await _unitOfWork.Warehouses.ListLookupAsync(ct);
         }
 
         // بناء خريطة الأرصدة الافتتاحية لصالات العرض المتعددة
         var showroomQtyMap = dto.ShowroomInitialQuantities?.ToDictionary(s => s.WarehouseId, s => s.Quantity) ?? new Dictionary<Guid, int>();
-
         // المرور على صالات العرض وتأسيس أرصدة الصنف
         foreach (var show in showrooms)
         {
@@ -269,22 +253,21 @@ public class ProductService : IProductService
         }
 
         // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم (مع التراجع لجلب كافة المخازن)
-        var storgeWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+        var storgeWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
         // في حال عدم وجود مخازن تخزين مصنفة
         if (storgeWarehouses.Count == 0)
         {
             // التراجع لجلب كافة المستودعات
-            storgeWarehouses = await _unitOfWork.Warehouses.GetAllAsync(ct);
+            storgeWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
         }
 
         // تأسيس أرصدة المخازن للباركودات
         if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
         {
             // خريطة الكميات الافتتاحية المفردة للباركودات
-            var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode, b => b.InitialQuantity) ?? new Dictionary<string, int>();
+            var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode.Trim(), b => b.InitialQuantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
             // خريطة الكميات الافتتاحية للمخازن المتعددة
-            var storageMultiQtyMap = dto.StorageInitialQuantities?.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode}", s => s.Quantity) ?? new Dictionary<string, int>();
-
+            var storageMultiQtyMap = dto.StorageInitialQuantities?.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode.Trim()}", s => s.Quantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
             // المرور على مخازن التخزين
             foreach (var storgeWh in storgeWarehouses)
             {
@@ -295,7 +278,6 @@ public class ProductService : IProductService
                     int initQty = 0;
                     // مفتاح الربط المركب بين المخزن والباركود
                     string key = $"{storgeWh.Id}_{bc.BarCode}";
-
                     // فحص وجود كمية مخصصة في الخريطة المتعددة
                     if (storageMultiQtyMap.TryGetValue(key, out int multiQty))
                     {
@@ -339,22 +321,25 @@ public class ProductService : IProductService
 
         // حفظ سجلات الأرصدة الافتتاحية في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة تحميل المنتج مع كافة تفاصيله لضمان دقة كائن الاستجابة
-        var createdProduct = await _unitOfWork.Products.FirstOrDefaultAsync(new ProductWithDetailsSpec(product.Id), ct) ?? product;
+        var createdProduct = await _unitOfWork.Products.GetDetailsAsync(product.Id, ct) ?? product;
         // تحويل الكيان إلى DTO الاستجابة
         var responseDto = _mapper.Map<ProductResponseDto>(createdProduct);
-
         // إرجاع النتيجة الناجحة
         return ServiceResult<ProductResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<ProductResponseDto>> UpdateAsync(Guid id, UpdateProductDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ProductResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
+        if (dto.Units is not null && (dto.Units.Count(u => u.IsDefault) > 1 || dto.Units.Any(u => u.ConversionFactor <= 0) || dto.Units.Select(u => u.UnitId).Distinct().Count() != dto.Units.Count))
+            return ServiceResult<ProductResponseDto>.Failure("وحدات الصنف مكررة أو تحتوي معامل تحويل غير صحيح أو أكثر من وحدة افتراضية", ErrorCodes.ValidationError);
         // تحميل متتبع (Tracked) لضمان حفظ تعديلات الأبناء (باركودات/وحدات) وحذف المحذوف منها فعلياً،
         // وتفادي تضارب تتبع النسخ المكررة عند تكرار نفس الصنف في البنود.
-        var product = await _unitOfWork.Products.FirstOrDefaultTrackedAsync(new ProductWithDetailsSpec(id), ct);
+        var product = await _unitOfWork.Products.GetDetailsForUpdateAsync(id, ct);
         // التحقق من وجود المنتج
         if (product is null)
         {
@@ -366,7 +351,7 @@ public class ProductService : IProductService
         if (dto.CategoryId != product.CategoryId)
         {
             // الاستعلام عن وجود التصنيف
-            bool categoryExists = await _unitOfWork.Categories.ExistsAsync(c => c.Id == dto.CategoryId, ct);
+            bool categoryExists = await _unitOfWork.Categories.ExistsByIdAsync(dto.CategoryId, ct);
             // في حال عدم وجود التصنيف
             if (!categoryExists)
             {
@@ -397,8 +382,7 @@ public class ProductService : IProductService
             }
 
             // فحص ما إذا كان الباركود مستخدماً لصنف آخر غير الصنف الحالي
-            var existingWithOtherProduct = await _unitOfWork.Products.BarCodeExistsAsync(
-                b => barCodeStrings.Contains(b.BarCode) && b.ProductId != id, ct);
+            var existingWithOtherProduct = await _unitOfWork.Products.BarcodesExistOutsideProductAsync(barCodeStrings, id, ct);
             // في حال كان مستخدماً لمنتج آخر
             if (existingWithOtherProduct)
             {
@@ -411,13 +395,11 @@ public class ProductService : IProductService
         _mapper.Map(dto, product);
         // تأكيد ثبات المعرف
         product.Id = id;
-
         // تحديث وحدات المنتج
         if (dto.Units != null)
         {
             // تجميع معرفات الوحدات في الطلب الجديد
             var dtoUnitIds = dto.Units.Select(u => u.UnitId).ToHashSet();
-
             // 1. إزالة الوحدات المستبعدة من الطلب
             var unitsToRemove = product.ProductUnits.Where(pu => !dtoUnitIds.Contains(pu.UnitId)).ToList();
             // حذف كل وحدة مستبعدة
@@ -443,13 +425,7 @@ public class ProductService : IProductService
                 else
                 {
                     // إضافة وحدة جديدة
-                    product.ProductUnits.Add(new ProductUnit
-                    {
-                        ProductId = id,
-                        UnitId = u.UnitId,
-                        ConversionFactor = u.ConversionFactor > 0 ? u.ConversionFactor : 1,
-                        IsDefault = u.IsDefault
-                    });
+                    product.ProductUnits.Add(new ProductUnit { ProductId = id, UnitId = u.UnitId, ConversionFactor = u.ConversionFactor > 0 ? u.ConversionFactor : 1, IsDefault = u.IsDefault });
                 }
             }
         }
@@ -459,45 +435,29 @@ public class ProductService : IProductService
         {
             // تجميع أكواد الباركودات الجديدة
             var dtoBarCodes = dto.BarCodes.Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
             // 1. تحديد الباركودات المستبعدة من الطلب
-            var barcodesToRemove = product.ProductBarCodes
-                .Where(pb => !dtoBarCodes.Contains(pb.BarCode.Trim()))
-                .ToList();
-
+            var barcodesToRemove = product.ProductBarCodes.Where(pb => !dtoBarCodes.Contains(pb.BarCode.Trim())).ToList();
             // معالجة وحماية الباركودات المستبعدة
             if (barcodesToRemove.Count > 0)
             {
                 // استخراج معرفات الباركودات المحذوفة
                 var removedBarcodeIds = barcodesToRemove.Select(b => b.Id).ToList();
-
                 // منع حذف باركود له حركة مخزنية أو فواتير أو صور مرتبطة
-                bool usedInSales = await _unitOfWork.SalesInvoices.ItemExistsAsync(
-                    i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInSalesReturns = await _unitOfWork.SalesReturns.ItemExistsAsync(
-                    i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInPurchases = await _unitOfWork.PurchaseInvoices.ItemExistsAsync(
-                    i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.ItemExistsAsync(
-                    i => removedBarcodeIds.Contains(i.ProductBarCodeId!.Value), ct);
-                bool usedInOrders = await _unitOfWork.PurchaseOrders.ItemExistsAsync(
-                    i => removedBarcodeIds.Contains(i.ProductBarCodeId), ct);
-                bool hasStock = await _unitOfWork.Stock.StorgeStockExistsAsync(
-                    s => removedBarcodeIds.Contains(s.ProductBarcodeId) && s.Quantity != 0, ct);
-
+                bool usedInSales = await _unitOfWork.SalesInvoices.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInSalesReturns = await _unitOfWork.SalesReturns.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInPurchases = await _unitOfWork.PurchaseInvoices.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInOrders = await _unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool hasStock = await _unitOfWork.Stock.HasNonzeroStorageByBarcodesAsync(removedBarcodeIds, ct);
                 // في حال وجود أي استخدام سابق
                 if (usedInSales || usedInSalesReturns || usedInPurchases || usedInPurchaseReturns || usedInOrders || hasStock)
                 {
                     // إرجاع خطأ يمنع حذف الباركود المرتبط
-                    return ServiceResult<ProductResponseDto>.Failure(
-                        "لا يمكن حذف الباركود '" + string.Join("', '", barcodesToRemove.Select(b => b.BarCode)) +
-                        "' لوجود حركة مخزنية أو فواتير مرتبطة به. يرجى الاحتفاظ به أو حذف الأصناف المرتبطة أولاً.",
-                        ErrorCodes.BarCodeInUse);
+                    return ServiceResult<ProductResponseDto>.Failure("لا يمكن حذف الباركود '" + string.Join("', '", barcodesToRemove.Select(b => b.BarCode)) + "' لوجود حركة مخزنية أو فواتير مرتبطة به. يرجى الاحتفاظ به أو حذف الأصناف المرتبطة أولاً.", ErrorCodes.BarCodeInUse);
                 }
 
                 // حذف منطقي متسلسل: الصور المرتبطة ثم أرصدة المخازن ثم الباركود نفسه
-                var linkedImages = await _unitOfWork.Products.FindImagesTrackedAsync(
-                    img => removedBarcodeIds.Contains(img.BarcodeId!.Value), ct);
+                var linkedImages = await _unitOfWork.Products.GetImagesByBarcodesForUpdateAsync(removedBarcodeIds, ct);
                 // حذف الصور المرتبطة بالباركود منطقياً
                 foreach (var img in linkedImages)
                 {
@@ -505,8 +465,7 @@ public class ProductService : IProductService
                 }
 
                 // استعلام الأرصدة المرتبطة بالباركود في المخازن
-                var linkedStocks = await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
-                    s => removedBarcodeIds.Contains(s.ProductBarcodeId), ct);
+                var linkedStocks = await _unitOfWork.Stock.GetStorageByBarcodesForUpdateAsync(removedBarcodeIds, ct);
                 // حذف الأرصدة منطقياً
                 foreach (var stock in linkedStocks)
                 {
@@ -527,9 +486,7 @@ public class ProductService : IProductService
                 // تنظيف كود الباركود
                 var trimmedCode = b.BarCode.Trim();
                 // البحث عن الباركود القائم
-                var existingBc = product.ProductBarCodes
-                    .FirstOrDefault(pb => string.Equals(pb.BarCode.Trim(), trimmedCode, StringComparison.OrdinalIgnoreCase));
-
+                var existingBc = product.ProductBarCodes.FirstOrDefault(pb => string.Equals(pb.BarCode.Trim(), trimmedCode, StringComparison.OrdinalIgnoreCase));
                 // في حال وجوده مسبقاً يتم تحديث بياناته
                 if (existingBc != null)
                 {
@@ -557,11 +514,11 @@ public class ProductService : IProductService
             if (newlyAddedBarCodes.Count > 0)
             {
                 // جلب مخازن التخزين
-                var storgeWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+                var storgeWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
                 // التراجع لجلب كافة المستودعات إن لم تتوفر مخازن
                 if (storgeWarehouses.Count == 0)
                 {
-                    storgeWarehouses = await _unitOfWork.Warehouses.GetAllAsync(ct);
+                    storgeWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
                 }
 
                 // إنشاء رصيد صفري في كل مخزن للباركود الجديد
@@ -586,7 +543,29 @@ public class ProductService : IProductService
         try
         {
             // المنتج محمّل متتبعاً؛ SaveChanges يلتقط كل تعديلات الجذر والأبناء (إضافة/تعديل/حذف منطقي)
-            await _unitOfWork.SaveChangesAsync(ct);
+            if (dto.Units is not null)
+            {
+                var defaultUnit = product.ProductUnits.FirstOrDefault(u => u.IsDefault) ?? product.ProductUnits.FirstOrDefault();
+                foreach (var unit in product.ProductUnits)
+                    unit.IsDefault = false;
+                await _unitOfWork.BeginTransactionAsync(ct);
+                try
+                {
+                    await _unitOfWork.SaveChangesAsync(ct);
+                    if (defaultUnit is not null)
+                        defaultUnit.IsDefault = true;
+                    await _unitOfWork.CommitTransactionAsync(ct);
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync(ct);
+                    throw;
+                }
+            }
+            else
+            {
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -595,19 +574,18 @@ public class ProductService : IProductService
         }
 
         // إعادة تحميل المنتج مع تفاصيله المحدثة
-        var updatedProduct = await _unitOfWork.Products.FirstOrDefaultAsync(new ProductWithDetailsSpec(id), ct) ?? product;
+        var updatedProduct = await _unitOfWork.Products.GetDetailsAsync(id, ct) ?? product;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<ProductResponseDto>(updatedProduct);
-
         // إرجاع النتيجة الناجحة
         return ServiceResult<ProductResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام المنتج بالمعرف
-        var product = await _unitOfWork.Products.GetByIdAsync(id, ct);
+        var product = await _unitOfWork.Products.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود المنتج
         if (product is null)
         {
@@ -616,64 +594,57 @@ public class ProductService : IProductService
         }
 
         // منع حذف صنف له حركة مبيعات أو مشتريات أو أرصدة قائمة
-        bool usedInSalesInvoices = await _unitOfWork.SalesInvoices.ItemExistsAsync(i => i.ProductId == id, ct);
-        bool usedInSalesReturns = await _unitOfWork.SalesReturns.ItemExistsAsync(i => i.ProductId == id, ct);
-        bool usedInPurchaseInvoices = await _unitOfWork.PurchaseInvoices.ItemExistsAsync(i => i.ProductId == id, ct);
-        bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.ItemExistsAsync(i => i.ProductId == id, ct);
-        bool usedInStockTransfers = await _unitOfWork.StockTransfers.ItemExistsAsync(i => i.ProductId == id, ct);
-        bool usedInStockAdjustments = await _unitOfWork.StockAdjustments.ItemExistsAsync(i => i.ProductId == id, ct);
-
+        bool usedInSalesInvoices = await _unitOfWork.SalesInvoices.HasProductReferencesAsync(id, ct);
+        bool usedInSalesReturns = await _unitOfWork.SalesReturns.HasProductReferencesAsync(id, ct);
+        bool usedInPurchaseInvoices = await _unitOfWork.PurchaseInvoices.HasProductReferencesAsync(id, ct);
+        bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.HasProductReferencesAsync(id, ct);
+        bool usedInStockTransfers = await _unitOfWork.StockTransfers.HasProductReferencesAsync(id, ct);
+        bool usedInStockAdjustments = await _unitOfWork.StockAdjustments.HasProductReferencesAsync(id, ct);
         // جلب معرفات الباركودات المرتبطة بالمنتج
-        var barcodeIds = (await _unitOfWork.Products.FindBarCodesAsync(b => b.ProductId == id, ct))
-            .Select(b => b.Id)
-            .ToList();
-
+        var barcodeIds = (await _unitOfWork.Products.GetBarcodesByProductAsync(id, ct)).Select(b => b.Id).ToList();
         // فحص وجود الصنف في أوامر الشراء
-        bool usedInPurchaseOrders = barcodeIds.Count > 0 && await _unitOfWork.PurchaseOrders.ItemExistsAsync(
-            i => barcodeIds.Contains(i.ProductBarCodeId), ct);
-
+        bool usedInPurchaseOrders = barcodeIds.Count > 0 && await _unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync(barcodeIds, ct);
         // فحص وجود أرصدة غير صفرية في مخازن التخزين
-        bool hasStorgeStock = barcodeIds.Count > 0 && await _unitOfWork.Stock.StorgeStockExistsAsync(
-            s => barcodeIds.Contains(s.ProductBarcodeId) && s.Quantity != 0, ct);
+        bool hasStorgeStock = barcodeIds.Count > 0 && await _unitOfWork.Stock.HasNonzeroStorageByBarcodesAsync(barcodeIds, ct);
         // فحص وجود أرصدة غير صفرية في صالات العرض
-        bool hasShowroomStock = await _unitOfWork.Stock.ShowroomStockExistsAsync(
-            s => s.ProductId == id && s.Quantity != 0, ct);
-
+        bool hasShowroomStock = await _unitOfWork.Stock.HasNonzeroShowroomByProductAsync(id, ct);
         // في حال وجود أي حركات سابقة أو رصيد غير صفري
-        if (usedInSalesInvoices || usedInSalesReturns || usedInPurchaseInvoices || usedInPurchaseReturns ||
-            usedInStockTransfers || usedInStockAdjustments || usedInPurchaseOrders || hasStorgeStock || hasShowroomStock)
+        if (usedInSalesInvoices || usedInSalesReturns || usedInPurchaseInvoices || usedInPurchaseReturns || usedInStockTransfers || usedInStockAdjustments || usedInPurchaseOrders || hasStorgeStock || hasShowroomStock)
         {
             // إرجاع رسالة المنع
-            return ServiceResult.Failure(
-                "لا يمكن حذف الصنف لوجود حركة مبيعات أو مشتريات أو أرصدة مخزنية مرتبطة به. يرجى تصفير أرصدته والتأكد من عدم ارتباطه بفواتير أو حركات مخزنية.",
-                ErrorCodes.ProductInUse);
+            return ServiceResult.Failure("لا يمكن حذف الصنف لوجود حركة مبيعات أو مشتريات أو أرصدة مخزنية مرتبطة به. يرجى تصفير أرصدته والتأكد من عدم ارتباطه بفواتير أو حركات مخزنية.", ErrorCodes.ProductInUse);
         }
 
         // حذف منطقي متسلسل للأبناء (الباركودات وصورها، الوحدات، صور المنتج، والأرصدة الصفرية)
-
         // جلب صور المنتج وحذفها منطقياً
-        var productImages = await _unitOfWork.Products.FindImagesTrackedAsync(img => img.ProductId == id, ct);
+        var productImages = await _unitOfWork.Products.GetImagesForUpdateAsync(id, ct);
         foreach (var img in productImages)
         {
             _unitOfWork.Products.SoftDeleteImage(img);
         }
 
         // جلب باركودات المنتج وحذفها منطقياً
-        var productBarCodes = await _unitOfWork.Products.FindBarCodesTrackedAsync(b => b.ProductId == id, ct);
+        var productBarCodes = await _unitOfWork.Products.GetBarcodesForUpdateAsync(id, ct);
         foreach (var bc in productBarCodes)
         {
             _unitOfWork.Products.SoftDeleteBarCode(bc);
         }
 
         // جلب وحدات المنتج وحذفها منطقياً
-        var productUnits = await _unitOfWork.Products.FindUnitsTrackedAsync(u => u.ProductId == id, ct);
+        var productUnits = await _unitOfWork.Products.GetUnitsForUpdateAsync(id, ct);
         foreach (var unit in productUnits)
         {
             _unitOfWork.Products.SoftDeleteUnit(unit);
         }
 
+        var storgeStocks = await _unitOfWork.Stock.GetStorageByBarcodesForUpdateAsync(barcodeIds, ct);
+        foreach (var stock in storgeStocks)
+        {
+            _unitOfWork.Stock.SoftDeleteStorgeStock(stock);
+        }
+
         // جلب أرصدة صالات العرض وحذفها منطقياً
-        var showroomStocks = await _unitOfWork.Stock.FindShowroomStockTrackedAsync(s => s.ProductId == id, ct);
+        var showroomStocks = await _unitOfWork.Stock.GetShowroomByProductForUpdateAsync(id, ct);
         foreach (var stock in showroomStocks)
         {
             _unitOfWork.Stock.SoftDeleteShowroomStock(stock);
@@ -683,7 +654,6 @@ public class ProductService : IProductService
         _unitOfWork.Products.SoftDelete(product);
         // حفظ كافة عمليات الحذف المنطقي في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }

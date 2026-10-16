@@ -25,15 +25,15 @@ public class BranchMappingProfile : Profile
         CreateMap<BranchPhone, BranchPhoneResponseDto>();
 
         // تكوين تحويل ناقل بيانات إنشاء الفرع إلى كيان الفرع
-        CreateMap<CreateBranchDto, BranchEntity>()
+        CreateMap<CreateBranchDto, BranchEntity>(MemberList.None)
             // إسقاط قائمة أرقام الهواتف الواردة في الطلب إلى خاصية الكيان BranchPhones
             .ForMember(dest => dest.BranchPhones, opt => opt.MapFrom(src => src.Phones));
 
         // تكوين تحويل ناقل بيانات هاتف الفرع إلى كيان هاتف الفرع
-        CreateMap<BranchPhoneDto, BranchPhone>();
+        CreateMap<BranchPhoneDto, BranchPhone>(MemberList.None);
 
         // تكوين تحويل ناقل بيانات تعديل الفرع إلى كيان الفرع
-        CreateMap<UpdateBranchDto, BranchEntity>()
+        CreateMap<UpdateBranchDto, BranchEntity>(MemberList.None)
             // استبعاد المعرف Id من عملية التعديل لمنع تعديل المفتاح الأساسي للكيان
             .ForMember(dest => dest.Id, opt => opt.Ignore());
     }

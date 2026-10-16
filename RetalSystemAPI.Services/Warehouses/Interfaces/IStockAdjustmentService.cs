@@ -78,7 +78,7 @@ public interface IStockAdjustmentService
     Task<ServiceResult<StockAdjustmentResponseDto>> CreateAsync(CreateStockAdjustmentDto dto, CancellationToken ct = default);
 
     /// <summary>
-    /// حذف سجل تسوية جردية منطقياً.
+    /// التحقق من طلب حذف تسوية؛ التسوية المرحلة تبقى في سجل الجرد ويُعكس أثرها بتسوية جديدة.
     /// </summary>
     /// <param name="id">معرف سند التسوية</param>
     /// <param name="ct">رمز إلغاء العملية</param>

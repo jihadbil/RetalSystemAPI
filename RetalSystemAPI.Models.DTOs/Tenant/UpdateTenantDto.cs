@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Common;
 
@@ -36,6 +37,7 @@ public class UpdateTenantDto
     public string Address { get; set; } = string.Empty;
 
     /// <summary>رابط أو مسار الشعار الجديد</summary>
+    [MaxLength(2000)]
     public string LogoUrl { get; set; } = string.Empty;
 
     /// <summary>حالة نشاط الحساب</summary>
@@ -106,6 +108,7 @@ public class UpdateTenantDto
     public string DefaultCurrencySymbol { get; set; } = "د.ل";
 
     /// <summary>نسبة الضريبة</summary>
+    [Range(typeof(decimal), "0", "100")]
     public decimal DefaultTaxRate { get; set; } = 0m;
 
     /// <summary>هل الأسعار شاملة الضريبة</summary>
@@ -113,5 +116,6 @@ public class UpdateTenantDto
 
     /// <summary>المنطقة الزمنية</summary>
     [MaxLength(100, ErrorMessage = "المنطقة الزمنية يجب أن لا تتجاوز 100 حرف")]
+    [TimeZoneId]
     public string Timezone { get; set; } = "Africa/Tripoli";
 }

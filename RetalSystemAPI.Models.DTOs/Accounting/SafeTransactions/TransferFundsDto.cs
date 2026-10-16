@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,14 +11,17 @@ public class TransferFundsDto
 {
     /// <summary>معرف الخزينة المحول منها (المصدر)</summary>
     [Required(ErrorMessage = "الخزينة المصدر مطلوبة")]
+    [NotEmptyGuid]
     public Guid FromSafeId { get; set; }
 
     /// <summary>معرف الخزينة المحول إليها (الوجهة)</summary>
     [Required(ErrorMessage = "الخزينة الوجهة مطلوبة")]
+    [NotEmptyGuid]
     public Guid ToSafeId { get; set; }
 
     /// <summary>المبلغ المراد تحويله</summary>
     [Range(0.0001, double.MaxValue, ErrorMessage = "مبلغ التحويل يجب أن يكون أكبر من الصفر")]
+    [MoneyAmount]
     public decimal Amount { get; set; }
 
     /// <summary>بيان وشرح سبب التحويل</summary>

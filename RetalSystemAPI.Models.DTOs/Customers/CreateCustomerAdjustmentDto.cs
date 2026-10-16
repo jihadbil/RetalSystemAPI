@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
@@ -11,18 +12,22 @@ public class CreateCustomerAdjustmentDto
 {
     /// <summary>معرف العميل</summary>
     [Required(ErrorMessage = "معرف العميل مطلوب")]
+    [NotEmptyGuid]
     public Guid CustomerId { get; set; }
 
     /// <summary>معرف الفرع</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>اتجاه التسوية (وارد / زيادة دين، أم صادر / تخفيض دين)</summary>
     [Required(ErrorMessage = "اتجاه التسوية مطلوب")]
+    [EnumDataType(typeof(TransactionDirection))]
     public TransactionDirection Direction { get; set; }
 
     /// <summary>مبلغ التسوية</summary>
     [Range(0.0001, double.MaxValue, ErrorMessage = "مبلغ التسوية يجب أن يكون أكبر من الصفر")]
+    [MoneyAmount]
     public decimal Amount { get; set; }
 
     /// <summary>سبب وبيان التسوية</summary>

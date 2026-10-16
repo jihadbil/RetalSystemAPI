@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
@@ -11,7 +8,6 @@ using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.FileUpload.Interfaces;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة صور المنتجات والتحكم بالصور الافتراضية وحذف الملفات المرفوعة من الخادم.
 /// </summary>
@@ -23,17 +19,13 @@ public class ProductImageService : IProductImageService
     private readonly IMapper _mapper;
     // خدمة رفع وإدارة الملفات على الخادم
     private readonly IFileUploadService _fileUploadService;
-
     /// <summary>
     /// تهيئة خدمة صور المنتجات مع حقن وحدة العمل، والمحول، وخدمة رفع الملفات.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
-    /// <param name="mapper">خدمة تحويل النماذج</param>
-    /// <param name="fileUploadService">خدمة إدارة وحذف الملفات على القرص</param>
-    public ProductImageService(
-        IUnitOfWork unitOfWork,
-        IMapper mapper,
-        IFileUploadService fileUploadService)
+    /// <param name = "unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
+    /// <param name = "mapper">خدمة تحويل النماذج</param>
+    /// <param name = "fileUploadService">خدمة إدارة وحذف الملفات على القرص</param>
+    public ProductImageService(IUnitOfWork unitOfWork, IMapper mapper, IFileUploadService fileUploadService)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
@@ -43,26 +35,25 @@ public class ProductImageService : IProductImageService
         _fileUploadService = fileUploadService;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<ProductImageResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         // استعلام كافة الصور التابعة للمنتج بالمعرف
-        var images = await _unitOfWork.Products.FindImagesAsync(i => i.ProductId == productId, ct);
+        var images = await _unitOfWork.Products.GetImagesByProductAsync(productId, ct);
         // تحويل قائمة الكيانات إلى قائمة كائنات نقل البيانات DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductImageResponseDto>>(images);
-
         // إرجاع النتيجة الناجحة مع قائمة الصور
         return ServiceResult<IReadOnlyList<ProductImageResponseDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<ProductImageResponseDto>> AddImageAsync(
-        Guid productId,
-        CreateProductImageDto dto,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<ProductImageResponseDto>> AddImageAsync(Guid productId, CreateProductImageDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ProductImageResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من صحة وجود المنتج المستهدف
-        bool productExists = await _unitOfWork.Products.ExistsAsync(p => p.Id == productId, ct);
+        bool productExists = await _unitOfWork.Products.ExistsByIdAsync(productId, ct);
         // في حال عدم وجود المنتج
         if (!productExists)
         {
@@ -74,7 +65,7 @@ public class ProductImageService : IProductImageService
         if (dto.BarcodeId.HasValue)
         {
             // الاستعلام عن وجود الباركود
-            bool barcodeExists = await _unitOfWork.Products.BarCodeExistsAsync(b => b.Id == dto.BarcodeId.Value, ct);
+            bool barcodeExists = await _unitOfWork.Products.BarcodeBelongsToProductAsync(dto.BarcodeId.Value, productId, ct);
             // في حال عدم وجود الباركود
             if (!barcodeExists)
             {
@@ -84,19 +75,33 @@ public class ProductImageService : IProductImageService
         }
 
         // فحص ما إذا كان للمنتج أي صور سابقة
-        bool hasImages = await _unitOfWork.Products.ImageExistsAsync(i => i.ProductId == productId, ct);
-
+        bool hasImages = await _unitOfWork.Products.HasImagesAsync(productId, ct);
         // تحويل بيانات الإدخال إلى كيان ProductImage
         var imageEntity = _mapper.Map<ProductImage>(dto);
         // ربط معرف المنتج
         imageEntity.ProductId = productId;
         // تعيين الصورة كافتراضية إذا تم طلب ذلك أو إذا كانت هي الصورة الأولى للمنتج
         imageEntity.IsDefault = dto.IsDefault || !hasImages;
-
         // إضافة كيان الصورة إلى المستودع
-        await _unitOfWork.Products.AddImageAsync(imageEntity, ct);
-        // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            if (imageEntity.IsDefault)
+            {
+                var defaults = await _unitOfWork.Products.GetDefaultImagesForUpdateAsync(productId, ct);
+                foreach (var image in defaults)
+                    image.IsDefault = false;
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+
+            await _unitOfWork.Products.AddImageAsync(imageEntity, ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // تحويل الكيان إلى كائن الاستجابة المنقول
         var responseDto = _mapper.Map<ProductImageResponseDto>(imageEntity);
@@ -104,7 +109,7 @@ public class ProductImageService : IProductImageService
         return ServiceResult<ProductImageResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> RemoveImageAsync(Guid imageId, CancellationToken ct = default)
     {
         // استعلام الصورة بالمعرف
@@ -118,17 +123,15 @@ public class ProductImageService : IProductImageService
 
         // حذف الملف الفعلي للصورة من القرص المحلي عبر خدمة الملفات
         await _fileUploadService.DeleteAsync(imageEntity.ImageUrl, ct);
-
         // حذف سجل الصورة نهائياً من قاعدة البيانات
         _unitOfWork.Products.HardDeleteImage(imageEntity);
         // حفظ التغييرات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> SetDefaultImageAsync(Guid imageId, CancellationToken ct = default)
     {
         // استعلام الصورة المستهدفة بالمعرف
@@ -145,17 +148,19 @@ public class ProductImageService : IProductImageService
         try
         {
             // جلب كافة الصور المرتبطة بنفس المنتج
-            var allImages = await _unitOfWork.Products.FindImagesAsync(i => i.ProductId == targetImage.ProductId, ct);
+            var allImages = await _unitOfWork.Products.GetImagesForUpdateAsync(targetImage.ProductId, ct);
             // تعديل حالة الافتراضية: جعل الصورة المختارة فقط افتراضية
             foreach (var img in allImages)
             {
                 // تعيين حالة الافتراضية
-                img.IsDefault = (img.Id == imageId);
+                img.IsDefault = false;
                 // تحديث السجل في المستودع
                 _unitOfWork.Products.UpdateImage(img);
             }
 
             // تأكيد وحفظ المعاملة
+            await _unitOfWork.SaveChangesAsync(ct);
+            targetImage.IsDefault = true;
             await _unitOfWork.CommitTransactionAsync(ct);
             // إرجاع نتيجة النجاح
             return ServiceResult.Success();

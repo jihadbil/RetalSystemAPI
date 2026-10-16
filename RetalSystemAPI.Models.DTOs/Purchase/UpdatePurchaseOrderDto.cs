@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Purchase;
@@ -21,5 +22,7 @@ public class UpdatePurchaseOrderDto
     public DateTime? ExpectedDate { get; set; }
 
     /// <summary>قائمة بنود الطلبية المحدثة</summary>
-    public List<PurchaseOrderItemDto> Items { get; set; } = new();
+    [NoNullItems]
+    [MinLength(1)]
+    public List<PurchaseOrderItemDto>? Items { get; set; }
 }

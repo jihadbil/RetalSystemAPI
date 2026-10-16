@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace RetalSystemAPI.DataAccess.Specifications;
-
 /// <summary>
-/// واجهة نمط المواصفات (Specification Pattern) لتغليف شروط الاستعلامات، التضمينات (Eager Loading)، الترتيب، والتقسيم في كائنات قابلة لإعادة الاستخدام.
+/// مواصفات داخلية لتغليف شروط الاستعلامات والتضمينات والترتيب. تُطبّق الصفحات داخل المستودع المتخصص.
 /// </summary>
-/// <typeparam name="T">نوع الكيان المراد الاستعلام عنه</typeparam>
-public interface ISpecification<T>
+/// <typeparam name = "T">نوع الكيان المراد الاستعلام عنه</typeparam>
+internal interface ISpecification<T>
 {
     /// <summary>تعبير الشرط المنطقي الأساسي للفلترة (Where Criteria)</summary>
     Expression<Func<T, bool>>? Criteria { get; }
@@ -24,13 +21,4 @@ public interface ISpecification<T>
 
     /// <summary>تعبير الترتيب التنازلي (OrderByDescending)</summary>
     Expression<Func<T, object>>? OrderByDescending { get; }
-
-    /// <summary>عدد السجلات المطلوب جلبها (Take)</summary>
-    int? Take { get; }
-
-    /// <summary>عدد السجلات المطلوب تخطيها (Skip)</summary>
-    int? Skip { get; }
-
-    /// <summary>هل تم تفعيل تقسيم النتائج إلى صفحات (Paging)</summary>
-    bool IsPagingEnabled { get; }
 }

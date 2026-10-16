@@ -123,4 +123,7 @@ public interface IPosCashService
     /// <returns>نتيجة التحقق من الصلاحية</returns>
     // التحقق من قيود تعديل نوع أو نشاط درج النقدية
     Task<ServiceResult<bool>> ValidateSafeUpdateAsync(Guid safeId, SafeType newType, bool isActive, CancellationToken ct = default);
+
+    /// <summary>منع حذف درج مرتبط بنقطة بيع أو سجل ورديات.</summary>
+    Task<ServiceResult<bool>> ValidateSafeDeleteAsync(Guid safeId, CancellationToken ct = default);
 }

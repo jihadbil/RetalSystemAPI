@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -15,10 +16,12 @@ public class CreateWarehouseDto
 
     /// <summary>معرف الفرع التابع له المستودع</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>نوع المستودع (مخزن رئيسي تخزيني / صالة عرض)</summary>
     [Required(ErrorMessage = "نوع المخزن مطلوب")]
+    [EnumDataType(typeof(WarehouseType))]
     public WarehouseType Type { get; set; }
 
     /// <summary>حالة نشاط المستودع (افتراضي: مفعل)</summary>

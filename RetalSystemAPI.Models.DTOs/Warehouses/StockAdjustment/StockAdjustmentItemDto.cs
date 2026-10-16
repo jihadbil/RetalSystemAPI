@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -11,12 +12,14 @@ public class StockAdjustmentItemDto
 {
     /// <summary>المعرف الفريد للمنتج</summary>
     [Required(ErrorMessage = "معرف الصنف مطلوب")]
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود إن وجد</summary>
     public Guid? ProductBarCodeId { get; set; }
 
     /// <summary>الكمية الدفترية المسجلة في النظام قبل الجرد</summary>
+    [Range(0, int.MaxValue)]
     public int SystemQuantity { get; set; }
 
     /// <summary>الكمية الفعلية المحصورة أثناء الجرد</summary>
@@ -25,8 +28,10 @@ public class StockAdjustmentItemDto
 
     /// <summary>تكلفة الوحدة لتقييم الفارق المالي</summary>
     [Range(0, double.MaxValue, ErrorMessage = "تكلفة الوحدة يجب أن تكون أكبر من أو تساوي 0")]
+    [MoneyAmount]
     public decimal UnitCost { get; set; }
 
     /// <summary>سبب تسوية هذا البند تحديداً؛ إن لم يُرسل يُعتمد سبب التسوية العام</summary>
+    [EnumDataType(typeof(StockAdjustmentReason))]
     public StockAdjustmentReason? Reason { get; set; }
 }

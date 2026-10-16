@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Common;
 
@@ -9,6 +10,7 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 public class SupplierPhoneDto
 {
     /// <summary>اسم الشخص المسؤول أو مسمى جهة الاتصال</summary>
+    [MaxLength(100)]
     public string? Name { get; set; }
 
     /// <summary>رقم هاتف المورد المطابق للنسق الليبي المعتمد</summary>

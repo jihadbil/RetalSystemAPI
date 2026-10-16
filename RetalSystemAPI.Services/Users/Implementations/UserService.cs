@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -249,6 +250,9 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<ServiceResult<UserSummaryDto>> CreateUserAsync(CreateUserDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<UserSummaryDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // استخراج معرف المستأجر الحالي
         var tenantId = _currentTenantService.TenantId;
         if (tenantId == Guid.Empty)
@@ -351,6 +355,9 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<ServiceResult<UserSummaryDto>> UpdateUserAsync(string id, UpdateUserDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<UserSummaryDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // استخراج معرف المستأجر الحالي
         var tenantId = _currentTenantService.TenantId;
         // استعلام المستخدم بالمعرف مع عزله بالمستأجر وتضمين الفرع
@@ -364,6 +371,9 @@ public class UserService : IUserService
             // إرجاع خطأ بعدم وجود المستخدم
             return ServiceResult<UserSummaryDto>.Failure("المستخدم غير موجود", ErrorCodes.UserNotFound);
         }
+
+        if (!await CanManageUserAsync(user))
+            return ServiceResult<UserSummaryDto>.Failure("تعديل حساب إداري يتطلب مسؤول المنصة", ErrorCodes.Forbidden);
 
         var branchExists = await _context.Branches
             .AsNoTracking()
@@ -473,6 +483,9 @@ public class UserService : IUserService
         }
 
         // حذف المستخدم عبر UserManager
+        if (!await CanManageUserAsync(user))
+            return ServiceResult.Failure("حذف حساب إداري يتطلب مسؤول المنصة", ErrorCodes.Forbidden);
+
         var deleteResult = await _userManager.DeleteAsync(user);
         // التحقق من نجاح الحذف
         if (!deleteResult.Succeeded)
@@ -490,6 +503,9 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<ServiceResult> ResetPasswordAsync(string id, ResetPasswordDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult.Failure(validationError, ErrorCodes.ValidationError);
+
         // استخراج معرف المستأجر الحالي
         var tenantId = _currentTenantService.TenantId;
         // استعلام المستخدم المعني بإعادة التعيين
@@ -503,6 +519,9 @@ public class UserService : IUserService
         }
 
         // توليد رمز إعادة تعيين كلمة المرور آلياً
+        if (!await CanManageUserAsync(user))
+            return ServiceResult.Failure("إعادة تعيين كلمة مرور حساب إداري تتطلب مسؤول المنصة", ErrorCodes.Forbidden);
+
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         // تطبيق كلمة المرور الجديدة بواسطة الرمز المولد
         var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
@@ -734,6 +753,9 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<ServiceResult> UpdateRolePermissionsAsync(UpdateRolePermissionsDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult.Failure(validationError, ErrorCodes.ValidationError);
+
         // الاستعلام عن الدور المطلوب تعديل صلاحياته
         var role = await _roleManager.FindByIdAsync(dto.RoleId);
         // التحقق من وجود الدور
@@ -898,6 +920,9 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<ServiceResult> UpdateUserPermissionsAsync(UpdateUserPermissionsDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult.Failure(validationError, ErrorCodes.ValidationError);
+
         // استخراج معرف المستأجر الحالي
         var tenantId = _currentTenantService.TenantId;
         // استعلام المستخدم المعني بتحديث صلاحياته
@@ -950,6 +975,9 @@ public class UserService : IUserService
 
     private bool CallerIsSuperAdmin() =>
         _httpContextAccessor.HttpContext?.User.IsInRole("SuperAdmin") == true;
+
+    private async Task<bool> CanManageUserAsync(ApplicationUser user) =>
+        CallerIsSuperAdmin() || !(await _userManager.GetRolesAsync(user)).Any(IsPrivilegedRole);
 
     private static bool IsPrivilegedRole(string? roleName) =>
         !string.IsNullOrWhiteSpace(roleName) &&

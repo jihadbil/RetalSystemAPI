@@ -47,7 +47,7 @@ public class SupplierPhoneConfiguration : IEntityTypeConfiguration<SupplierPhone
             .OnDelete(DeleteBehavior.NoAction);
 
         // إنشاء فهرس مركب فريد على (TenantId, PhoneNumber) لضمان عدم تكرار نفس رقم الهاتف للمورد لدى نفس المستأجر
-        builder.HasIndex(sp => new { sp.TenantId, sp.PhoneNumber }).IsUnique();
+        builder.HasIndex(sp => new { sp.TenantId, sp.PhoneNumber }).IsUnique().HasFilter("[IsDeleted] = 0");
         // إنشاء فهرس على عمود SupplierId لتسريع استعراض هواتف المورد
         builder.HasIndex(sp => sp.SupplierId);
     }

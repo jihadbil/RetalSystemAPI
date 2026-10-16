@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<PosTerminalResponseDto>> CreateTerminalAsync(CreatePosTerminalDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<PosTerminalResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من صحة بيانات نقطة البيع وعدم تكرارها
         var validation = await ValidateTerminalAsync(dto.BranchId, dto.DefaultCashDrawerId, null, dto.Code, dto.Name, ct);
         // في حال وجود خطأ في التحقق
@@ -103,6 +107,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<PosTerminalResponseDto>> UpdateTerminalAsync(Guid id, UpdatePosTerminalDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<PosTerminalResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // جلب نقطة البيع المراد تعديلها مع الفرع والدرج
         var terminal = await _db.PosTerminals
             .Include(x => x.Branch)
@@ -198,6 +205,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<ClaimPosDeviceResponseDto>> ClaimDeviceAsync(ClaimPosDeviceDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ClaimPosDeviceResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // حساب الهاش لرمز الاقتران المدخل
         var codeHash = Hash($"{dto.TenantId:N}:{dto.PairingCode.Trim()}");
         // البحث عن نقطة البيع المطابقة مع تجاهل الفلاتر لتحديد المستأجر
@@ -299,6 +309,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<CashSessionResponseDto>> OpenSessionAsync(string? deviceToken, OpenCashSessionDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CashSessionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // مطابقة جهاز الكاشير عبر التوكن
         var resolved = await ResolveDeviceAsync(deviceToken, ct);
         // في حال فشل التحقق من الجهاز
@@ -365,6 +378,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<CashSessionResponseDto>> CloseSessionAsync(string? deviceToken, CloseCashSessionDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CashSessionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // مطابقة وتوثيق جهاز الكاشير
         var resolved = await ResolveDeviceAsync(deviceToken, ct);
         // إذا وجد خطأ في الاعتماد
@@ -407,8 +423,17 @@ public class PosCashService : IPosCashService
             session.Status = CashSessionStatus.PendingApproval;
         }
 
-        // حفظ تغييرات إغلاق الوردية
-        await _db.SaveChangesAsync(ct);
+        // إغلاق الوردية والترحيل النقدي يشتركان في نسخة تزامن الدرج.
+        _db.Entry(session.CashDrawer).Property(s => s.CurrentBalance).IsModified = true;
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return ServiceResult<CashSessionResponseDto>.Failure("تغيرت حركات الدرج أثناء الإغلاق؛ أعد عد النقدية وحاول مجدداً", ErrorCodes.ConcurrencyError);
+        }
 
         // إرجاع بيانات الوردية المغلقة
         return ServiceResult<CashSessionResponseDto>.Success(MapSession(session));
@@ -420,6 +445,9 @@ public class PosCashService : IPosCashService
     /// </summary>
     public async Task<ServiceResult<CashSessionResponseDto>> ApproveDifferenceAsync(Guid sessionId, ApproveCashDifferenceDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CashSessionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // جلب الوردية المطلوب اعتمادها مع نقطة البيع والدرج
         var session = await _db.CashSessions
             // تضمين بيانات نقطة البيع
@@ -581,6 +609,14 @@ public class PosCashService : IPosCashService
     /// استعلام مساعد لجلب الورديات النشطة (المفتوحة أو التي تنتظر الاعتماد) متضمنة نقطة البيع والدرج.
     /// </summary>
     // إنشاء استعلام الورديات النشطة مع الكيانات المرتبطة
+    public async Task<ServiceResult<bool>> ValidateSafeDeleteAsync(Guid safeId, CancellationToken ct = default)
+    {
+        if (await _db.PosTerminals.AnyAsync(t => t.DefaultCashDrawerId == safeId, ct) ||
+            await _db.CashSessions.AnyAsync(s => s.CashDrawerId == safeId, ct))
+            return ServiceResult<bool>.Failure("لا يمكن حذف درج مرتبط بنقطة بيع أو وردية؛ استخدم التعطيل عند السماح بذلك", ErrorCodes.ValidationError);
+        return ServiceResult<bool>.Success(true);
+    }
+
     private IQueryable<CashSession> ActiveSessionQuery() => _db.CashSessions
         // تضمين نقطة البيع
         .Include(x => x.PosTerminal)

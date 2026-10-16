@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Warehouses.StockTransfer;
@@ -9,6 +10,7 @@ public class StockTransferItemDto
 {
     /// <summary>معرف الصنف</summary>
     [Required(ErrorMessage = "معرف الصنف مطلوب")]
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود إن وجد</summary>

@@ -1,33 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
-using RetalSystemAPI.DataAccess.Specifications;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;
 using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
-
-/// <summary>
-/// مواصفة جلب كافة وحدات القياس المرتبطة بمنتج محدد مع تضمين بيانات الوحدة الأساسية.
-/// </summary>
-public class ProductUnitsByProductSpec : BaseSpecification<ProductUnit>
-{
-    /// <summary>
-    /// تهيئة مواصفة وحدات المنتج بالمعرف وتضمين الوحدة المرتبطة.
-    /// </summary>
-    /// <param name="productId">معرف المنتج</param>
-    public ProductUnitsByProductSpec(Guid productId) : base(pu => pu.ProductId == productId)
-    {
-        // تضمين بيانات وحدة القياس التابعة
-        AddInclude(pu => pu.Unit!);
-    }
-}
-
 /// <summary>
 /// تنفيذ خدمة وحدات المنتجات ومعاملات التحويل والوحدات الافتراضية.
 /// </summary>
@@ -37,12 +16,11 @@ public class ProductUnitService : IProductUnitService
     private readonly IUnitOfWork _unitOfWork;
     // محول البيانات لتحويل الكيانات إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
-
     /// <summary>
     /// تهيئة خدمة وحدات المنتجات مع حقن وحدة العمل والمحول.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
-    /// <param name="mapper">خدمة تحويل النماذج</param>
+    /// <param name = "unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
+    /// <param name = "mapper">خدمة تحويل النماذج</param>
     public ProductUnitService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         // تعيين مرجع وحدة العمل
@@ -51,28 +29,26 @@ public class ProductUnitService : IProductUnitService
         _mapper = mapper;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<ProductUnitResponseDto>>> GetByProductAsync(Guid productId, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام وحدات المنتج بالمعرف
-        var spec = new ProductUnitsByProductSpec(productId);
         // جلب قائمة وحدات المنتج من المستودع
-        var productUnits = await _unitOfWork.Products.FindUnitsAsync(spec, ct);
+        var productUnits = await _unitOfWork.Products.GetUnitsWithDetailsAsync(productId, ct);
         // تحويل الكيانات إلى قائمة كائنات نقل البيانات DTOs
         var dtos = _mapper.Map<IReadOnlyList<ProductUnitResponseDto>>(productUnits);
-
         // إرجاع النتيجة الناجحة مع قائمة وحدات المنتج
         return ServiceResult<IReadOnlyList<ProductUnitResponseDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<ProductUnitResponseDto>> AddUnitToProductAsync(
-        Guid productId,
-        CreateProductUnitDto dto,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<ProductUnitResponseDto>> AddUnitToProductAsync(Guid productId, CreateProductUnitDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ProductUnitResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من صحة وجود المنتج المستهدف
-        bool productExists = await _unitOfWork.Products.ExistsAsync(p => p.Id == productId, ct);
+        bool productExists = await _unitOfWork.Products.ExistsByIdAsync(productId, ct);
         // في حال عدم وجود المنتج
         if (!productExists)
         {
@@ -81,7 +57,7 @@ public class ProductUnitService : IProductUnitService
         }
 
         // التحقق من وجود وحدة القياس العامة في النظام
-        bool unitExists = await _unitOfWork.Units.ExistsAsync(u => u.Id == dto.UnitId, ct);
+        bool unitExists = await _unitOfWork.Units.ExistsByIdAsync(dto.UnitId, ct);
         // في حال عدم وجود الوحدة
         if (!unitExists)
         {
@@ -90,7 +66,7 @@ public class ProductUnitService : IProductUnitService
         }
 
         // التحقق من عدم إضافة نفس الوحدة للمنتج مسبقاً
-        bool duplicate = await _unitOfWork.Products.UnitExistsAsync(pu => pu.ProductId == productId && pu.UnitId == dto.UnitId, ct);
+        bool duplicate = await _unitOfWork.Products.ProductUnitExistsAsync(productId, dto.UnitId, ct);
         // في حال كانت مضافة مسبقاً
         if (duplicate)
         {
@@ -106,32 +82,45 @@ public class ProductUnitService : IProductUnitService
         }
 
         // فحص ما إذا كان للمنتج أي وحدات قياس مسجلة مسبقاً
-        bool hasUnits = await _unitOfWork.Products.UnitExistsAsync(pu => pu.ProductId == productId, ct);
-
+        bool hasUnits = await _unitOfWork.Products.HasUnitsAsync(productId, ct);
         // تحويل بيانات الإدخال إلى كيان ProductUnit
         var productUnit = _mapper.Map<ProductUnit>(dto);
         // ربط معرف المنتج
         productUnit.ProductId = productId;
         // تعيين الوحدة كافتراضية إذا تم طلب ذلك أو إذا كانت هي الوحدة الأولى للمنتج
         productUnit.IsDefault = dto.IsDefault || !hasUnits;
-
         // إضافة وحدة المنتج إلى المستودع
-        await _unitOfWork.Products.AddUnitAsync(productUnit, ct);
-        // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            if (productUnit.IsDefault)
+            {
+                var defaults = await _unitOfWork.Products.GetDefaultUnitsForUpdateAsync(productId, ct);
+                foreach (var unitEntry in defaults)
+                    unitEntry.IsDefault = false;
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+
+            await _unitOfWork.Products.AddUnitAsync(productUnit, ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
 
         // جلب بيانات الوحدة لربطها في كائن الاستجابة
-        var unit = await _unitOfWork.Units.GetByIdAsync(dto.UnitId, ct);
+        var unit = await _unitOfWork.Units.GetByIdForUpdateAsync(dto.UnitId, ct);
         // إسناد الوحدة المرجعية
         productUnit.Unit = unit;
-
         // تحويل الكيان إلى DTO الاستجابة
         var responseDto = _mapper.Map<ProductUnitResponseDto>(productUnit);
         // إرجاع النتيجة الناجحة
         return ServiceResult<ProductUnitResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> RemoveUnitFromProductAsync(Guid productUnitId, CancellationToken ct = default)
     {
         // استعلام سجل وحدة المنتج بالمعرف
@@ -147,12 +136,11 @@ public class ProductUnitService : IProductUnitService
         _unitOfWork.Products.HardDeleteUnit(productUnit);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> SetDefaultUnitAsync(Guid productUnitId, CancellationToken ct = default)
     {
         // استعلام وحدة المنتج المستهدفة
@@ -169,17 +157,19 @@ public class ProductUnitService : IProductUnitService
         try
         {
             // جلب كافة الوحدات المرتبطة بنفس المنتج
-            var allUnits = await _unitOfWork.Products.FindUnitsAsync(pu => pu.ProductId == targetUnit.ProductId, ct);
+            var allUnits = await _unitOfWork.Products.GetUnitsForUpdateAsync(targetUnit.ProductId, ct);
             // تعديل الافتراضية: جعل الوحدة المستهدفة هي الافتراضية وتجريد البقية
             foreach (var pu in allUnits)
             {
                 // تعيين حالة الافتراضية
-                pu.IsDefault = (pu.Id == productUnitId);
+                pu.IsDefault = false;
                 // تحديث السجل في المستودع
                 _unitOfWork.Products.UpdateUnit(pu);
             }
 
             // تأكيد وحفظ المعاملة
+            await _unitOfWork.SaveChangesAsync(ct);
+            targetUnit.IsDefault = true;
             await _unitOfWork.CommitTransactionAsync(ct);
             // إرجاع نتيجة النجاح
             return ServiceResult.Success();

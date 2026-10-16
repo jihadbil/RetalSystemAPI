@@ -1,273 +1,174 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.DataAccess.Queries;
+using RetalSystemAPI.DataAccess.QueryResults;
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Common;
-using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
-
 /// <summary>
 /// تنفيذ مستودع بيانات الحسابات المالية وإدارة الخزائن والمصروفات وحركاتها.
 /// </summary>
 public class AccountingRepository : IAccountingRepository
 {
     private readonly AppDbContext _context;
-
     public AccountingRepository(AppDbContext context)
     {
         _context = context;
     }
 
     // ── الخزائن والبنوك (Safes) ─────────────────────────────────
-
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<Safe?> GetSafeByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<Safe>().FindAsync(new object[] { id }, ct);
+        return await EntityPersistence.GetByIdAsync<Safe>(_context, id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<Safe?> GetSafeWithDetailsAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<Safe>()
-            .Include(s => s.Branch)
-            .FirstOrDefaultAsync(s => s.Id == id, ct);
+        return await _context.Set<Safe>().Include(s => s.Branch).FirstOrDefaultAsync(s => s.Id == id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<Safe>> GetAllSafesAsync(CancellationToken ct = default)
     {
-        return await _context.Set<Safe>()
-            .AsNoTracking()
-            .Include(s => s.Branch)
-            .ToListAsync(ct);
+        return await _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).ToListAsync(ct);
     }
 
-    /// <inheritdoc />
-    public async Task<(IReadOnlyList<Safe> Items, int TotalCount)> GetPagedSafesAsync(
-        Guid? branchId,
-        bool? isActive,
-        string? searchTerm,
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<PageResult<Safe>> SearchSafesAsync(SafeQuery request, CancellationToken ct = default)
     {
+        var branchId = request.BranchId;
+        var isActive = request.IsActive;
+        var searchTerm = request.SearchTerm;
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
         Pagination.Normalize(ref pageNumber, ref pageSize);
-
-        var query = _context.Set<Safe>()
-            .AsNoTracking()
-            .Include(s => s.Branch)
-            .AsQueryable();
-
+        var query = _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).AsQueryable();
         if (branchId.HasValue)
             query = query.Where(s => s.BranchId == branchId.Value);
-
         if (isActive.HasValue)
             query = query.Where(s => s.IsActive == isActive.Value);
-
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
-            query = query.Where(s => s.Name.Contains(term) ||
-                                     (s.BankAccountNumber != null && s.BankAccountNumber.Contains(term)) ||
-                                     (s.BankName != null && s.BankName.Contains(term)));
+            query = query.Where(s => s.Name.Contains(term) || (s.BankAccountNumber != null && s.BankAccountNumber.Contains(term)) || (s.BankName != null && s.BankName.Contains(term)));
         }
 
         int totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderBy(s => s.Name)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        return (items, totalCount);
+        var items = await query.OrderBy(s => s.Name).ThenBy(s => s.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<Safe>(items, totalCount);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<bool> SafeNameExistsAsync(string name, Guid branchId, Guid? excludeId = null, CancellationToken ct = default)
     {
-        return await _context.Set<Safe>()
-            .AnyAsync(s => s.BranchId == branchId &&
-                           s.Name == name &&
-                           (!excludeId.HasValue || s.Id != excludeId.Value), ct);
+        return await _context.Set<Safe>().AnyAsync(s => s.BranchId == branchId && s.Name == name && (!excludeId.HasValue || s.Id != excludeId.Value), ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<bool> SafeHasTransactionsAsync(Guid safeId, CancellationToken ct = default)
     {
-        return await _context.Set<SafeTransaction>()
-            .AnyAsync(t => t.SafeId == safeId, ct);
+        return await _context.Set<SafeTransaction>().AnyAsync(t => t.SafeId == safeId, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddSafeAsync(Safe safe, CancellationToken ct = default)
     {
         await _context.Set<Safe>().AddAsync(safe, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void UpdateSafe(Safe safe)
     {
-        var local = _context.Set<Safe>().Local.FirstOrDefault(e => e.Id == safe.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, safe))
-                _context.Entry(local).CurrentValues.SetValues(safe);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(safe);
-        if (entry.State == EntityState.Detached)
-            _context.Set<Safe>().Attach(safe);
-        entry.State = EntityState.Modified;
+        EntityPersistence.Update(_context, safe);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void SoftDeleteSafe(Safe safe)
     {
-        safe.IsDeleted = true;
-        var local = _context.Set<Safe>().Local.FirstOrDefault(e => e.Id == safe.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, safe))
-                _context.Entry(local).CurrentValues.SetValues(safe);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(safe);
-        if (entry.State == EntityState.Detached)
-            _context.Set<Safe>().Attach(safe);
-        entry.State = EntityState.Modified;
+        EntityPersistence.SoftDelete(_context, safe);
     }
 
-
     // ── حركات الخزائن (Safe Transactions) ───────────────────────
-
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddSafeTransactionAsync(SafeTransaction transaction, CancellationToken ct = default)
     {
         await _context.Set<SafeTransaction>().AddAsync(transaction, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<SafeTransaction>> GetSafeTransactionsAsync(Guid safeId, CancellationToken ct = default)
     {
-        return await _context.Set<SafeTransaction>()
-            .AsNoTracking()
-            .Include(t => t.Safe)
-            .Where(t => t.SafeId == safeId)
-            .OrderByDescending(t => t.TransactionDate)
-            .ThenByDescending(t => t.CreatedAt)
-            .ToListAsync(ct);
+        return await _context.Set<SafeTransaction>().AsNoTracking().Include(t => t.Safe).Where(t => t.SafeId == safeId).OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAt).ToListAsync(ct);
     }
 
-    /// <inheritdoc />
-    public async Task<(IReadOnlyList<SafeTransaction> Items, int TotalCount)> GetPagedSafeTransactionsAsync(
-        Guid? safeId,
-        DateTime? fromDate,
-        DateTime? toDate,
-        TransactionDirection? direction,
-        FinancialDocumentType? documentType,
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<PageResult<SafeTransaction>> SearchSafeTransactionsAsync(SafeTransactionQuery request, CancellationToken ct = default)
     {
+        var safeId = request.SafeId;
+        var fromDate = request.FromDate;
+        var toDate = request.ToDate;
+        var direction = request.Direction;
+        var documentType = request.DocumentType;
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
         Pagination.Normalize(ref pageNumber, ref pageSize);
-
-        var query = _context.Set<SafeTransaction>()
-            .AsNoTracking()
-            .Include(t => t.Safe)
-            .AsQueryable();
-
+        var query = _context.Set<SafeTransaction>().AsNoTracking().Include(t => t.Safe).AsQueryable();
         if (safeId.HasValue)
             query = query.Where(t => t.SafeId == safeId.Value);
-
         if (fromDate.HasValue)
             query = query.Where(t => t.TransactionDate >= fromDate.Value);
-
         if (toDate.HasValue)
             query = query.Where(t => t.TransactionDate <= toDate.Value);
-
         if (direction.HasValue)
             query = query.Where(t => t.Direction == direction.Value);
-
         if (documentType.HasValue)
             query = query.Where(t => t.DocumentType == documentType.Value);
-
         int totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderByDescending(t => t.TransactionDate)
-            .ThenByDescending(t => t.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        return (items, totalCount);
+        var items = await query.OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAt).ThenBy(t => t.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<SafeTransaction>(items, totalCount);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<string> GenerateSafeTransactionNumberAsync(CancellationToken ct = default)
     {
         await Task.CompletedTask;
         return $"TRX-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..38];
     }
 
-
     // ── تصنيفات المصروفات (Expense Categories) ───────────────────
-
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ExpenseCategory?> GetExpenseCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<ExpenseCategory>().FindAsync(new object[] { id }, ct);
+        return await EntityPersistence.GetByIdAsync<ExpenseCategory>(_context, id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ExpenseCategory?> GetExpenseCategoryWithDetailsAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<ExpenseCategory>()
-            .Include(c => c.Expenses)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+        return await _context.Set<ExpenseCategory>().Include(c => c.Expenses).FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ExpenseCategory>> GetAllExpenseCategoriesAsync(CancellationToken ct = default)
     {
-        return await _context.Set<ExpenseCategory>()
-            .AsNoTracking()
-            .Include(c => c.Expenses)
-            .ToListAsync(ct);
+        return await _context.Set<ExpenseCategory>().AsNoTracking().Include(c => c.Expenses).ToListAsync(ct);
     }
 
-    /// <inheritdoc />
-    public async Task<(IReadOnlyList<ExpenseCategory> Items, int TotalCount)> GetPagedExpenseCategoriesAsync(
-        bool? isActive,
-        string? searchTerm,
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<PageResult<ExpenseCategory>> SearchExpenseCategoriesAsync(ExpenseCategoryQuery request, CancellationToken ct = default)
     {
+        var isActive = request.IsActive;
+        var searchTerm = request.SearchTerm;
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
         Pagination.Normalize(ref pageNumber, ref pageSize);
-
-        var query = _context.Set<ExpenseCategory>()
-            .AsNoTracking()
-            .Include(c => c.Expenses)
-            .AsQueryable();
-
+        var query = _context.Set<ExpenseCategory>().AsNoTracking().Include(c => c.Expenses).AsQueryable();
         if (isActive.HasValue)
             query = query.Where(c => c.IsActive == isActive.Value);
-
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
@@ -275,166 +176,97 @@ public class AccountingRepository : IAccountingRepository
         }
 
         int totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderBy(c => c.Name)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        return (items, totalCount);
+        var items = await query.OrderBy(c => c.Name).ThenBy(c => c.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<ExpenseCategory>(items, totalCount);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<bool> ExpenseCategoryNameExistsAsync(string name, Guid? excludeId = null, CancellationToken ct = default)
     {
-        return await _context.Set<ExpenseCategory>()
-            .AnyAsync(c => c.Name == name && (!excludeId.HasValue || c.Id != excludeId.Value), ct);
+        return await _context.Set<ExpenseCategory>().AnyAsync(c => c.Name == name && (!excludeId.HasValue || c.Id != excludeId.Value), ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<bool> ExpenseCategoryHasExpensesAsync(Guid categoryId, CancellationToken ct = default)
     {
-        return await _context.Set<Expense>()
-            .AnyAsync(e => e.ExpenseCategoryId == categoryId, ct);
+        return await _context.Set<Expense>().AnyAsync(e => e.ExpenseCategoryId == categoryId, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddExpenseCategoryAsync(ExpenseCategory category, CancellationToken ct = default)
     {
         await _context.Set<ExpenseCategory>().AddAsync(category, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void UpdateExpenseCategory(ExpenseCategory category)
     {
-        var local = _context.Set<ExpenseCategory>().Local.FirstOrDefault(e => e.Id == category.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, category))
-                _context.Entry(local).CurrentValues.SetValues(category);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(category);
-        if (entry.State == EntityState.Detached)
-            _context.Set<ExpenseCategory>().Attach(category);
-        entry.State = EntityState.Modified;
+        EntityPersistence.Update(_context, category);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void SoftDeleteExpenseCategory(ExpenseCategory category)
     {
-        category.IsDeleted = true;
-        var local = _context.Set<ExpenseCategory>().Local.FirstOrDefault(e => e.Id == category.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, category))
-                _context.Entry(local).CurrentValues.SetValues(category);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(category);
-        if (entry.State == EntityState.Detached)
-            _context.Set<ExpenseCategory>().Attach(category);
-        entry.State = EntityState.Modified;
+        EntityPersistence.SoftDelete(_context, category);
     }
-
 
     // ── المصروفات (Expenses) ────────────────────────────────────
-
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<Expense?> GetExpenseByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<Expense>().FindAsync(new object[] { id }, ct);
+        return await EntityPersistence.GetByIdAsync<Expense>(_context, id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<Expense?> GetExpenseWithDetailsAsync(Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<Expense>()
-            .Include(e => e.Branch)
-            .Include(e => e.ExpenseCategory)
-            .Include(e => e.Safe)
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
+        return await _context.Set<Expense>().Include(e => e.Branch).Include(e => e.ExpenseCategory).Include(e => e.Safe).FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<Expense>> GetAllExpensesAsync(CancellationToken ct = default)
     {
-        return await _context.Set<Expense>()
-            .AsNoTracking()
-            .Include(e => e.Branch)
-            .Include(e => e.ExpenseCategory)
-            .Include(e => e.Safe)
-            .ToListAsync(ct);
+        return await _context.Set<Expense>().AsNoTracking().Include(e => e.Branch).Include(e => e.ExpenseCategory).Include(e => e.Safe).ToListAsync(ct);
     }
 
-    /// <inheritdoc />
-    public async Task<(IReadOnlyList<Expense> Items, int TotalCount)> GetPagedExpensesAsync(
-        Guid? branchId,
-        Guid? categoryId,
-        Guid? safeId,
-        PaymentMethod? paymentMethod,
-        DateTime? fromDate,
-        DateTime? toDate,
-        string? searchTerm,
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<PageResult<Expense>> SearchExpensesAsync(ExpenseQuery request, CancellationToken ct = default)
     {
+        var branchId = request.BranchId;
+        var categoryId = request.CategoryId;
+        var safeId = request.SafeId;
+        var paymentMethod = request.PaymentMethod;
+        var fromDate = request.FromDate;
+        var toDate = request.ToDate;
+        var searchTerm = request.SearchTerm;
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
         Pagination.Normalize(ref pageNumber, ref pageSize);
-
-        var query = _context.Set<Expense>()
-            .AsNoTracking()
-            .Include(e => e.Branch)
-            .Include(e => e.ExpenseCategory)
-            .Include(e => e.Safe)
-            .AsQueryable();
-
+        var query = _context.Set<Expense>().AsNoTracking().Include(e => e.Branch).Include(e => e.ExpenseCategory).Include(e => e.Safe).AsQueryable();
         if (branchId.HasValue)
             query = query.Where(e => e.BranchId == branchId.Value);
-
         if (categoryId.HasValue)
             query = query.Where(e => e.ExpenseCategoryId == categoryId.Value);
-
         if (safeId.HasValue)
             query = query.Where(e => e.SafeId == safeId.Value);
-
         if (paymentMethod.HasValue)
             query = query.Where(e => e.PaymentMethod == paymentMethod.Value);
-
         if (fromDate.HasValue)
             query = query.Where(e => e.ExpenseDate >= fromDate.Value);
-
         if (toDate.HasValue)
             query = query.Where(e => e.ExpenseDate <= toDate.Value);
-
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
-            query = query.Where(e => e.ExpenseNumber.Contains(term) ||
-                                     e.Description.Contains(term) ||
-                                     (e.BeneficiaryName != null && e.BeneficiaryName.Contains(term)));
+            query = query.Where(e => e.ExpenseNumber.Contains(term) || e.Description.Contains(term) || (e.BeneficiaryName != null && e.BeneficiaryName.Contains(term)));
         }
 
         int totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderByDescending(e => e.ExpenseDate)
-            .ThenByDescending(e => e.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        return (items, totalCount);
+        var items = await query.OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.CreatedAt).ThenBy(e => e.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<Expense>(items, totalCount);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<string> GenerateExpenseNumberAsync(CancellationToken ct = default)
     {
         var today = DateTime.UtcNow.Date;
@@ -443,55 +275,27 @@ public class AccountingRepository : IAccountingRepository
         return $"EXP-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}-{randomSuffix}";
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<bool> ExpenseNumberExistsAsync(string expenseNumber, Guid? excludeId = null, CancellationToken ct = default)
     {
-        return await _context.Set<Expense>()
-            .AnyAsync(e => e.ExpenseNumber == expenseNumber && (!excludeId.HasValue || e.Id != excludeId.Value), ct);
+        return await _context.Set<Expense>().AnyAsync(e => e.ExpenseNumber == expenseNumber && (!excludeId.HasValue || e.Id != excludeId.Value), ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddExpenseAsync(Expense expense, CancellationToken ct = default)
     {
         await _context.Set<Expense>().AddAsync(expense, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void UpdateExpense(Expense expense)
     {
-        var local = _context.Set<Expense>().Local.FirstOrDefault(e => e.Id == expense.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, expense))
-                _context.Entry(local).CurrentValues.SetValues(expense);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(expense);
-        if (entry.State == EntityState.Detached)
-            _context.Set<Expense>().Attach(expense);
-        entry.State = EntityState.Modified;
+        EntityPersistence.Update(_context, expense);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void SoftDeleteExpense(Expense expense)
     {
-        expense.IsDeleted = true;
-        var local = _context.Set<Expense>().Local.FirstOrDefault(e => e.Id == expense.Id);
-        if (local != null)
-        {
-            if (!ReferenceEquals(local, expense))
-                _context.Entry(local).CurrentValues.SetValues(expense);
-            else
-                _context.Entry(local).State = EntityState.Modified;
-            return;
-        }
-
-        var entry = _context.Entry(expense);
-        if (entry.State == EntityState.Detached)
-            _context.Set<Expense>().Attach(expense);
-        entry.State = EntityState.Modified;
+        EntityPersistence.SoftDelete(_context, expense);
     }
 }

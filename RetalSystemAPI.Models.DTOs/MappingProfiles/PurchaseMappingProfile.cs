@@ -46,7 +46,7 @@ public class PurchaseMappingProfile : Profile
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء أمر الشراء إلى كيان أمر الشراء
-        CreateMap<CreatePurchaseOrderDto, PurchaseOrder>()
+        CreateMap<CreatePurchaseOrderDto, PurchaseOrder>(MemberList.None)
             // تعيين الحالة الافتراضية لأمر الشراء الجديد إلى مسودة (Draft)
             .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => PurchaseOrderStatus.Draft))
             // تجاهل المبلغ الإجمالي هنا ليتم احتسابه برمجياً من مجموع البنود في الخدمة
@@ -62,7 +62,7 @@ public class PurchaseMappingProfile : Profile
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.ProductBarCode != null && src.ProductBarCode.Product != null ? src.ProductBarCode.Product.Name : null!));
 
         // تكوين تحويل ناقل بيانات بند أمر الشراء إلى كيان بند أمر الشراء
-        CreateMap<PurchaseOrderItemDto, PurchaseOrderItem>()
+        CreateMap<PurchaseOrderItemDto, PurchaseOrderItem>(MemberList.None)
             // تجاهل إجمالي سطر البند ليتم حسابه بدقة رياضية في طبقة الخدمات
             .ForMember(dest => dest.LineTotal, opt => opt.Ignore());
 
@@ -123,6 +123,7 @@ public class PurchaseMappingProfile : Profile
 
         // تكوين تحويل كيان بند فاتورة الشراء إلى ناقل بيانات استجابة البند
         CreateMap<PurchaseInvoiceItem, PurchaseInvoiceItemResponseDto>()
+            .ForMember(d => d.ProductCode, o => o.MapFrom(s => s.ProductBarCode != null ? s.ProductBarCode.BarCode : null))
             // إسقاط اسم الصنف
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty))
             // إسقاط رمز الباركود من الكيان المرتبط ProductBarCode
@@ -138,14 +139,14 @@ public class PurchaseMappingProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.Title : null));
 
         // تكوين تحويل ناقل بيانات إنشاء فاتورة الشراء إلى كيان الفاتورة
-        CreateMap<CreatePurchaseInvoiceDto, PurchaseInvoice>()
+        CreateMap<CreatePurchaseInvoiceDto, PurchaseInvoice>(MemberList.None)
             // تجاهل إسقاط البنود لتتم معالجتها والتحقق من حساباتها وأرصدتها في الخدمة
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
         // تكوين تحويل ناقل بيانات إنشاء بند فاتورة الشراء إلى كيان البند
-        CreateMap<CreatePurchaseInvoiceItemDto, PurchaseInvoiceItem>();
+        CreateMap<CreatePurchaseInvoiceItemDto, PurchaseInvoiceItem>(MemberList.None);
         // تكوين تحويل ناقل تفكيك عبوة الشراء إلى كيان تفكيك العبوة
-        CreateMap<CreatePurchaseInvoiceItemBreakdownDto, PurchaseInvoiceItemBreakdown>();
+        CreateMap<CreatePurchaseInvoiceItemBreakdownDto, PurchaseInvoiceItemBreakdown>(MemberList.None);
 
         // ── تحويلات مرتجعات الشراء (Purchase Return) ───────────────────────
         // تكوين تحويل كيان مرتجع الشراء إلى ناقل بيانات الملخص
@@ -212,12 +213,12 @@ public class PurchaseMappingProfile : Profile
             .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null));
 
         // تكوين تحويل ناقل بيانات إنشاء مرتجع الشراء إلى كيان مرتجع الشراء
-        CreateMap<CreatePurchaseReturnDto, PurchaseReturn>()
+        CreateMap<CreatePurchaseReturnDto, PurchaseReturn>(MemberList.None)
             // تجاهل البنود لتتم معالجتها في خدمة المرتجعات مع فحص المخزون
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
         // تكوين تحويل ناقل بيانات إنشاء بند مرتجع الشراء إلى كيان بند المرتجع
-        CreateMap<CreatePurchaseReturnItemDto, PurchaseReturnItem>()
+        CreateMap<CreatePurchaseReturnItemDto, PurchaseReturnItem>(MemberList.None)
             // احتساب إجمالي السطر بضرب الكمية في سعر الوحدة
             .ForMember(dest => dest.LineTotal, opt => opt.MapFrom(src => src.Quantity * src.UnitPrice));
     }

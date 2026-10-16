@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
@@ -16,6 +17,7 @@ public class UpdateSafeDto
 
     /// <summary>نوع الخزينة</summary>
     [Required(ErrorMessage = "نوع الخزينة مطلوب")]
+    [EnumDataType(typeof(SafeType))]
     public SafeType Type { get; set; }
 
     /// <summary>رقم الحساب المصرفي (للبنوك فقط)</summary>

@@ -1,0 +1,51 @@
+using RetalSystemAPI.DataAccess.Queries;
+using RetalSystemAPI.DataAccess.QueryResults;
+using RetalSystemAPI.Models.Catalog;
+
+namespace RetalSystemAPI.DataAccess.Repositories.Interfaces;
+public partial interface IProductRepository
+{
+    Task<IReadOnlyList<ProductBarCode>> SearchBarcodesAsync(BarcodeQuery request, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetBarcodesWithDetailsAsync(Guid productId, CancellationToken ct = default);
+    Task<bool> BarCodeExistsAsync(string barCode, CancellationToken ct = default);
+    Task<bool> BarCodeExistsAsync(string barCode, Guid barCodeId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductExportRow>> GetExportRowsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarcodeExportRow>> GetBarcodeExportRowsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProductUnitExportRow>> GetUnitExportRowsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProductLookupRow>> GetLookupAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarcodeLookupRow>> GetBarcodeLookupAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> GetImportCandidatesForUpdateAsync(ImportKeys keys, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductImage>> GetImagesByProductAsync(Guid productId, CancellationToken ct = default);
+    Task<bool> BarcodeBelongsToProductAsync(Guid barcodeId, Guid productId, CancellationToken ct = default);
+    Task<bool> HasImagesAsync(Guid productId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductImage>> GetDefaultImagesForUpdateAsync(Guid productId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductImage>> GetImagesForUpdateAsync(Guid productId, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> ListAsync(ProductQuery request, CancellationToken ct = default);
+    Task<Product?> GetDetailsAsync(Guid id, CancellationToken ct = default);
+    Task<PageResult<Product>> SearchAsync(ProductQuery request, CancellationToken ct = default);
+    Task<ProductBarCode?> GetBarcodeByValueAsync(string barCode, CancellationToken ct = default);
+    Task<ProductBarCode?> GetFirstMatchingBarcodeAsync(IEnumerable<string> barCodeStrings, CancellationToken ct = default);
+    Task<Product?> GetDetailsForUpdateAsync(Guid id, CancellationToken ct = default);
+    Task<bool> BarcodesExistOutsideProductAsync(IEnumerable<string> barCodeStrings, Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductImage>> GetImagesByBarcodesForUpdateAsync(IEnumerable<Guid> removedBarcodeIds, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetBarcodesByProductAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetBarcodesForUpdateAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductUnit>> GetUnitsForUpdateAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductUnit>> GetUnitsWithDetailsAsync(Guid productId, CancellationToken ct = default);
+    Task<bool> ProductUnitExistsAsync(Guid productId, Guid unitId, CancellationToken ct = default);
+    Task<bool> HasUnitsAsync(Guid productId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductUnit>> GetDefaultUnitsForUpdateAsync(Guid productId, CancellationToken ct = default);
+    Task<bool> IsUnitInUseAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetBarcodesByProductIdsAsync(IEnumerable<Guid> fallbackProductIds, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> GetByIdsForUpdateAsync(IEnumerable<Guid> productIds, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetBarcodesByIdsAsync(IEnumerable<Guid> barcodeIds, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> GetByIdsAsync(IEnumerable<Guid> itemProductIds, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarcodeOwnershipRow>> GetBarcodeOwnershipAsync(CancellationToken ct = default);
+    Task<bool> BarcodeIdExistsAsync(Guid productBarcodeId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductOwnershipRow>> GetOwnershipAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetBarcodeIdsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetIdsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProductBarCode>> GetImportBarcodesForUpdateAsync(ImportKeys keys, IEnumerable<Guid> productIds, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductUnit>> GetImportUnitsForUpdateAsync(IEnumerable<Guid> productIds, CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetBarcodeValuesAsync(CancellationToken ct = default);
+}

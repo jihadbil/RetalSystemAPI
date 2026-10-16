@@ -1,54 +1,45 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Branchs;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
-
 /// <summary>
 /// تنفيذ مستودع بيانات الفروع وإدارة هواتفها.
 /// </summary>
-public class BranchRepository : Repository<Branch>, IBranchRepository
+public partial class BranchRepository : Repository<Branch>, IBranchRepository
 {
     public BranchRepository(AppDbContext context) : base(context)
     {
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddPhoneAsync(BranchPhone phone, CancellationToken ct = default)
     {
         await _context.Set<BranchPhone>().AddAsync(phone, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task AddPhonesAsync(IEnumerable<BranchPhone> phones, CancellationToken ct = default)
     {
         await _context.Set<BranchPhone>().AddRangeAsync(phones, ct);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void RemovePhone(BranchPhone phone)
     {
-        _context.Set<BranchPhone>().Remove(phone);
+        EntityPersistence.HardDelete(_context, phone);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void HardDeletePhone(BranchPhone phone)
     {
-        _context.Set<BranchPhone>().Remove(phone);
+        EntityPersistence.HardDelete(_context, phone);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<BranchPhone>> GetPhonesAsync(Guid branchId, CancellationToken ct = default)
     {
-        return await _context.Set<BranchPhone>()
-            .AsNoTracking()
-            .Where(p => p.BranchId == branchId)
-            .ToListAsync(ct);
+        return await _context.Set<BranchPhone>().AsNoTracking().Where(p => p.BranchId == branchId).ToListAsync(ct);
     }
 }

@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,6 +11,7 @@ public class UpdateExpenseDto
 {
     /// <summary>معرف تصنيف المصروف</summary>
     [Required(ErrorMessage = "تصنيف المصروف مطلوب")]
+    [NotEmptyGuid]
     public Guid ExpenseCategoryId { get; set; }
 
     /// <summary>اسم المستفيد أو الجهة المصروف لها</summary>

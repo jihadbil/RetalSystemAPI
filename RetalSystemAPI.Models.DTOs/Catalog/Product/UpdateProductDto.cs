@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductBarCode;
 using RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;
@@ -16,27 +17,33 @@ public class UpdateProductDto
 
     /// <summary>اسم المنتج</summary>
     [Required(ErrorMessage = "اسم المنتج مطلوب")]
-    [MaxLength(300, ErrorMessage = "اسم المنتج يجب أن لا يتجاوز 300 حرف")]
+    [MaxLength(200, ErrorMessage = "اسم المنتج يجب أن لا يتجاوز 200 حرف")]
     public string Name { get; set; } = null!;
 
     /// <summary>الوصف التفصيلي</summary>
+    [MaxLength(2000)]
     public string? Description { get; set; }
 
     /// <summary>سعر التكلفة الجديد</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سعر التكلفة يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal CostPrice { get; set; }
 
     /// <summary>سعر البيع الجديد</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سعر البيع يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal SalePrice { get; set; }
 
     /// <summary>معرف التصنيف</summary>
     [Required(ErrorMessage = "معرف التصنيف مطلوب")]
+    [NotEmptyGuid]
     public Guid CategoryId { get; set; }
 
     /// <summary>قائمة الباركودات المحدثة</summary>
+    [NoNullItems]
     public List<CreateProductBarCodeDto> BarCodes { get; set; } = new();
 
     /// <summary>قائمة الوحدات المحدثة</summary>
+    [NoNullItems]
     public List<CreateProductUnitDto> Units { get; set; } = new();
 }

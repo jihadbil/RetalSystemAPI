@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.DataAccess.Queries;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -17,7 +12,6 @@ using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة استيراد وتصدير الأصناف والباركودات والتصنيفات والوحدات والمخزون عبر ملفات Excel.
 /// يدعم كلاً من نظام الشيت الواحد المسطح (Single-Sheet Flat) ونظام الـ 3 أوراق عمل (Multi-Sheet).
@@ -28,18 +22,13 @@ public class ProductExcelService : IProductExcelService
     private readonly ILogger<ProductExcelService> _logger;
     private readonly int _maxWorksheetCount;
     private readonly int _maxTotalRows;
-
     private const string SheetProducts = "الأصناف";
     private const string SheetBarcodes = "الباركودات";
     private const string SheetCategories = "التصنيفات";
-
     /// <summary>
     /// تهيئة خدمة معالجة إكسيل مع حقن وحدة العمل.
     /// </summary>
-    public ProductExcelService(
-        IUnitOfWork unitOfWork,
-        IConfiguration configuration,
-        ILogger<ProductExcelService> logger)
+    public ProductExcelService(IUnitOfWork unitOfWork, IConfiguration configuration, ILogger<ProductExcelService> logger)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -47,45 +36,31 @@ public class ProductExcelService : IProductExcelService
         _maxTotalRows = Math.Clamp(configuration.GetValue<int?>("ExcelImport:MaxTotalRows") ?? 20_000, 100, 200_000);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<byte[]> ExportProductsToExcelAsync(bool singleSheetFormat = false, CancellationToken ct = default)
     {
         // تحميل أعمدة نحيفة فقط (المفاتيح والأسماء والأسعار) بدل الجداول الكاملة في الذاكرة
-        var products = await _unitOfWork.Products.SelectAsync(
-            p => new { p.Id, p.Name, p.CostPrice, p.SalePrice, p.CategoryId, p.Description }, ct);
-        var barcodes = await _unitOfWork.Products.SelectBarCodesAsync(
-            b => new { b.Id, b.ProductId, b.BarCode, b.Title }, ct);
-        var categories = await _unitOfWork.Categories.SelectAsync(
-            c => new { c.Id, c.Name }, ct);
-        var units = await _unitOfWork.Units.SelectAsync(u => new { u.Id, u.Name }, ct);
-        var productUnits = await _unitOfWork.Products.SelectUnitsAsync(
-            pu => new { pu.ProductId, pu.UnitId, pu.ConversionFactor, pu.IsDefault }, ct);
-        var showroomStocks = await _unitOfWork.Stock.SelectShowroomStocksAsync(
-            s => new { s.ProductId, s.Quantity }, ct);
-        var storageStocks = await _unitOfWork.Stock.SelectStorgeStocksAsync(
-            s => new { s.ProductBarcodeId, s.Quantity }, ct);
-
+        var products = await _unitOfWork.Products.GetExportRowsAsync(ct);
+        var barcodes = await _unitOfWork.Products.GetBarcodeExportRowsAsync(ct);
+        var categories = await _unitOfWork.Categories.GetLookupAsync(ct);
+        var units = await _unitOfWork.Units.GetLookupAsync(ct);
+        var productUnits = await _unitOfWork.Products.GetUnitExportRowsAsync(ct);
+        var showroomStocks = await _unitOfWork.Stock.GetShowroomExportRowsAsync(ct);
+        var storageStocks = await _unitOfWork.Stock.GetStorageExportRowsAsync(ct);
         using var workbook = new XLWorkbook();
         workbook.RightToLeft = true;
-
         if (singleSheetFormat)
         {
             // ورقة واحدة مدمجة تحوي كافة التفاصيل
             var ws = workbook.Worksheets.Add("الأصناف والمخزون");
             ws.RightToLeft = true;
-            SetupHeader(ws, new[]
-            {
-                "كود الصنف", "اسم الصنف", "الباركود", "التصنيف", "الوحدة", "معامل التحويل",
-                "سعر التكلفة", "سعر البيع", "كمية الصالة", "كمية المخزن", "حد الطلب", "الوصف"
-            });
-
+            SetupHeader(ws, new[] { "كود الصنف", "اسم الصنف", "الباركود", "التصنيف", "الوحدة", "معامل التحويل", "سعر التكلفة", "سعر البيع", "كمية الصالة", "كمية المخزن", "حد الطلب", "الوصف" });
             var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
             var barcodeLookup = barcodes.ToLookup(b => b.ProductId);
             var unitLookup = productUnits.ToLookup(u => u.ProductId);
             var unitDict = units.ToDictionary(u => u.Id, u => u.Name);
             var showStockLookup = showroomStocks.GroupBy(s => s.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
             var storeStockLookup = storageStocks.GroupBy(s => s.ProductBarcodeId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
-
             int row = 2;
             foreach (var p in products)
             {
@@ -94,11 +69,9 @@ public class ProductExcelService : IProductExcelService
                 var defaultProdUnit = unitLookup[p.Id].FirstOrDefault(u => u.IsDefault) ?? unitLookup[p.Id].FirstOrDefault();
                 string unitName = defaultProdUnit != null && unitDict.TryGetValue(defaultProdUnit.UnitId, out var uName) ? uName : "حبة";
                 int conversionFactor = defaultProdUnit?.ConversionFactor ?? 1;
-
                 string categoryName = categoryDict.TryGetValue(p.CategoryId, out var cName) ? cName : "عام";
                 int showQty = showStockLookup.TryGetValue(p.Id, out int sQty) ? sQty : 0;
                 int storeQty = primaryBarcode != null && storeStockLookup.TryGetValue(primaryBarcode.Id, out int stQty) ? stQty : 0;
-
                 ws.Cell(row, 1).Value = p.Id.ToString();
                 ws.Cell(row, 2).Value = p.Name;
                 ws.Cell(row, 3).Value = primaryBarcode?.BarCode ?? string.Empty;
@@ -113,6 +86,7 @@ public class ProductExcelService : IProductExcelService
                 ws.Cell(row, 12).Value = p.Description ?? string.Empty;
                 row++;
             }
+
             ws.Columns().AdjustToContents();
         }
         else
@@ -121,7 +95,6 @@ public class ProductExcelService : IProductExcelService
             var wsProducts = workbook.Worksheets.Add(SheetProducts);
             wsProducts.RightToLeft = true;
             SetupHeader(wsProducts, new[] { "معرف الصنف", "اسم الصنف", "سعر التكلفة", "سعر البيع", "معرف التصنيف" });
-
             int prodRow = 2;
             foreach (var p in products)
             {
@@ -132,12 +105,11 @@ public class ProductExcelService : IProductExcelService
                 wsProducts.Cell(prodRow, 5).Value = p.CategoryId.ToString();
                 prodRow++;
             }
-            wsProducts.Columns().AdjustToContents();
 
+            wsProducts.Columns().AdjustToContents();
             var wsBarcodes = workbook.Worksheets.Add(SheetBarcodes);
             wsBarcodes.RightToLeft = true;
             SetupHeader(wsBarcodes, new[] { "معرف الباركود", "معرف الصنف", "الباركود", "عنوان الباركود" });
-
             int barRow = 2;
             foreach (var b in barcodes)
             {
@@ -147,12 +119,11 @@ public class ProductExcelService : IProductExcelService
                 wsBarcodes.Cell(barRow, 4).Value = b.Title;
                 barRow++;
             }
-            wsBarcodes.Columns().AdjustToContents();
 
+            wsBarcodes.Columns().AdjustToContents();
             var wsCategories = workbook.Worksheets.Add(SheetCategories);
             wsCategories.RightToLeft = true;
             SetupHeader(wsCategories, new[] { "معرف التصنيف", "اسم التصنيف" });
-
             int catRow = 2;
             foreach (var c in categories)
             {
@@ -160,6 +131,7 @@ public class ProductExcelService : IProductExcelService
                 wsCategories.Cell(catRow, 2).Value = c.Name;
                 catRow++;
             }
+
             wsCategories.Columns().AdjustToContents();
         }
 
@@ -168,29 +140,22 @@ public class ProductExcelService : IProductExcelService
         return ms.ToArray();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<byte[]> DownloadTemplateAsync(bool singleSheetFormat = true, CancellationToken ct = default)
     {
         // صف واحد فقط بدل تحميل جدول التصنيفات كاملاً كعينة توضيحية
-        var sampleCategory = await _unitOfWork.Categories.FirstOrDefaultAsync(c => true, ct);
+        var sampleCategory = await _unitOfWork.Categories.GetSampleAsync(ct);
         // اسم التصنيف النموذجي
         string sampleCatName = sampleCategory?.Name ?? "مواد غذائية";
         // معرف التصنيف النموذجي
         Guid sampleCatId = sampleCategory?.Id ?? Guid.NewGuid();
-
         using var workbook = new XLWorkbook();
         workbook.RightToLeft = true;
-
         if (singleSheetFormat)
         {
             var ws = workbook.Worksheets.Add("قالب استيراد الأصناف");
             ws.RightToLeft = true;
-            SetupHeader(ws, new[]
-            {
-                "كود الصنف", "اسم الصنف *", "الباركود *", "التصنيف", "الوحدة", "معامل التحويل",
-                "سعر التكلفة *", "سعر البيع *", "كمية الصالة", "كمية المخزن", "حد الطلب", "الوصف"
-            });
-
+            SetupHeader(ws, new[] { "كود الصنف", "اسم الصنف *", "الباركود *", "التصنيف", "الوحدة", "معامل التحويل", "سعر التكلفة *", "سعر البيع *", "كمية الصالة", "كمية المخزن", "حد الطلب", "الوصف" });
             // سطر تجريبي 1
             ws.Cell(2, 1).Value = "101";
             ws.Cell(2, 2).Value = "عصير تفاح طبيعي 250 مل";
@@ -204,7 +169,6 @@ public class ProductExcelService : IProductExcelService
             ws.Cell(2, 10).Value = 120;
             ws.Cell(2, 11).Value = 10;
             ws.Cell(2, 12).Value = "عصير تفاح بدون سكر مضاف";
-
             // سطر تجريبي 2
             ws.Cell(3, 1).Value = "102";
             ws.Cell(3, 2).Value = "حليب كامل الدسم 1 لتر";
@@ -218,14 +182,12 @@ public class ProductExcelService : IProductExcelService
             ws.Cell(3, 10).Value = 50;
             ws.Cell(3, 11).Value = 5;
             ws.Cell(3, 12).Value = "كرتونة تحتوي 12 عبوة";
-
             ws.Columns().AdjustToContents();
         }
         else
         {
             Guid sampleProdId = Guid.NewGuid();
             Guid sampleBarId = Guid.NewGuid();
-
             var wsProducts = workbook.Worksheets.Add(SheetProducts);
             wsProducts.RightToLeft = true;
             SetupHeader(wsProducts, new[] { "معرف الصنف", "اسم الصنف", "سعر التكلفة", "سعر البيع", "معرف التصنيف" });
@@ -235,7 +197,6 @@ public class ProductExcelService : IProductExcelService
             wsProducts.Cell(2, 4).Value = 15.00m;
             wsProducts.Cell(2, 5).Value = sampleCatId.ToString();
             wsProducts.Columns().AdjustToContents();
-
             var wsBarcodes = workbook.Worksheets.Add(SheetBarcodes);
             wsBarcodes.RightToLeft = true;
             SetupHeader(wsBarcodes, new[] { "معرف الباركود", "معرف الصنف", "الباركود", "عنوان الباركود" });
@@ -244,7 +205,6 @@ public class ProductExcelService : IProductExcelService
             wsBarcodes.Cell(2, 3).Value = "629100000001";
             wsBarcodes.Cell(2, 4).Value = "باركود تجريبي مثال";
             wsBarcodes.Columns().AdjustToContents();
-
             var wsCategories = workbook.Worksheets.Add(SheetCategories);
             wsCategories.RightToLeft = true;
             SetupHeader(wsCategories, new[] { "معرف التصنيف", "اسم التصنيف" });
@@ -258,17 +218,13 @@ public class ProductExcelService : IProductExcelService
         return ms.ToArray();
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<ProductExcelValidationResultDto>> ValidateExcelAsync(
-        Stream excelStream,
-        ProductExcelImportOptionsDto? options = null,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<ProductExcelValidationResultDto>> ValidateExcelAsync(Stream excelStream, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default)
     {
         // تهيئة كائن الخيارات بالقيم الافتراضية في حال عدم تمريره
         options ??= new ProductExcelImportOptionsDto();
         // تهيئة كائن نتائج المعاينة والفحص
         var result = new ProductExcelValidationResultDto();
-
         // التحقق من صلاحية دفق الملف
         if (excelStream == null || (excelStream.CanSeek && excelStream.Length == 0))
         {
@@ -283,7 +239,6 @@ public class ProductExcelService : IProductExcelService
             using var ms = new MemoryStream();
             await excelStream.CopyToAsync(ms, ct);
             ms.Position = 0;
-
             using var workbook = new XLWorkbook(ms);
             var workbookLimitError = ValidateWorkbookLimits(workbook);
             if (workbookLimitError is not null)
@@ -294,26 +249,18 @@ public class ProductExcelService : IProductExcelService
 
             bool isSingleSheet = DetectIfSingleSheet(workbook);
             result.IsSingleSheetFormat = isSingleSheet;
-
             // جلب البيانات الحالية من قاعدة البيانات للمقارنة — أعمدة نحيفة فقط بدل الجداول الكاملة
-            var existingProducts = await _unitOfWork.Products.SelectAsync(p => new { p.Id, p.Name }, ct);
-            var existingBarcodes = await _unitOfWork.Products.SelectBarCodesAsync(b => new { b.BarCode, b.ProductId }, ct);
-            var existingCategories = await _unitOfWork.Categories.SelectAsync(c => new { c.Name }, ct);
-
+            var existingProducts = await _unitOfWork.Products.GetLookupAsync(ct);
+            var existingBarcodes = await _unitOfWork.Products.GetBarcodeLookupAsync(ct);
+            var existingCategories = await _unitOfWork.Categories.GetNamesAsync(ct);
             var existingProductIds = new HashSet<Guid>(existingProducts.Select(p => p.Id));
-            var barcodeMap = existingBarcodes
-                .GroupBy(b => b.BarCode.Trim(), StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First().ProductId, StringComparer.OrdinalIgnoreCase);
-            var productsByBarcodeProductId = existingBarcodes
-                .GroupBy(b => b.ProductId)
-                .ToDictionary(g => g.Key, g => g.Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            var barcodeMap = existingBarcodes.GroupBy(b => b.BarCode.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().ProductId, StringComparer.OrdinalIgnoreCase);
+            var productsByBarcodeProductId = existingBarcodes.GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase));
             var productNameMap = existingProducts.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
             var categoryNameSet = new HashSet<string>(existingCategories.Select(c => c.Name.Trim()), StringComparer.OrdinalIgnoreCase);
-
             var fileBarcodesSeen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var newCategoriesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var newBarcodesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             if (isSingleSheet)
             {
                 var ws = workbook.Worksheets.FirstOrDefault();
@@ -325,7 +272,6 @@ public class ProductExcelService : IProductExcelService
 
                 var colMap = DetectSingleSheetColumns(ws);
                 int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
-
                 for (int r = 2; r <= lastRow; r++)
                 {
                     string name = GetCellValue(ws, r, colMap.NameCol);
@@ -337,16 +283,12 @@ public class ProductExcelService : IProductExcelService
                     string saleStr = GetCellValue(ws, r, colMap.SalePriceCol);
                     string showQtyStr = GetCellValue(ws, r, colMap.ShowroomQtyCol);
                     string storeQtyStr = GetCellValue(ws, r, colMap.StorageQtyCol);
-
                     if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(barcode))
                         continue;
-
                     result.TotalRows++;
-
                     string displayBarcode = barcode;
                     string additionalMsg = string.Empty;
                     bool isAuto = false;
-
                     if (string.IsNullOrWhiteSpace(barcode))
                     {
                         result.MissingBarcodesCount++;
@@ -386,17 +328,14 @@ public class ProductExcelService : IProductExcelService
                         CategoryName = string.IsNullOrWhiteSpace(cat) ? "عام" : cat,
                         UnitName = string.IsNullOrWhiteSpace(unit) ? "حبة" : unit,
                     };
-
                     decimal.TryParse(costStr, out var costPrice);
                     decimal.TryParse(saleStr, out var salePrice);
                     int.TryParse(showQtyStr, out var showQty);
                     int.TryParse(storeQtyStr, out var storeQty);
-
                     rowVal.CostPrice = costPrice;
                     rowVal.SalePrice = salePrice;
                     rowVal.ShowroomQuantity = showQty;
                     rowVal.StorageQuantity = storeQty;
-
                     // التحقق من الحقول الإلزامية
                     if (string.IsNullOrWhiteSpace(name))
                     {
@@ -468,9 +407,7 @@ public class ProductExcelService : IProductExcelService
                         else
                         {
                             rowVal.Action = RowActionType.Update;
-                            rowVal.Message = string.IsNullOrWhiteSpace(additionalMsg)
-                                ? "الصنف موجود مسبقاً (سيتم تحديث بياناته وأسعاره)"
-                                : $"تحديث الصنف ({additionalMsg})";
+                            rowVal.Message = string.IsNullOrWhiteSpace(additionalMsg) ? "الصنف موجود مسبقاً (سيتم تحديث بياناته وأسعاره)" : $"تحديث الصنف ({additionalMsg})";
                             result.UpdatedProductsCount++;
                         }
                     }
@@ -484,9 +421,7 @@ public class ProductExcelService : IProductExcelService
                         else
                         {
                             rowVal.Action = RowActionType.Create;
-                            rowVal.Message = string.IsNullOrWhiteSpace(additionalMsg)
-                                ? "صنف جديد (سيتم إضافته للنظام)"
-                                : $"صنف جديد ({additionalMsg})";
+                            rowVal.Message = string.IsNullOrWhiteSpace(additionalMsg) ? "صنف جديد (سيتم إضافته للنظام)" : $"صنف جديد ({additionalMsg})";
                             result.NewProductsCount++;
                         }
                     }
@@ -509,7 +444,6 @@ public class ProductExcelService : IProductExcelService
                 // معالجة فحص ملف الـ 3 شيتات (Multi-Sheet)
                 var wsProducts = workbook.Worksheets.FirstOrDefault(w => IsProductsSheetName(w.Name)) ?? workbook.Worksheets.FirstOrDefault();
                 var wsBarcodes = workbook.Worksheets.FirstOrDefault(w => IsBarcodesSheetName(w.Name)) ?? workbook.Worksheets.ElementAtOrDefault(1);
-
                 if (wsProducts != null)
                 {
                     var productsWithBarcodesInSheet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -521,7 +455,6 @@ public class ProductExcelService : IProductExcelService
                             string barIdCode = wsBarcodes.Cell(r, 1).GetString().Trim();
                             string rawProdIdStr = wsBarcodes.Cell(r, 2).GetString().Trim();
                             string bCode = wsBarcodes.Cell(r, 3).GetString().Trim();
-
                             if (string.IsNullOrWhiteSpace(bCode) && !string.IsNullOrWhiteSpace(rawProdIdStr) && string.IsNullOrWhiteSpace(barIdCode))
                             {
                                 bCode = rawProdIdStr;
@@ -532,6 +465,7 @@ public class ProductExcelService : IProductExcelService
                             {
                                 newBarcodesInFile.Add(bCode);
                             }
+
                             if (!string.IsNullOrWhiteSpace(rawProdIdStr))
                             {
                                 productsWithBarcodesInSheet.Add(rawProdIdStr);
@@ -546,24 +480,18 @@ public class ProductExcelService : IProductExcelService
                         string c2 = wsProducts.Cell(r, 2).GetString().Trim();
                         string c3 = wsProducts.Cell(r, 3).GetString().Trim();
                         string c4 = wsProducts.Cell(r, 4).GetString().Trim();
-
-                        if (string.IsNullOrWhiteSpace(c1) && string.IsNullOrWhiteSpace(c2)) continue;
-
+                        if (string.IsNullOrWhiteSpace(c1) && string.IsNullOrWhiteSpace(c2))
+                            continue;
                         result.TotalRows++;
                         string name = string.IsNullOrWhiteSpace(c2) ? c1 : c2;
                         string prodCode = string.IsNullOrWhiteSpace(c2) ? string.Empty : c1;
                         decimal.TryParse(c3, out var cost);
                         decimal.TryParse(c4, out var sale);
-
-                        bool hasBarcodeInSheet = (!string.IsNullOrWhiteSpace(prodCode) && productsWithBarcodesInSheet.Contains(prodCode)) ||
-                                                 productsWithBarcodesInSheet.Contains(name);
-
+                        bool hasBarcodeInSheet = (!string.IsNullOrWhiteSpace(prodCode) && productsWithBarcodesInSheet.Contains(prodCode)) || productsWithBarcodesInSheet.Contains(name);
                         bool hasBarcodeInDb = productNameMap.TryGetValue(name, out var pId) && productsByBarcodeProductId.ContainsKey(pId);
-
                         string displayBarcode;
                         string extraMsg = string.Empty;
                         bool isMultiAuto = false;
-
                         if (hasBarcodeInSheet)
                         {
                             displayBarcode = "محدد في ورقة الأكواد";
@@ -605,17 +533,18 @@ public class ProductExcelService : IProductExcelService
                             UnitName = "حبة",
                             Message = extraMsg
                         };
-
                         if (productNameMap.ContainsKey(name))
                         {
                             rowVal.Action = options.ImportMode == ProductImportMode.InsertOnly ? RowActionType.Skip : RowActionType.Update;
-                            if (string.IsNullOrWhiteSpace(rowVal.Message)) rowVal.Message = "صنف موجود مسبقاً";
+                            if (string.IsNullOrWhiteSpace(rowVal.Message))
+                                rowVal.Message = "صنف موجود مسبقاً";
                             result.UpdatedProductsCount++;
                         }
                         else
                         {
                             rowVal.Action = options.ImportMode == ProductImportMode.UpdateExistingOnly ? RowActionType.Skip : RowActionType.Create;
-                            if (string.IsNullOrWhiteSpace(rowVal.Message)) rowVal.Message = "صنف جديد";
+                            if (string.IsNullOrWhiteSpace(rowVal.Message))
+                                rowVal.Message = "صنف جديد";
                             result.NewProductsCount++;
                         }
 
@@ -627,10 +556,9 @@ public class ProductExcelService : IProductExcelService
 
             result.NewCategoriesCount = newCategoriesInFile.Count;
             result.NewBarcodesCount = newBarcodesInFile.Count;
-
             return ServiceResult<ProductExcelValidationResultDto>.Success(result);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException)when (ct.IsCancellationRequested)
         {
             throw;
         }
@@ -643,17 +571,13 @@ public class ProductExcelService : IProductExcelService
         }
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<ProductImportResultDto>> ImportProductsFromExcelAsync(
-        Stream excelStream,
-        ProductExcelImportOptionsDto? options = null,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<ProductImportResultDto>> ImportProductsFromExcelAsync(Stream excelStream, ProductExcelImportOptionsDto? options = null, CancellationToken ct = default)
     {
         // تهيئة كائن خيارات الاستيراد بالقيم الافتراضية
         options ??= new ProductExcelImportOptionsDto();
         // تهيئة كائن نتائج الاستيراد
         var result = new ProductImportResultDto();
-
         // التحقق من صحة وصلاحية دفق ملف إكسيل
         if (excelStream == null || (excelStream.CanSeek && excelStream.Length == 0))
         {
@@ -668,7 +592,6 @@ public class ProductExcelService : IProductExcelService
             using var ms = new MemoryStream();
             await excelStream.CopyToAsync(ms, ct);
             ms.Position = 0;
-
             using var workbook = new XLWorkbook(ms);
             var workbookLimitError = ValidateWorkbookLimits(workbook);
             if (workbookLimitError is not null)
@@ -678,29 +601,23 @@ public class ProductExcelService : IProductExcelService
             }
 
             bool isSingleSheet = DetectIfSingleSheet(workbook);
-
             // جلب المخازن والصالات لتهيئة المخزون
-            var showrooms = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Show, ct);
+            var showrooms = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Show, ct);
             if (showrooms.Count == 0)
             {
-                showrooms = await _unitOfWork.Warehouses.GetAllAsync(ct);
+                showrooms = await _unitOfWork.Warehouses.ListLookupAsync(ct);
             }
-            var targetShowroom = options.DefaultShowroomWarehouseId.HasValue
-                ? showrooms.FirstOrDefault(s => s.Id == options.DefaultShowroomWarehouseId.Value) ?? showrooms.FirstOrDefault()
-                : showrooms.FirstOrDefault();
 
-            var storageWarehouses = await _unitOfWork.Warehouses.FindAsync(w => w.Type == WarehouseType.Storge, ct);
+            var targetShowroom = options.DefaultShowroomWarehouseId.HasValue ? showrooms.FirstOrDefault(s => s.Id == options.DefaultShowroomWarehouseId.Value) ?? showrooms.FirstOrDefault() : showrooms.FirstOrDefault();
+            var storageWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
             if (storageWarehouses.Count == 0)
             {
-                storageWarehouses = await _unitOfWork.Warehouses.GetAllAsync(ct);
+                storageWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
             }
-            var targetStorageWh = options.DefaultStorageWarehouseId.HasValue
-                ? storageWarehouses.FirstOrDefault(s => s.Id == options.DefaultStorageWarehouseId.Value) ?? storageWarehouses.FirstOrDefault()
-                : storageWarehouses.FirstOrDefault();
 
+            var targetStorageWh = options.DefaultStorageWarehouseId.HasValue ? storageWarehouses.FirstOrDefault(s => s.Id == options.DefaultStorageWarehouseId.Value) ?? storageWarehouses.FirstOrDefault() : storageWarehouses.FirstOrDefault();
             // بدء معاملة مالية متكاملة لضمان سلامة العمليات
             await _unitOfWork.BeginTransactionAsync(ct);
-
             if (isSingleSheet)
             {
                 await ProcessSingleSheetImportAsync(workbook, options, targetShowroom, targetStorageWh, result, ct);
@@ -712,10 +629,9 @@ public class ProductExcelService : IProductExcelService
 
             // تثبيت المعاملة عند النجاح
             await _unitOfWork.CommitTransactionAsync(ct);
-
             return ServiceResult<ProductImportResultDto>.Success(result);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException)when (ct.IsCancellationRequested)
         {
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             throw;
@@ -750,25 +666,18 @@ public class ProductExcelService : IProductExcelService
         return null;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<byte[]> GenerateFailedRowsExcelAsync(List<FailedRowDetailsDto> failedRows, CancellationToken ct = default)
     {
         // إنشاء مصنف إكسيل لملف الأسطر المرفوضة
         using var workbook = new XLWorkbook();
         // ضبط اتجاه المصنف من اليمين لليسار
         workbook.RightToLeft = true;
-
         // إضافة ورقة عمل مخصصة للأسطر المرفوضة
         var ws = workbook.Worksheets.Add("الأسطر المرفوضة");
         // ضبط اتجاه ورقة العمل
         ws.RightToLeft = true;
-
-        SetupHeader(ws, new[]
-        {
-            "رقم السطر في الملف", "كود الصنف", "اسم الصنف", "الباركود", "التصنيف", "الوحدة",
-            "سعر التكلفة", "سعر البيع", "كمية الصالة", "كمية المخزن", "سبب الرفض والخطأ *"
-        });
-
+        SetupHeader(ws, new[] { "رقم السطر في الملف", "كود الصنف", "اسم الصنف", "الباركود", "التصنيف", "الوحدة", "سعر التكلفة", "سعر البيع", "كمية الصالة", "كمية المخزن", "سبب الرفض والخطأ *" });
         int row = 2;
         foreach (var f in failedRows)
         {
@@ -782,72 +691,58 @@ public class ProductExcelService : IProductExcelService
             ws.Cell(row, 8).Value = f.SalePrice;
             ws.Cell(row, 9).Value = f.ShowroomQuantity;
             ws.Cell(row, 10).Value = f.StorageQuantity;
-
             var reasonCell = ws.Cell(row, 11);
             reasonCell.Value = f.ErrorReason;
             reasonCell.Style.Font.FontColor = XLColor.Red;
             reasonCell.Style.Font.Bold = true;
-
             row++;
         }
 
         ws.Columns().AdjustToContents();
-
         using var ms = new MemoryStream();
         workbook.SaveAs(ms);
         return ms.ToArray();
     }
 
-    #region Private Import Processors
-
-    private async Task ProcessSingleSheetImportAsync(
-        XLWorkbook workbook,
-        ProductExcelImportOptionsDto options,
-        Warehouse? targetShowroom,
-        Warehouse? targetStorageWh,
-        ProductImportResultDto result,
-        CancellationToken ct)
+#region Private Import Processors
+    private async Task ProcessSingleSheetImportAsync(XLWorkbook workbook, ProductExcelImportOptionsDto options, Warehouse? targetShowroom, Warehouse? targetStorageWh, ProductImportResultDto result, CancellationToken ct)
     {
         var ws = workbook.Worksheets.FirstOrDefault();
-        if (ws == null) return;
-
+        if (ws == null)
+            return;
         var colMap = DetectSingleSheetColumns(ws);
         int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
-
         // قواميس التحميل المسبق لتسريع العمليات
-        var existingCategories = (await _unitOfWork.Categories.GetAllTrackedAsync(ct)).ToList();
+        var importKeys = CollectImportKeys(workbook, ct);
+        var existingCategories = (await _unitOfWork.Categories.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         var categoryNameMap = existingCategories.ToDictionary(c => c.Name.Trim(), c => c, StringComparer.OrdinalIgnoreCase);
-
-        var existingUnits = (await _unitOfWork.Units.GetAllTrackedAsync(ct)).ToList();
+        var existingUnits = (await _unitOfWork.Units.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         var unitNameMap = existingUnits.ToDictionary(u => u.Name.Trim(), u => u, StringComparer.OrdinalIgnoreCase);
-
-        var existingProducts = (await _unitOfWork.Products.GetAllTrackedAsync(ct)).ToList();
+        var existingProducts = (await _unitOfWork.Products.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         var productNameMap = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
         var productIdMap = existingProducts.ToDictionary(p => p.Id, p => p);
-
-        var existingBarcodes = (await _unitOfWork.Products.GetAllBarCodesTrackedAsync(ct)).ToList();
+        var existingBarcodes = (await _unitOfWork.Products.GetImportBarcodesForUpdateAsync(importKeys, existingProducts.Select(p => p.Id), ct)).ToList();
         var barcodeMap = existingBarcodes.ToDictionary(b => b.BarCode.Trim(), b => b, StringComparer.OrdinalIgnoreCase);
-        var usedBarcodesSet = new HashSet<string>(existingBarcodes.Select(b => b.BarCode.Trim()), StringComparer.OrdinalIgnoreCase);
+        var usedBarcodesSet = new HashSet<string>((await _unitOfWork.Products.GetBarcodeValuesAsync(ct)).Concat(existingBarcodes.Select(b => b.BarCode)).Select(b => b.Trim()), StringComparer.OrdinalIgnoreCase);
         long barcodeSequence = InitializeBarcodeSequence(usedBarcodesSet);
-
-        var existingShowroomStocks = (await _unitOfWork.Stock.GetAllShowroomStocksTrackedAsync(ct)).ToList();
-        var existingStorageStocks = (await _unitOfWork.Stock.GetAllStorgeStocksTrackedAsync(ct)).ToList();
-
+        var existingShowroomStocks = targetShowroom is null ? new List<ShowroomStock>() : (await _unitOfWork.Stock.GetShowroomForUpdateAsync(targetShowroom.Id, existingProducts.Select(p => p.Id), ct)).ToList();
+        var existingStorageStocks = targetStorageWh is null ? new List<StorgeStock>() : (await _unitOfWork.Stock.GetStorageForUpdateAsync(targetStorageWh.Id, existingBarcodes.Select(b => b.Id), ct)).ToList();
         // فهرس وحدات الأصناف — استعلام واحد قبل الحلقة بدل استعلام جدول كامل لكل صف
-        var existingProdUnits = (await _unitOfWork.Products.GetAllUnitsTrackedAsync(ct)).ToList();
+        var existingProdUnits = (await _unitOfWork.Products.GetImportUnitsForUpdateAsync(existingProducts.Select(p => p.Id), ct)).ToList();
         var existingProdUnitsByProduct = existingProdUnits.ToDictionary(u => (u.ProductId, u.UnitId), u => u);
-
         // فهارس قاموسية O(1) للأرصدة بدل مسح خطي لكل صف
-        var showroomStocksByProductAndWarehouse = existingShowroomStocks
-            .ToDictionary(s => (s.WarehouseId, s.ProductId), s => s);
-        var storageStocksByBarcodeAndWarehouse = existingStorageStocks
-            .ToDictionary(s => (s.WarehouseId, s.ProductBarcodeId), s => s);
-
+        var showroomStocksByProductAndWarehouse = existingShowroomStocks.ToDictionary(s => (s.WarehouseId, s.ProductId), s => s);
+        var storageStocksByBarcodeAndWarehouse = existingStorageStocks.ToDictionary(s => (s.WarehouseId, s.ProductBarcodeId), s => s);
         // ضمان وجود تصنيف عام
         Category? defaultCat = existingCategories.FirstOrDefault(c => c.Name.Equals("عام", StringComparison.OrdinalIgnoreCase));
         if (defaultCat == null)
         {
-            defaultCat = new Category { Id = Guid.NewGuid(), Name = "عام", IsActive = true };
+            defaultCat = new Category
+            {
+                Id = Guid.NewGuid(),
+                Name = "عام",
+                IsActive = true
+            };
             await _unitOfWork.Categories.AddAsync(defaultCat, ct);
             existingCategories.Add(defaultCat);
             categoryNameMap[defaultCat.Name] = defaultCat;
@@ -858,7 +753,12 @@ public class ProductExcelService : IProductExcelService
         Unit? defaultUnit = existingUnits.FirstOrDefault(u => u.Name.Equals("حبة", StringComparison.OrdinalIgnoreCase) || u.Name.Equals("قطعة", StringComparison.OrdinalIgnoreCase));
         if (defaultUnit == null)
         {
-            defaultUnit = new Unit { Id = Guid.NewGuid(), Name = "حبة", UnitPackage = 1 };
+            defaultUnit = new Unit
+            {
+                Id = Guid.NewGuid(),
+                Name = "حبة",
+                UnitPackage = 1
+            };
             await _unitOfWork.Units.AddAsync(defaultUnit, ct);
             existingUnits.Add(defaultUnit);
             unitNameMap[defaultUnit.Name] = defaultUnit;
@@ -879,43 +779,25 @@ public class ProductExcelService : IProductExcelService
             string storeQtyStr = GetCellValue(ws, r, colMap.StorageQtyCol);
             string minStockStr = GetCellValue(ws, r, colMap.MinStockCol);
             string desc = GetCellValue(ws, r, colMap.DescriptionCol);
-
             if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(barcode))
                 continue;
-
             decimal.TryParse(costStr, out var costPrice);
             decimal.TryParse(saleStr, out var salePrice);
             int.TryParse(convStr, out var convFactor);
-            if (convFactor <= 0) convFactor = 1;
+            if (convFactor <= 0)
+                convFactor = 1;
             int.TryParse(showQtyStr, out var showQty);
             int.TryParse(storeQtyStr, out var storeQty);
             int.TryParse(minStockStr, out var minStock);
-
             if (string.IsNullOrWhiteSpace(name))
             {
-                result.FailedRows.Add(new FailedRowDetailsDto
-                {
-                    RowNumber = r,
-                    ItemCode = code,
-                    Name = name,
-                    BarCode = barcode,
-                    ErrorReason = "اسم الصنف فارغ وإلزامي"
-                });
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, ErrorReason = "اسم الصنف فارغ وإلزامي" });
                 continue;
             }
 
             if (costPrice < 0 || salePrice < 0)
             {
-                result.FailedRows.Add(new FailedRowDetailsDto
-                {
-                    RowNumber = r,
-                    ItemCode = code,
-                    Name = name,
-                    BarCode = barcode,
-                    CostPrice = costPrice,
-                    SalePrice = salePrice,
-                    ErrorReason = "أسعار الصنف لا يمكن أن تكون سالبة"
-                });
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, CostPrice = costPrice, SalePrice = salePrice, ErrorReason = "أسعار الصنف لا يمكن أن تكون سالبة" });
                 continue;
             }
 
@@ -929,7 +811,12 @@ public class ProductExcelService : IProductExcelService
                 }
                 else if (options.AutoCreateCategories)
                 {
-                    finalCategory = new Category { Id = Guid.NewGuid(), Name = catName, IsActive = true };
+                    finalCategory = new Category
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = catName,
+                        IsActive = true
+                    };
                     await _unitOfWork.Categories.AddAsync(finalCategory, ct);
                     existingCategories.Add(finalCategory);
                     categoryNameMap[catName] = finalCategory;
@@ -947,7 +834,12 @@ public class ProductExcelService : IProductExcelService
                 }
                 else if (options.AutoCreateUnits)
                 {
-                    finalUnit = new Unit { Id = Guid.NewGuid(), Name = unitName, UnitPackage = convFactor };
+                    finalUnit = new Unit
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = unitName,
+                        UnitPackage = convFactor
+                    };
                     await _unitOfWork.Units.AddAsync(finalUnit, ct);
                     existingUnits.Add(finalUnit);
                     unitNameMap[unitName] = finalUnit;
@@ -961,10 +853,12 @@ public class ProductExcelService : IProductExcelService
             {
                 productIdMap.TryGetValue(existingBc.ProductId, out targetProduct);
             }
+
             if (targetProduct == null && !string.IsNullOrWhiteSpace(code) && Guid.TryParse(code, out var parsedGuid))
             {
                 productIdMap.TryGetValue(parsedGuid, out targetProduct);
             }
+
             if (targetProduct == null && productNameMap.TryGetValue(name, out var prodByName))
             {
                 targetProduct = prodByName;
@@ -983,7 +877,8 @@ public class ProductExcelService : IProductExcelService
                 targetProduct.CostPrice = costPrice;
                 targetProduct.SalePrice = salePrice;
                 targetProduct.CategoryId = finalCategory.Id;
-                if (!string.IsNullOrWhiteSpace(desc)) targetProduct.Description = desc;
+                if (!string.IsNullOrWhiteSpace(desc))
+                    targetProduct.Description = desc;
                 result.ProductsImported++;
             }
             else
@@ -1010,9 +905,7 @@ public class ProductExcelService : IProductExcelService
             }
 
             // 4. ربط وحدة الصنف ProductUnit — فهرس قاموسي مبني مسبقاً بدل استعلام جدول كامل لكل صف
-            var prodUnit = existingProdUnitsByProduct.TryGetValue((targetProduct.Id, finalUnit.Id), out var existingUnit)
-                ? existingUnit
-                : null;
+            var prodUnit = existingProdUnitsByProduct.TryGetValue((targetProduct.Id, finalUnit.Id), out var existingUnit) ? existingUnit : null;
             if (prodUnit == null)
             {
                 prodUnit = new ProductUnit
@@ -1021,7 +914,7 @@ public class ProductExcelService : IProductExcelService
                     ProductId = targetProduct.Id,
                     UnitId = finalUnit.Id,
                     ConversionFactor = convFactor,
-                    IsDefault = true
+                    IsDefault = !existingProdUnits.Any(u => u.ProductId == targetProduct.Id && u.IsDefault && !u.IsDeleted)
                 };
                 await _unitOfWork.Products.AddUnitAsync(prodUnit, ct);
                 existingProdUnits.Add(prodUnit);
@@ -1036,10 +929,8 @@ public class ProductExcelService : IProductExcelService
             ProductBarCode? primaryBarcodeEntity = null;
             string rawBarcode = barcode?.Trim() ?? string.Empty;
             string rawCode = code?.Trim() ?? string.Empty;
-
             string effectiveBarcode = rawBarcode;
             bool isAutoGenerated = false;
-
             if (string.IsNullOrWhiteSpace(effectiveBarcode))
             {
                 if (options.AutoGenerateMissingBarcodes)
@@ -1087,13 +978,13 @@ public class ProductExcelService : IProductExcelService
             // 6. تهيئة رصيد الصالة ShowroomStock — بحث O(1) بالفهرس المسبق
             if (targetShowroom != null)
             {
-                var sStock = showroomStocksByProductAndWarehouse.TryGetValue((targetShowroom.Id, targetProduct.Id), out var foundStock)
-                    ? foundStock
-                    : null;
+                var sStock = showroomStocksByProductAndWarehouse.TryGetValue((targetShowroom.Id, targetProduct.Id), out var foundStock) ? foundStock : null;
                 if (sStock != null)
                 {
-                    if (showQty > 0) sStock.Quantity = showQty;
-                    if (minStock > 0) sStock.MinStockLevel = minStock;
+                    if (showQty > 0)
+                        sStock.Quantity = showQty;
+                    if (minStock > 0)
+                        sStock.MinStockLevel = minStock;
                 }
                 else
                 {
@@ -1115,13 +1006,13 @@ public class ProductExcelService : IProductExcelService
             // 7. تهيئة رصيد المخزن StorgeStock — بحث O(1) بالفهرس المسبق
             if (targetStorageWh != null && primaryBarcodeEntity != null)
             {
-                var stStock = storageStocksByBarcodeAndWarehouse.TryGetValue((targetStorageWh.Id, primaryBarcodeEntity.Id), out var foundStStock)
-                    ? foundStStock
-                    : null;
+                var stStock = storageStocksByBarcodeAndWarehouse.TryGetValue((targetStorageWh.Id, primaryBarcodeEntity.Id), out var foundStStock) ? foundStStock : null;
                 if (stStock != null)
                 {
-                    if (storeQty > 0) stStock.Quantity = storeQty;
-                    if (minStock > 0) stStock.MinStockLevel = minStock;
+                    if (storeQty > 0)
+                        stStock.Quantity = storeQty;
+                    if (minStock > 0)
+                        stStock.MinStockLevel = minStock;
                 }
                 else
                 {
@@ -1150,18 +1041,11 @@ public class ProductExcelService : IProductExcelService
         await SaveTrackedChangesAsync(ct);
     }
 
-    private async Task ProcessMultiSheetImportAsync(
-        XLWorkbook workbook,
-        ProductExcelImportOptionsDto options,
-        Warehouse? targetShowroom,
-        Warehouse? targetStorageWh,
-        ProductImportResultDto result,
-        CancellationToken ct)
+    private async Task ProcessMultiSheetImportAsync(XLWorkbook workbook, ProductExcelImportOptionsDto options, Warehouse? targetShowroom, Warehouse? targetStorageWh, ProductImportResultDto result, CancellationToken ct)
     {
         var wsCategories = workbook.Worksheets.FirstOrDefault(w => IsCategoriesSheetName(w.Name)) ?? workbook.Worksheets.ElementAtOrDefault(2);
         var wsProducts = workbook.Worksheets.FirstOrDefault(w => IsProductsSheetName(w.Name)) ?? workbook.Worksheets.FirstOrDefault();
         var wsBarcodes = workbook.Worksheets.FirstOrDefault(w => IsBarcodesSheetName(w.Name)) ?? workbook.Worksheets.ElementAtOrDefault(1);
-
         if (wsProducts == null)
         {
             result.Errors.Add("لم يتم العثور على ورقة الأصناف في ملف Excel");
@@ -1172,8 +1056,8 @@ public class ProductExcelService : IProductExcelService
         var categoryNameMap = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
         var productCodeMap = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
         var productNameMap = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-
-        var existingCategories = (await _unitOfWork.Categories.GetAllTrackedAsync(ct)).ToList();
+        var importKeys = CollectImportKeys(workbook, ct);
+        var existingCategories = (await _unitOfWork.Categories.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         // فهرس قاموسي للتصنيفات بدل المسح الخطي داخل الحلقات
         var categoriesById = existingCategories.ToDictionary(c => c.Id, c => c);
         foreach (var cat in existingCategories)
@@ -1190,18 +1074,21 @@ public class ProductExcelService : IProductExcelService
             {
                 string catIdCode = wsCategories.Cell(r, 1).GetString().Trim();
                 string catName = wsCategories.Cell(r, 2).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(catName)) continue;
-
+                if (string.IsNullOrWhiteSpace(catName))
+                    continue;
                 Category? targetCat = null;
                 if (!string.IsNullOrWhiteSpace(catIdCode) && Guid.TryParse(catIdCode, out var gCat) && categoriesById.TryGetValue(gCat, out var byIdCat))
                     targetCat = byIdCat;
-
                 if (targetCat == null && categoryNameMap.TryGetValue(catName, out var existingIdByName) && categoriesById.TryGetValue(existingIdByName, out var byNameCat))
                     targetCat = byNameCat;
-
                 if (targetCat == null && options.AutoCreateCategories)
                 {
-                    targetCat = new Category { Id = Guid.NewGuid(), Name = catName, IsActive = true };
+                    targetCat = new Category
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = catName,
+                        IsActive = true
+                    };
                     await _unitOfWork.Categories.AddAsync(targetCat, ct);
                     existingCategories.Add(targetCat);
                     categoryNameMap[catName] = targetCat.Id;
@@ -1221,7 +1108,12 @@ public class ProductExcelService : IProductExcelService
         Category? defaultCategory = existingCategories.FirstOrDefault(c => c.Name.Equals("عام", StringComparison.OrdinalIgnoreCase));
         if (defaultCategory == null)
         {
-            defaultCategory = new Category { Id = Guid.NewGuid(), Name = "عام", IsActive = true };
+            defaultCategory = new Category
+            {
+                Id = Guid.NewGuid(),
+                Name = "عام",
+                IsActive = true
+            };
             await _unitOfWork.Categories.AddAsync(defaultCategory, ct);
             existingCategories.Add(defaultCategory);
             categoryNameMap[defaultCategory.Name] = defaultCategory.Id;
@@ -1229,9 +1121,8 @@ public class ProductExcelService : IProductExcelService
         }
 
         await SaveTrackedChangesAsync(ct);
-
         // 2. معالجة الأصناف
-        var existingProducts = (await _unitOfWork.Products.GetAllTrackedAsync(ct)).ToList();
+        var existingProducts = (await _unitOfWork.Products.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         // فهارس قاموسية للأصناف وأرصدة الصالة بدل المسح الخطي لكل صف
         var productsById = existingProducts.ToDictionary(p => p.Id, p => p);
         var productsByName = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
@@ -1241,11 +1132,9 @@ public class ProductExcelService : IProductExcelService
                 productNameMap[prod.Name.Trim()] = prod.Id;
         }
 
-        var existingShowroomStocks = (await _unitOfWork.Stock.GetAllShowroomStocksTrackedAsync(ct)).ToList();
-        var showroomStocksByProductAndWarehouse = existingShowroomStocks
-            .ToDictionary(s => (s.WarehouseId, s.ProductId), s => s);
+        var existingShowroomStocks = targetShowroom is null ? new List<ShowroomStock>() : (await _unitOfWork.Stock.GetShowroomForUpdateAsync(targetShowroom.Id, existingProducts.Select(p => p.Id), ct)).ToList();
+        var showroomStocksByProductAndWarehouse = existingShowroomStocks.ToDictionary(s => (s.WarehouseId, s.ProductId), s => s);
         var processedProductsList = new List<(Product Product, string? RawCode)>();
-
         int lastProdRow = wsProducts.LastRowUsed()?.RowNumber() ?? 1;
         for (int r = 2; r <= lastProdRow; r++)
         {
@@ -1254,24 +1143,30 @@ public class ProductExcelService : IProductExcelService
             string col3 = wsProducts.Cell(r, 3).GetString().Trim();
             string col4 = wsProducts.Cell(r, 4).GetString().Trim();
             string col5 = wsProducts.Cell(r, 5).GetString().Trim();
-
-            if (string.IsNullOrWhiteSpace(col1) && string.IsNullOrWhiteSpace(col2)) continue;
-
+            if (string.IsNullOrWhiteSpace(col1) && string.IsNullOrWhiteSpace(col2))
+                continue;
             string? rawProdIdCode = col1;
             string prodName = string.IsNullOrWhiteSpace(col2) ? col1 : col2;
             decimal.TryParse(col3, out var costPrice);
             decimal.TryParse(col4, out var salePrice);
             string catInputStr = col5;
-
             Guid finalCategoryId = defaultCategory.Id;
             if (!string.IsNullOrWhiteSpace(catInputStr))
             {
-                if (categoryCodeMap.TryGetValue(catInputStr, out var cId)) finalCategoryId = cId;
-                else if (categoryNameMap.TryGetValue(catInputStr, out var cIdByName)) finalCategoryId = cIdByName;
-                else if (Guid.TryParse(catInputStr, out var rawCatGuid) && categoriesById.ContainsKey(rawCatGuid)) finalCategoryId = rawCatGuid;
+                if (categoryCodeMap.TryGetValue(catInputStr, out var cId))
+                    finalCategoryId = cId;
+                else if (categoryNameMap.TryGetValue(catInputStr, out var cIdByName))
+                    finalCategoryId = cIdByName;
+                else if (Guid.TryParse(catInputStr, out var rawCatGuid) && categoriesById.ContainsKey(rawCatGuid))
+                    finalCategoryId = rawCatGuid;
                 else if (options.AutoCreateCategories)
                 {
-                    var newCat = new Category { Id = Guid.NewGuid(), Name = catInputStr, IsActive = true };
+                    var newCat = new Category
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = catInputStr,
+                        IsActive = true
+                    };
                     await _unitOfWork.Categories.AddAsync(newCat, ct);
                     existingCategories.Add(newCat);
                     categoryNameMap[catInputStr] = newCat.Id;
@@ -1283,13 +1178,10 @@ public class ProductExcelService : IProductExcelService
             Product? targetProduct = null;
             if (!string.IsNullOrWhiteSpace(rawProdIdCode) && productCodeMap.TryGetValue(rawProdIdCode, out var pIdByCode) && productsById.TryGetValue(pIdByCode, out var byCodeProd))
                 targetProduct = byCodeProd;
-
             if (targetProduct == null && !string.IsNullOrWhiteSpace(rawProdIdCode) && Guid.TryParse(rawProdIdCode, out var parsedGuid) && productsById.TryGetValue(parsedGuid, out var byGuidProd))
                 targetProduct = byGuidProd;
-
             if (targetProduct == null && productsByName.TryGetValue(prodName, out var byNameProd))
                 targetProduct = byNameProd;
-
             if (targetProduct != null)
             {
                 if (options.ImportMode != ProductImportMode.InsertOnly)
@@ -1321,10 +1213,12 @@ public class ProductExcelService : IProductExcelService
 
             if (targetProduct != null)
             {
-                if (!string.IsNullOrWhiteSpace(rawProdIdCode)) productCodeMap[rawProdIdCode] = targetProduct.Id;
+                if (!string.IsNullOrWhiteSpace(rawProdIdCode))
+                    productCodeMap[rawProdIdCode] = targetProduct.Id;
                 productNameMap[prodName] = targetProduct.Id;
+                productsById[targetProduct.Id] = targetProduct;
+                productsByName[prodName] = targetProduct;
                 processedProductsList.Add((targetProduct, rawProdIdCode));
-
                 // تهيئة مخزون الصالة الافتراضي — بحث O(1) بالفهرس المسبق
                 if (targetShowroom != null)
                 {
@@ -1348,27 +1242,22 @@ public class ProductExcelService : IProductExcelService
         }
 
         await SaveTrackedChangesAsync(ct);
-
         // 3. معالجة الباركودات المسجلة في ورقة الأكواد
-        var existingBarcodes = (await _unitOfWork.Products.GetAllBarCodesTrackedAsync(ct)).ToList();
-        var existingStorageStocks = (await _unitOfWork.Stock.GetAllStorgeStocksTrackedAsync(ct)).ToList();
+        var existingBarcodes = (await _unitOfWork.Products.GetImportBarcodesForUpdateAsync(importKeys, existingProducts.Select(p => p.Id), ct)).ToList();
+        var existingStorageStocks = targetStorageWh is null ? new List<StorgeStock>() : (await _unitOfWork.Stock.GetStorageForUpdateAsync(targetStorageWh.Id, existingBarcodes.Select(b => b.Id), ct)).ToList();
         var productsWithBarcodes = new HashSet<Guid>(existingBarcodes.Select(b => b.ProductId));
         // فهارس قاموسية للباركودات وأرصدة التخزين بدل المسح الخطي لكل صف
         var barcodesByCode = existingBarcodes.ToDictionary(b => b.BarCode.Trim(), b => b, StringComparer.OrdinalIgnoreCase);
-        var storageStocksByBarcodeAndWarehouse = existingStorageStocks
-            .ToDictionary(s => (s.WarehouseId, s.ProductBarcodeId), s => s);
-
+        var storageStocksByBarcodeAndWarehouse = existingStorageStocks.ToDictionary(s => (s.WarehouseId, s.ProductBarcodeId), s => s);
         if (wsBarcodes != null && wsBarcodes != wsProducts)
         {
             int lastBarRow = wsBarcodes.LastRowUsed()?.RowNumber() ?? 1;
-
             for (int r = 2; r <= lastBarRow; r++)
             {
                 string barIdCode = wsBarcodes.Cell(r, 1).GetString().Trim();
                 string rawProdIdStr = wsBarcodes.Cell(r, 2).GetString().Trim();
                 string barCode = wsBarcodes.Cell(r, 3).GetString().Trim();
                 string title = wsBarcodes.Cell(r, 4).GetString().Trim();
-
                 if (string.IsNullOrWhiteSpace(barCode))
                 {
                     if (!string.IsNullOrWhiteSpace(rawProdIdStr) && string.IsNullOrWhiteSpace(barIdCode))
@@ -1376,12 +1265,15 @@ public class ProductExcelService : IProductExcelService
                         barCode = rawProdIdStr;
                         rawProdIdStr = barIdCode;
                     }
-                    else continue;
+                    else
+                        continue;
                 }
 
                 Guid targetProductId = Guid.Empty;
-                if (!string.IsNullOrWhiteSpace(rawProdIdStr) && productCodeMap.TryGetValue(rawProdIdStr, out var prodIdByCode)) targetProductId = prodIdByCode;
-                else if (!string.IsNullOrWhiteSpace(rawProdIdStr) && productNameMap.TryGetValue(rawProdIdStr, out var prodIdByName)) targetProductId = prodIdByName;
+                if (!string.IsNullOrWhiteSpace(rawProdIdStr) && productCodeMap.TryGetValue(rawProdIdStr, out var prodIdByCode))
+                    targetProductId = prodIdByCode;
+                else if (!string.IsNullOrWhiteSpace(rawProdIdStr) && productNameMap.TryGetValue(rawProdIdStr, out var prodIdByName))
+                    targetProductId = prodIdByName;
                 else if (!string.IsNullOrWhiteSpace(rawProdIdStr) && Guid.TryParse(rawProdIdStr, out var gP) && productsById.ContainsKey(gP))
                 {
                     targetProductId = gP;
@@ -1394,11 +1286,10 @@ public class ProductExcelService : IProductExcelService
                 }
 
                 var parentProd = productsById.TryGetValue(targetProductId, out var foundProd) ? foundProd : null;
-                if (parentProd == null) continue;
-
+                if (parentProd == null)
+                    continue;
                 ProductBarCode? targetBarCode = barcodesByCode.TryGetValue(barCode.Trim(), out var foundBarCode) ? foundBarCode : null;
                 string finalTitle = string.IsNullOrWhiteSpace(title) ? parentProd.Name : title;
-
                 if (targetBarCode != null)
                 {
                     targetBarCode.BarCode = barCode;
@@ -1450,10 +1341,9 @@ public class ProductExcelService : IProductExcelService
         // 4. ضمان صرف كود لجميع الأصناف المستوردة التي ليس لها أي باركود
         if (options.AutoGenerateMissingBarcodes)
         {
-            var usedBarcodesSet = new HashSet<string>(existingBarcodes.Select(b => b.BarCode.Trim()), StringComparer.OrdinalIgnoreCase);
+            var usedBarcodesSet = new HashSet<string>((await _unitOfWork.Products.GetBarcodeValuesAsync(ct)).Concat(existingBarcodes.Select(b => b.BarCode)).Select(b => b.Trim()), StringComparer.OrdinalIgnoreCase);
             long barcodeSequence = InitializeBarcodeSequence(usedBarcodesSet);
-
-            foreach (var (product, rawCode) in processedProductsList)
+            foreach (var(product, rawCode)in processedProductsList)
             {
                 bool hasBarcode = productsWithBarcodes.Contains(product.Id);
                 if (!hasBarcode)
@@ -1461,7 +1351,6 @@ public class ProductExcelService : IProductExcelService
                     // لم يتم العثور على أي كود للصنف في صفحة أكواد المنتجات -> صرف كود جديد تلقائياً
                     string? preferredCandidate = (!string.IsNullOrWhiteSpace(rawCode) && !Guid.TryParse(rawCode, out _)) ? rawCode : null;
                     string generatedBarcode = AllocateOrGenerateBarcode(ref barcodeSequence, usedBarcodesSet, preferredCandidate);
-
                     var newBarcodeEntity = new ProductBarCode
                     {
                         Id = Guid.NewGuid(),
@@ -1469,13 +1358,11 @@ public class ProductExcelService : IProductExcelService
                         BarCode = generatedBarcode,
                         Title = product.Name
                     };
-
                     await _unitOfWork.Products.AddBarCodeAsync(newBarcodeEntity, ct);
                     existingBarcodes.Add(newBarcodeEntity);
                     productsWithBarcodes.Add(product.Id);
                     result.BarcodesImported++;
                     result.AutoGeneratedBarcodesCount++;
-
                     // تهيئة مخزون التخزين للصنف — بحث O(1) بالفهرس المسبق
                     if (targetStorageWh != null)
                     {
@@ -1502,65 +1389,88 @@ public class ProductExcelService : IProductExcelService
         }
     }
 
-    #endregion
-
-    #region Helper Methods
-
+#endregion
+#region Helper Methods
     private static bool IsBarcodesSheetName(string name)
     {
         var n = name.Trim();
-        return n.Equals(SheetBarcodes, StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("باركودات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("اكواد المنتجات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("أكواد المنتجات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("اكواد الاصناف", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("أكواد الأصناف", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("الأكواد", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("الاكواد", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Barcodes", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Codes", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("ProductBarcodes", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Product Codes", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("ProductCodes", StringComparison.OrdinalIgnoreCase);
+        return n.Equals(SheetBarcodes, StringComparison.OrdinalIgnoreCase) || n.Equals("باركودات", StringComparison.OrdinalIgnoreCase) || n.Equals("اكواد المنتجات", StringComparison.OrdinalIgnoreCase) || n.Equals("أكواد المنتجات", StringComparison.OrdinalIgnoreCase) || n.Equals("اكواد الاصناف", StringComparison.OrdinalIgnoreCase) || n.Equals("أكواد الأصناف", StringComparison.OrdinalIgnoreCase) || n.Equals("الأكواد", StringComparison.OrdinalIgnoreCase) || n.Equals("الاكواد", StringComparison.OrdinalIgnoreCase) || n.Equals("Barcodes", StringComparison.OrdinalIgnoreCase) || n.Equals("Codes", StringComparison.OrdinalIgnoreCase) || n.Equals("ProductBarcodes", StringComparison.OrdinalIgnoreCase) || n.Equals("Product Codes", StringComparison.OrdinalIgnoreCase) || n.Equals("ProductCodes", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsCategoriesSheetName(string name)
     {
         var n = name.Trim();
-        return n.Equals(SheetCategories, StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("تصنيفات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("الفئات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("فئات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("المجموعات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("مجموعات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Categories", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Category", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Groups", StringComparison.OrdinalIgnoreCase);
+        return n.Equals(SheetCategories, StringComparison.OrdinalIgnoreCase) || n.Equals("تصنيفات", StringComparison.OrdinalIgnoreCase) || n.Equals("الفئات", StringComparison.OrdinalIgnoreCase) || n.Equals("فئات", StringComparison.OrdinalIgnoreCase) || n.Equals("المجموعات", StringComparison.OrdinalIgnoreCase) || n.Equals("مجموعات", StringComparison.OrdinalIgnoreCase) || n.Equals("Categories", StringComparison.OrdinalIgnoreCase) || n.Equals("Category", StringComparison.OrdinalIgnoreCase) || n.Equals("Groups", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsProductsSheetName(string name)
     {
         var n = name.Trim();
-        return n.Equals(SheetProducts, StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("الاصناف", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("أصناف", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("اصناف", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("المنتجات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("منتجات", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Products", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Product", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Items", StringComparison.OrdinalIgnoreCase) ||
-               n.Equals("Item", StringComparison.OrdinalIgnoreCase);
+        return n.Equals(SheetProducts, StringComparison.OrdinalIgnoreCase) || n.Equals("الاصناف", StringComparison.OrdinalIgnoreCase) || n.Equals("أصناف", StringComparison.OrdinalIgnoreCase) || n.Equals("اصناف", StringComparison.OrdinalIgnoreCase) || n.Equals("المنتجات", StringComparison.OrdinalIgnoreCase) || n.Equals("منتجات", StringComparison.OrdinalIgnoreCase) || n.Equals("Products", StringComparison.OrdinalIgnoreCase) || n.Equals("Product", StringComparison.OrdinalIgnoreCase) || n.Equals("Items", StringComparison.OrdinalIgnoreCase) || n.Equals("Item", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private ImportKeys CollectImportKeys(XLWorkbook workbook, CancellationToken ct)
+    {
+        var ids = new HashSet<Guid>();
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "عام",
+            "حبة",
+            "قطعة"
+        };
+        void Add(string value)
+        {
+            value = value.Trim();
+            if (value.Length == 0)
+                return;
+            values.Add(value);
+            if (Guid.TryParse(value, out var id))
+                ids.Add(id);
+        }
+
+        if (DetectIfSingleSheet(workbook))
+        {
+            var sheet = workbook.Worksheets.First();
+            var columns = DetectSingleSheetColumns(sheet);
+            for (var row = 2; row <= (sheet.LastRowUsed()?.RowNumber() ?? 1); row++)
+            {
+                ct.ThrowIfCancellationRequested();
+                foreach (var col in new[]
+                {
+                    columns.ItemCodeCol,
+                    columns.NameCol,
+                    columns.BarcodeCol,
+                    columns.CategoryCol,
+                    columns.UnitCol
+                }
+
+                )
+                    Add(GetCellValue(sheet, row, col));
+            }
+        }
+        else
+        {
+            // Names, IDs and barcode references are workbook data, not database predicates.
+            foreach (var sheet in workbook.Worksheets)
+                for (var row = 2; row <= (sheet.LastRowUsed()?.RowNumber() ?? 1); row++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    for (var col = 1; col <= Math.Min(5, sheet.LastColumnUsed()?.ColumnNumber() ?? 0); col++)
+                        Add(GetCellValue(sheet, row, col));
+                }
+        }
+
+        return new ImportKeys(ids.ToArray(), values.ToArray());
     }
 
     private static long InitializeBarcodeSequence(IEnumerable<string> existingBarcodes)
     {
         long baseSeq = 200000000001L;
         long maxFound = 0;
-
         foreach (var bc in existingBarcodes)
         {
-            if (string.IsNullOrWhiteSpace(bc)) continue;
+            if (string.IsNullOrWhiteSpace(bc))
+                continue;
             var trimmed = bc.Trim();
             if (trimmed.Length >= 10 && trimmed.Length <= 14 && long.TryParse(trimmed, out var num))
             {
@@ -1579,10 +1489,7 @@ public class ProductExcelService : IProductExcelService
         return baseSeq;
     }
 
-    private static string AllocateOrGenerateBarcode(
-        ref long currentSeq,
-        HashSet<string> usedBarcodes,
-        string? preferredCandidate = null)
+    private static string AllocateOrGenerateBarcode(ref long currentSeq, HashSet<string> usedBarcodes, string? preferredCandidate = null)
     {
         if (!string.IsNullOrWhiteSpace(preferredCandidate))
         {
@@ -1608,11 +1515,11 @@ public class ProductExcelService : IProductExcelService
 
     private bool DetectIfSingleSheet(IXLWorkbook workbook)
     {
-        if (workbook.Worksheets.Count == 1) return true;
-
+        if (workbook.Worksheets.Count == 1)
+            return true;
         var firstWs = workbook.Worksheets.FirstOrDefault();
-        if (firstWs == null) return true;
-
+        if (firstWs == null)
+            return true;
         // فحص عناوين الشيت الأول: إذا كانت تحتوي على الباركود مع السعر والاسم، فهو شيت مسطح
         int lastCol = firstWs.LastColumnUsed()?.ColumnNumber() ?? 1;
         bool hasBarcodeHeader = false;
@@ -1626,12 +1533,11 @@ public class ProductExcelService : IProductExcelService
             }
         }
 
-        if (hasBarcodeHeader) return true;
-
+        if (hasBarcodeHeader)
+            return true;
         // إذا كان هناك شيتات باسم الباركودات والتصنيفات فهو Multi-sheet
         bool hasBarcodesSheet = workbook.Worksheets.Any(w => IsBarcodesSheetName(w.Name));
         bool hasCategoriesSheet = workbook.Worksheets.Any(w => IsCategoriesSheetName(w.Name));
-
         return !(hasBarcodesSheet || hasCategoriesSheet);
     }
 
@@ -1655,12 +1561,11 @@ public class ProductExcelService : IProductExcelService
     {
         var mapping = new SingleSheetColumnMapping();
         int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 12;
-
         for (int c = 1; c <= lastCol; c++)
         {
             string h = ws.Cell(1, c).GetString().Trim();
-            if (string.IsNullOrWhiteSpace(h)) continue;
-
+            if (string.IsNullOrWhiteSpace(h))
+                continue;
             if (MatchesHeader(h, "اسم الصنف", "اسم المنتج", "الاسم", "الصنف", "المنتج", "name", "product name", "item name", "product"))
                 mapping.NameCol = c;
             else if (MatchesHeader(h, "الباركود", "باركود", "كود الباركود", "barcode", "bar code", "upc", "ean"))
@@ -1692,15 +1597,13 @@ public class ProductExcelService : IProductExcelService
 
     private static bool MatchesHeader(string header, params string[] candidates)
     {
-        return candidates.Any(cand => header.Equals(cand, StringComparison.OrdinalIgnoreCase) ||
-                                      header.StartsWith(cand + " ", StringComparison.OrdinalIgnoreCase) ||
-                                      header.StartsWith(cand + "*", StringComparison.OrdinalIgnoreCase) ||
-                                      header.Contains(cand, StringComparison.OrdinalIgnoreCase));
+        return candidates.Any(cand => header.Equals(cand, StringComparison.OrdinalIgnoreCase) || header.StartsWith(cand + " ", StringComparison.OrdinalIgnoreCase) || header.StartsWith(cand + "*", StringComparison.OrdinalIgnoreCase) || header.Contains(cand, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string GetCellValue(IXLWorksheet ws, int row, int col)
     {
-        if (col <= 0) return string.Empty;
+        if (col <= 0)
+            return string.Empty;
         return ws.Cell(row, col).GetString().Trim();
     }
 
@@ -1722,7 +1625,9 @@ public class ProductExcelService : IProductExcelService
                         }
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -1744,6 +1649,7 @@ public class ProductExcelService : IProductExcelService
                     entry.OriginalValues.SetValues(dbValues);
                 }
             }
+
             await _unitOfWork.SaveChangesAsync(ct);
         }
     }
@@ -1761,6 +1667,5 @@ public class ProductExcelService : IProductExcelService
             cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
         }
     }
-
-    #endregion
+#endregion
 }

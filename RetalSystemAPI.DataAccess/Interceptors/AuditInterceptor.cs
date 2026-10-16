@@ -46,11 +46,23 @@ public class AuditInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
+        ApplyAudit(eventData.Context);
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
+    {
+        ApplyAudit(eventData.Context);
+        return base.SavingChanges(eventData, result);
+    }
+
+    private void ApplyAudit(DbContext? context)
+    {
         // التحقق من وجود سياق قاعدة البيانات؛ وفي حال عدم وجوده يتم تمرير التنفيذ للمحرك الأساسي فوراً
-        if (eventData.Context is null)
+        if (context is null)
         {
             // تمرير التنفيذ دون إجراء أي تعديلات
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
+            return;
         }
 
         // استخراج معرف المستخدم الحالي من خدمة الجلسة
@@ -59,7 +71,7 @@ public class AuditInterceptor : SaveChangesInterceptor
         var currentTenantId = _tenantService.TenantId;
 
         // فحص وتكرار جميع الكيانات المتأثرة بعملية الحفظ والتي ترث من BaseEntity
-        foreach (var entry in eventData.Context.ChangeTracker.Entries<BaseEntity>())
+        foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
         {
             // معالجة حالة إضافة كيان جديد (Insert)
             if (entry.State == EntityState.Added)
@@ -108,7 +120,5 @@ public class AuditInterceptor : SaveChangesInterceptor
             }
         }
 
-        // إرجاع النتيجة ومتابعة عملية الحفظ في قاعدة البيانات
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 }

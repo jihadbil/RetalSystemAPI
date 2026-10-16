@@ -35,10 +35,10 @@ public class AccountingMappingProfile : Profile
                 src.Type == SafeType.CashBox ? "صندوق نقدي" :
                 src.Type == SafeType.CashDrawer ? "درج نقود كاشير" : src.Type.ToString()));
 
-        CreateMap<CreateSafeDto, Safe>()
+        CreateMap<CreateSafeDto, Safe>(MemberList.None)
             .ForMember(dest => dest.CurrentBalance, opt => opt.MapFrom(src => src.OpeningBalance));
 
-        CreateMap<UpdateSafeDto, Safe>()
+        CreateMap<UpdateSafeDto, Safe>(MemberList.None)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.BranchId, opt => opt.Ignore())
             .ForMember(dest => dest.OpeningBalance, opt => opt.Ignore())
@@ -61,7 +61,7 @@ public class AccountingMappingProfile : Profile
                 src.DocumentType == FinancialDocumentType.Adjustment ? "تسوية مالية" :
                 src.DocumentType == FinancialDocumentType.OpeningBalance ? "رصيد افتتاحي" : src.DocumentType.ToString()));
 
-        CreateMap<CreateSafeTransactionDto, SafeTransaction>()
+        CreateMap<CreateSafeTransactionDto, SafeTransaction>(MemberList.None)
             .ForMember(dest => dest.DocumentType, opt => opt.MapFrom(src => FinancialDocumentType.Adjustment));
 
 
@@ -69,9 +69,9 @@ public class AccountingMappingProfile : Profile
         CreateMap<ExpenseCategory, ExpenseCategoryResponseDto>()
             .ForMember(dest => dest.ExpensesCount, opt => opt.MapFrom(src => src.Expenses != null ? src.Expenses.Count : 0));
 
-        CreateMap<CreateExpenseCategoryDto, ExpenseCategory>();
+        CreateMap<CreateExpenseCategoryDto, ExpenseCategory>(MemberList.None);
 
-        CreateMap<UpdateExpenseCategoryDto, ExpenseCategory>()
+        CreateMap<UpdateExpenseCategoryDto, ExpenseCategory>(MemberList.None)
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
 
@@ -98,10 +98,10 @@ public class AccountingMappingProfile : Profile
                 src.PaymentMethod == PaymentMethod.Credit ? "آجل" :
                 src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod.ToString()));
 
-        CreateMap<CreateExpenseDto, Expense>()
+        CreateMap<CreateExpenseDto, Expense>(MemberList.None)
             .ForMember(dest => dest.ExpenseNumber, opt => opt.Ignore());
 
-        CreateMap<UpdateExpenseDto, Expense>()
+        CreateMap<UpdateExpenseDto, Expense>(MemberList.None)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.ExpenseNumber, opt => opt.Ignore())
             .ForMember(dest => dest.BranchId, opt => opt.Ignore())

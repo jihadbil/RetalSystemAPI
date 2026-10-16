@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.ProductImage;
@@ -9,6 +10,7 @@ public class CreateProductImageDto
 {
     /// <summary>مسار أو رابط الصورة المرفوعة</summary>
     [Required(ErrorMessage = "رابط الصورة مطلوب")]
+    [MaxLength(1000)]
     public string ImageUrl { get; set; } = null!;
 
     /// <summary>هل تُعتبر هذه الصورة هي الصورة الافتراضية الرئيسية للمنتج</summary>

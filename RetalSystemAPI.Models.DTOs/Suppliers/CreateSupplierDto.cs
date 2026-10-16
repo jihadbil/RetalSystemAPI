@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Suppliers;
@@ -18,8 +19,10 @@ public class CreateSupplierDto
 
     /// <summary>الرصيد المالي الافتتاحي المستحق للمورد</summary>
     [Range(0, double.MaxValue, ErrorMessage = "الرصيد الافتتاحي يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal OpeningBalance { get; set; } = 0;
 
     /// <summary>قائمة أرقام هواتف المورد</summary>
+    [NoNullItems]
     public List<SupplierPhoneDto> Phones { get; set; } = new();
 }

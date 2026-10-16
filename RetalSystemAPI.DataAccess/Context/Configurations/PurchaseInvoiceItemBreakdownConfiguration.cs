@@ -22,11 +22,11 @@ public class PurchaseInvoiceItemBreakdownConfiguration : IEntityTypeConfiguratio
 
         // ضبط نوع العمود لكمية العبوات المستلمة بدقة عشرية (18, 2)
         builder.Property(b => b.PackageQuantity)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لإجمالي الكمية بالوحدة الصغرى بدقة عشرية (18, 2)
         builder.Property(b => b.Quantity)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لسعر شراء الوحدة بدقة مالية متقدمة (18, 4)
         builder.Property(b => b.UnitPrice)

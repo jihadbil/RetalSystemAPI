@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Common;
 
@@ -9,6 +10,7 @@ namespace RetalSystemAPI.Models.DTOs.Branch;
 public class BranchPhoneDto
 {
     /// <summary>اسم جهة الاتصال أو مسمى الهاتف (مثال: الإدارة، الكاشير)</summary>
+    [MaxLength(100)]
     public string? Name { get; set; }
 
     /// <summary>رقم الهاتف المطابق لنسق أرقام الهواتف المعتمدة</summary>

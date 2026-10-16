@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -31,15 +32,18 @@ public class UpdateCustomerDto
     public string? Address { get; set; }
 
     /// <summary>نوع العميل (تجزئة، جملة، شركات)</summary>
+    [EnumDataType(typeof(CustomerType))]
     public CustomerType Type { get; set; } = CustomerType.Retail;
 
     /// <summary>سقف الائتمان المالي</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سقف الدين يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal CreditLimit { get; set; } = 0;
 
     /// <summary>حالة نشاط الحساب</summary>
     public bool IsActive { get; set; } = true;
 
     /// <summary>قائمة أرقام هواتف العميل المحدثة</summary>
+    [NoNullItems]
     public List<CustomerPhoneDto> Phones { get; set; } = new();
 }

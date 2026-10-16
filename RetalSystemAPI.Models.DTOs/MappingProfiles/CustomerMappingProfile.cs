@@ -41,12 +41,12 @@ public class CustomerMappingProfile : Profile
                 src.Type == CustomerType.Corporate ? "شركات" : src.Type.ToString()));
 
         // تكوين تحويل ناقل بيانات إنشاء العميل إلى كيان العميل
-        CreateMap<CreateCustomerDto, Customer>()
+        CreateMap<CreateCustomerDto, Customer>(MemberList.None)
             // تجاهل إسقاط الهواتف هنا لتتم معالجتها والتحقق منها يدوياً وبشكل صريح في خدمة العملاء
             .ForMember(dest => dest.CustomerPhones, opt => opt.Ignore());
 
         // تكوين تحويل ناقل بيانات تحديث العميل إلى كيان العميل
-        CreateMap<UpdateCustomerDto, Customer>()
+        CreateMap<UpdateCustomerDto, Customer>(MemberList.None)
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للعميل
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             // تجاهل إسقاط الهواتف لتفادي الكتابة الخاطئة فوق أرقام الهواتف القائمة
@@ -55,7 +55,7 @@ public class CustomerMappingProfile : Profile
         // تكوين تحويل كيان هاتف العميل إلى ناقل بيانات استجابة هاتف العميل
         CreateMap<CustomerPhone, CustomerPhoneResponseDto>();
         // تكوين تحويل ناقل بيانات هاتف العميل إلى كيان هاتف العميل
-        CreateMap<CustomerPhoneDto, CustomerPhone>();
+        CreateMap<CustomerPhoneDto, CustomerPhone>(MemberList.None);
 
         // تكوين تحويل كيان حركة حساب العميل إلى ناقل بيانات الاستجابة
         CreateMap<CustomerTransaction, CustomerTransactionResponseDto>()

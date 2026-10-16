@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Suppliers;
@@ -21,5 +22,6 @@ public class UpdateSupplierDto
     public string? Address { get; set; }
 
     /// <summary>قائمة أرقام هواتف المورد المحدثة</summary>
+    [NoNullItems]
     public List<SupplierPhoneDto> Phones { get; set; } = new();
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.Models.DTOs.Accounting.Pos;
@@ -7,8 +8,8 @@ public class CreatePosTerminalDto
 {
     [Required, MaxLength(50)] public string Code { get; set; } = null!;
     [Required, MaxLength(150)] public string Name { get; set; } = null!;
-    [Required] public Guid BranchId { get; set; }
-    [Required] public Guid DefaultCashDrawerId { get; set; }
+    [Required, NotEmptyGuid] public Guid BranchId { get; set; }
+    [Required, NotEmptyGuid] public Guid DefaultCashDrawerId { get; set; }
 }
 
 public class UpdatePosTerminalDto : CreatePosTerminalDto
@@ -39,7 +40,7 @@ public class PairingCodeResponseDto
 
 public class ClaimPosDeviceDto
 {
-    [Required] public Guid TenantId { get; set; }
+    [Required, NotEmptyGuid] public Guid TenantId { get; set; }
     [Required, MaxLength(20)] public string PairingCode { get; set; } = null!;
 }
 
@@ -52,12 +53,12 @@ public class ClaimPosDeviceResponseDto
 
 public class OpenCashSessionDto
 {
-    [Range(0, double.MaxValue)] public decimal OpeningFloat { get; set; }
+    [Range(0, double.MaxValue), MoneyAmount] public decimal OpeningFloat { get; set; }
 }
 
 public class CloseCashSessionDto
 {
-    [Range(0, double.MaxValue)] public decimal CountedClosingBalance { get; set; }
+    [Range(0, double.MaxValue), MoneyAmount] public decimal CountedClosingBalance { get; set; }
     [MaxLength(500)] public string? Notes { get; set; }
 }
 

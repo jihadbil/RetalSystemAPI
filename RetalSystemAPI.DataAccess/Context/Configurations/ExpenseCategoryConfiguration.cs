@@ -38,7 +38,7 @@ public class ExpenseCategoryConfiguration : IEntityTypeConfiguration<ExpenseCate
 
         // الفهارس
         builder.HasIndex(ec => ec.TenantId);
-        builder.HasIndex(ec => new { ec.TenantId, ec.Name }).IsUnique();
+        builder.HasIndex(ec => new { ec.TenantId, ec.Name }).IsUnique().HasFilter("[IsDeleted] = 0");
         builder.HasIndex(ec => new { ec.TenantId, ec.IsActive });
         builder.HasIndex(ec => new { ec.TenantId, ec.IsDeleted });
     }

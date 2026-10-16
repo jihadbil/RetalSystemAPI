@@ -16,13 +16,16 @@ public class TenantMappingProfile : Profile
     public TenantMappingProfile()
     {
         // تكوين تحويل كيان المستأجر إلى ناقل بيانات الاستجابة التفصيلي
-        CreateMap<TenantEntity, TenantResponseDto>();
+        CreateMap<TenantEntity, TenantResponseDto>()
+            .ForMember(d => d.BranchesCount, o => o.Ignore())
+            .ForMember(d => d.WarehousesCount, o => o.Ignore())
+            .ForMember(d => d.UsersCount, o => o.Ignore());
 
         // تكوين تحويل ناقل بيانات إنشاء المستأجر إلى كيان المستأجر
-        CreateMap<CreateTenantDto, TenantEntity>();
+        CreateMap<CreateTenantDto, TenantEntity>(MemberList.None);
 
         // تكوين تحويل ناقل بيانات تعديل المستأجر إلى كيان المستأجر
-        CreateMap<UpdateTenantDto, TenantEntity>()
+        CreateMap<UpdateTenantDto, TenantEntity>(MemberList.None)
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للمستأجر
             .ForMember(dest => dest.Id, opt => opt.Ignore());
     }

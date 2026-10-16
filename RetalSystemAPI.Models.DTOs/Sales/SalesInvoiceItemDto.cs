@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Sales;
@@ -10,6 +11,7 @@ public class SalesInvoiceItemDto
 {
     /// <summary>المعرف الفريد للمنتج</summary>
     [Required(ErrorMessage = "معرف الصنف مطلوب")]
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود المحدد للعبوة أو الصنف</summary>
@@ -21,13 +23,16 @@ public class SalesInvoiceItemDto
 
     /// <summary>سعر بيع الوحدة</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سعر الوحدة يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal UnitPrice { get; set; }
 
     /// <summary>تكلفة الوحدة وقت البيع لحساب الربحية بدقة</summary>
     [Range(0, double.MaxValue, ErrorMessage = "تكلفة الوحدة يجب أن تكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal UnitCost { get; set; }
 
     /// <summary>مبلغ الخصم الممنوح على هذا السطر</summary>
     [Range(0, double.MaxValue, ErrorMessage = "قيمة الخصم يجب أن تكون أكبر من أو تساوي 0")]
+    [MoneyAmount]
     public decimal DiscountAmount { get; set; } = 0;
 }

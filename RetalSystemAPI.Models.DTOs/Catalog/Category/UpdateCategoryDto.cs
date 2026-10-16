@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.Category;
@@ -13,7 +14,7 @@ public class UpdateCategoryDto
 
     /// <summary>اسم التصنيف الجديد</summary>
     [Required(ErrorMessage = "اسم التصنيف مطلوب")]
-    [MaxLength(200, ErrorMessage = "اسم التصنيف يجب أن لا يتجاوز 200 حرف")]
+    [MaxLength(150, ErrorMessage = "اسم التصنيف يجب أن لا يتجاوز 150 حرف")]
     public string Name { get; set; } = null!;
 
     /// <summary>معرف التصنيف الأب</summary>

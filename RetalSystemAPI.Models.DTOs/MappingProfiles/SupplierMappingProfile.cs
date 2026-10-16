@@ -27,17 +27,17 @@ public class SupplierMappingProfile : Profile
             .ForMember(dest => dest.PhoneCount, opt => opt.MapFrom(src => src.SupplierPhones.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء المورد إلى كيان المورد
-        CreateMap<CreateSupplierDto, Supplier>();
+        CreateMap<CreateSupplierDto, Supplier>(MemberList.None);
 
         // تكوين تحويل ناقل بيانات تعديل المورد إلى كيان المورد
-        CreateMap<UpdateSupplierDto, Supplier>()
+        CreateMap<UpdateSupplierDto, Supplier>(MemberList.None)
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للكيان
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
         // تكوين تحويل كيان هاتف المورد إلى ناقل بيانات استجابة هاتف المورد
         CreateMap<SupplierPhone, SupplierPhoneResponseDto>();
         // تكوين تحويل ناقل بيانات هاتف المورد إلى كيان هاتف المورد
-        CreateMap<SupplierPhoneDto, SupplierPhone>();
+        CreateMap<SupplierPhoneDto, SupplierPhone>(MemberList.None);
 
         // تكوين تحويل كيان حركة حساب المورد إلى ناقل بيانات الاستجابة
         CreateMap<SupplierTransaction, SupplierTransactionResponseDto>()

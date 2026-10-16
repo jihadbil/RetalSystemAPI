@@ -115,6 +115,6 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         // إنشاء فهرس فريد (Unique Index) على اسم المستأجر لضمان عدم تكرار الأسماء في النظام
         builder.HasIndex(t => t.Name)
-            .IsUnique();
+            .IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

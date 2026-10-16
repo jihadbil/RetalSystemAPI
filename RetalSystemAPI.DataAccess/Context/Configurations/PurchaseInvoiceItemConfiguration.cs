@@ -22,19 +22,19 @@ public class PurchaseInvoiceItemConfiguration : IEntityTypeConfiguration<Purchas
 
         // ضبط نوع العمود لكمية البند المشتراة بدقة عشرية (18, 2)
         builder.Property(p => p.Quantity)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لسعر شراء الوحدة بدقة عشرية (18, 2)
         builder.Property(p => p.UnitPrice)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لقيمة الخصم الممنوح على البند بدقة عشرية (18, 2)
         builder.Property(p => p.DiscountAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لإجمالي قيمة السطر بدقة عشرية (18, 2)
         builder.Property(p => p.LineTotal)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط خاصية RowVersion كرمز لإدارة التزامن المتفائل
         builder.Property(p => p.RowVersion)

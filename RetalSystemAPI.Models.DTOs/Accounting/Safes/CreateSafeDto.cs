@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
@@ -16,14 +17,17 @@ public class CreateSafeDto
 
     /// <summary>نوع الخزينة (بنك، صندوق، درج نقود)</summary>
     [Required(ErrorMessage = "نوع الخزينة مطلوب")]
+    [EnumDataType(typeof(SafeType))]
     public SafeType Type { get; set; } = SafeType.CashBox;
 
     /// <summary>الفرع التابعة له الخزينة</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>الرصيد الافتتاحي</summary>
     [Range(0, double.MaxValue, ErrorMessage = "الرصيد الافتتاحي يجب أن يكون أكبر من أو يساوي الصفر")]
+    [MoneyAmount]
     public decimal OpeningBalance { get; set; } = 0;
 
     /// <summary>رقم الحساب المصرفي (للبنوك فقط)</summary>

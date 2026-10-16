@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.ProductBarCode;
@@ -9,13 +10,16 @@ public class CreateProductBarCodeDto
 {
     /// <summary>رمز الباركود الفريد</summary>
     [Required(ErrorMessage = "الباركود مطلوب")]
+    [MaxLength(100)]
     public string BarCode { get; set; } = null!;
 
     /// <summary>عنوان أو مسمى الباركود (مثل: حبة، كرتونة، لون معين)</summary>
     [Required(ErrorMessage = "عنوان الباركود مطلوب")]
+    [MaxLength(300)]
     public string Title { get; set; } = null!;
 
     /// <summary>وصف إضافي اختياري للباركود</summary>
+    [MaxLength(1000)]
     public string? Description { get; set; }
 
     /// <summary>معرف المنتج المراد ربط الباركود به</summary>
@@ -25,4 +29,7 @@ public class CreateProductBarCodeDto
     /// <summary>الكمية المبدئية المرتبطة بهذا الباركود</summary>
     [Range(0, int.MaxValue, ErrorMessage = "الكمية المبدئية يجب أن تكون أكبر من أو تساوي 0")]
     public int InitialQuantity { get; set; } = 0;
+
+    /// <summary>مخزن الرصيد الافتتاحي؛ يلزم اختياره عند وجود أكثر من مخزن وكمية افتتاحية.</summary>
+    public Guid? WarehouseId { get; set; }
 }

@@ -1,7 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
@@ -11,7 +9,6 @@ using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Accounting.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة سندات المصروفات التشغيلية والخصم المباشر من الخزائن وأدراج النقدية وعكس الحركات عند الإلغاء.
 /// </summary>
@@ -19,19 +16,16 @@ public class ExpenseService : IExpenseService
 {
     // وحدة العمل للوصول للمستودعات وإدارة المعاملات
     private readonly IUnitOfWork _unitOfWork;
-
     // محول الكيانات لتحويل النماذج إلى كائنات نقل البيانات DTO
     private readonly IMapper _mapper;
-
     // خدمة الصندوق ونقاط البيع لمطابقة جلسات الأدراج النقدية
     private readonly IPosCashService _posCashService;
-
     /// <summary>
     /// تهيئة خدمة سندات المصروفات وحقن وحدة العمل والمحول وخدمة الصندوق.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل</param>
-    /// <param name="mapper">محول الكيانات</param>
-    /// <param name="posCashService">خدمة صندوق ونقاط البيع</param>
+    /// <param name = "unitOfWork">وحدة العمل</param>
+    /// <param name = "mapper">محول الكيانات</param>
+    /// <param name = "posCashService">خدمة صندوق ونقاط البيع</param>
     public ExpenseService(IUnitOfWork unitOfWork, IMapper mapper, IPosCashService posCashService)
     {
         // تعيين وحدة العمل
@@ -42,7 +36,7 @@ public class ExpenseService : IExpenseService
         _posCashService = posCashService;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     /// <summary>
     /// جلب بيانات سند مصروف محدد بواسطة المعرف مع تفاصيل التصنيف والخزينة المرتبطة.
     /// </summary>
@@ -54,80 +48,63 @@ public class ExpenseService : IExpenseService
         if (expense == null)
             // إرجاع خطأ عدم وجود السند
             return ServiceResult<ExpenseResponseDto>.Failure("سند المصروف غير موجود", ErrorCodes.ExpenseNotFound);
-
         // تحويل الكيان إلى DTO وإرجاعه بنجاح
         return ServiceResult<ExpenseResponseDto>.Success(_mapper.Map<ExpenseResponseDto>(expense));
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     /// <summary>
     /// جلب صفحة سندات مصروفات مجزأة مع الفلترة حسب معايير الفرع، التصنيف، الخزينة، التواريخ وطريقة الدفع.
     /// </summary>
-    public async Task<ServiceResult<PagedResult<ExpenseSummaryDto>>> GetPagedAsync(
-        ExpenseFilterDto filter, CancellationToken ct = default)
+    public async Task<ServiceResult<PagedResult<ExpenseSummaryDto>>> GetPagedAsync(ExpenseFilterDto filter, CancellationToken ct = default)
     {
         // التحقق من رقم الصفحة
         var pageNumber = filter.PageNumber < 1 ? 1 : filter.PageNumber;
         // التحقق من حجم الصفحة
         var pageSize = filter.PageSize < 1 ? 10 : filter.PageSize;
-
         // تنفيذ استعلام جلب المصروفات المجزأة من المستودع
-        var (items, totalCount) = await _unitOfWork.Accounting.GetPagedExpensesAsync(
-            filter.BranchId,
-            filter.ExpenseCategoryId,
-            filter.SafeId,
-            filter.PaymentMethod,
-            filter.FromDate,
-            filter.ToDate,
-            filter.SearchTerm,
-            pageNumber,
-            pageSize,
-            ct);
-
+        var(items, totalCount) = await _unitOfWork.Accounting.SearchExpensesAsync(new ExpenseQuery { BranchId = filter.BranchId, CategoryId = filter.ExpenseCategoryId, SafeId = filter.SafeId, PaymentMethod = filter.PaymentMethod, FromDate = filter.FromDate, ToDate = filter.ToDate, SearchTerm = filter.SearchTerm, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل الكيانات لملخصات DTO
         var dtos = _mapper.Map<IReadOnlyList<ExpenseSummaryDto>>(items);
         // بناء كائن النتائج المجزأة
         var pagedResult = PagedResult<ExpenseSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<PagedResult<ExpenseSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     /// <summary>
     /// إنشاء سند مصروف تشغيلي جديد وخصم قيمته من رصيد الخزينة أو الدرج وتسجيل حركة الصرف ذرّياً.
     /// </summary>
     public async Task<ServiceResult<ExpenseResponseDto>> CreateAsync(CreateExpenseDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ExpenseResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من صحة طريقة الدفع وأنها ليست آجلة (المصروف لا يكون آجلاً)
         if (!Enum.IsDefined(dto.PaymentMethod) || dto.PaymentMethod == PaymentMethod.Credit)
             // إرجاع خطأ طريقة الدفع
             return ServiceResult<ExpenseResponseDto>.Failure("طريقة دفع المصروف غير صالحة", ErrorCodes.ValidationError);
-
         // التحقق من تحديد الخزينة التي تم الصرف منها
         if (!dto.SafeId.HasValue)
             // إرجاع خطأ وجوب تحديد الخزينة
             return ServiceResult<ExpenseResponseDto>.Failure("يجب تحديد الخزينة أو الحساب الذي صُرف منه المبلغ", ErrorCodes.ValidationError);
-
         // 1. التحقق من وجود الفرع المحدد ونشاطه
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         // إذا لم يوجد الفرع
         if (!branchExists)
             // إرجاع خطأ عدم وجود الفرع
             return ServiceResult<ExpenseResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
-
         // 2. التحقق من وجود تصنيف المصروف ونشاطه
         var category = await _unitOfWork.Accounting.GetExpenseCategoryByIdAsync(dto.ExpenseCategoryId, ct);
         // إذا لم يوجد التصنيف
         if (category == null)
             // إرجاع خطأ عدم وجود التصنيف
             return ServiceResult<ExpenseResponseDto>.Failure("تصنيف المصروف غير موجود", ErrorCodes.ExpenseCategoryNotFound);
-
         // إذا كان التصنيف معطلاً
         if (!category.IsActive)
             // إرجاع خطأ تعطيل التصنيف
             return ServiceResult<ExpenseResponseDto>.Failure("تصنيف المصروف معطل حالياً", ErrorCodes.ValidationError);
-
         // 3. التحقق من الخزينة وكفاية رصيدها
         Safe? safe = null;
         // معرف الوردية النقدية في حال كان الدرج نقطة بيع
@@ -141,24 +118,19 @@ public class ExpenseService : IExpenseService
             if (safe == null)
                 // إرجاع خطأ عدم وجود الخزينة
                 return ServiceResult<ExpenseResponseDto>.Failure("الخزينة المحددة غير موجودة", ErrorCodes.SafeNotFound);
-
             // التحقق من نشاط الخزينة
             if (!safe.IsActive)
                 // إرجاع خطأ أن الخزينة معطلة
                 return ServiceResult<ExpenseResponseDto>.Failure("الخزينة معطلة حالياً ولا يمكن الصرف منها", ErrorCodes.SafeInactive);
-
             // التحقق من تبعية الخزينة لنفس فرع المصروف
             if (safe.BranchId != dto.BranchId)
                 // إرجاع خطأ عدم تطابق الفرع
                 return ServiceResult<ExpenseResponseDto>.Failure("الخزينة المحددة لا تتبع فرع سند المصروف", ErrorCodes.ValidationError);
-
             // التحقق من كفاية رصيد الخزينة لصرف المبلغ
             if (safe.CurrentBalance < dto.Amount)
             {
                 // إرجاع خطأ عدم كفاية الرصيد
-                return ServiceResult<ExpenseResponseDto>.Failure(
-                    $"رصيد الخزينة الحالي ({safe.CurrentBalance:N2}) غير كافٍ لصرف مبلغ ({dto.Amount:N2})",
-                    ErrorCodes.InsufficientSafeBalance);
+                return ServiceResult<ExpenseResponseDto>.Failure($"رصيد الخزينة الحالي ({safe.CurrentBalance:N2}) غير كافٍ لصرف مبلغ ({dto.Amount:N2})", ErrorCodes.InsufficientSafeBalance);
             }
 
             // فحص وردية الصندوق في حال كانت الخزينة درج نقود
@@ -173,12 +145,10 @@ public class ExpenseService : IExpenseService
 
         // 4. توليد رقم سند مصروف تسلسلي جديد
         var expenseNumber = await _unitOfWork.Accounting.GenerateExpenseNumberAsync(ct);
-
         // تحويل كائن DTO إلى كيان سند المصروف
         var expense = _mapper.Map<Expense>(dto);
         // تعيين رقم السند المتسلسل
         expense.ExpenseNumber = expenseNumber;
-
         // 5. الحفظ ضمن معاملة ذرية Transaction لضمان تزامن السند وخصم الخزينة
         if (safe != null)
         {
@@ -188,10 +158,8 @@ public class ExpenseService : IExpenseService
             {
                 // خصم مبلغ المصروف من رصيد الخزينة
                 safe.CurrentBalance -= dto.Amount;
-
                 // إضافة سند المصروف لقاعدة البيانات
                 await _unitOfWork.Accounting.AddExpenseAsync(expense, ct);
-
                 // توليد رقم حركة جديد للخزينة
                 var txNumber = await _unitOfWork.Accounting.GenerateSafeTransactionNumberAsync(ct);
                 // إنشاء سجل حركة صرف نقدي في الخزينة
@@ -210,12 +178,10 @@ public class ExpenseService : IExpenseService
                 };
                 // ربط حركة الصرف بوردية الصندوق
                 safeTx.CashSessionId = cashSessionId;
-
                 // إضافة حركة الخزينة
                 await _unitOfWork.Accounting.AddSafeTransactionAsync(safeTx, ct);
                 // تحديث كائن الخزينة
                 _unitOfWork.Accounting.UpdateSafe(safe);
-
                 // حفظ التغييرات
                 await _unitOfWork.SaveChangesAsync(ct);
                 // تأكيد المعاملة الذرية
@@ -243,19 +209,21 @@ public class ExpenseService : IExpenseService
         return ServiceResult<ExpenseResponseDto>.Success(_mapper.Map<ExpenseResponseDto>(created));
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     /// <summary>
     /// تحديث البيانات الوصفية لسند المصروف (الوصف، الملاحظات، التصنيف) دون المساس بالمبلغ المالي المصروف.
     /// </summary>
     public async Task<ServiceResult<ExpenseResponseDto>> UpdateAsync(Guid id, UpdateExpenseDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<ExpenseResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // جلب سند المصروف من المستودع
         var expense = await _unitOfWork.Accounting.GetExpenseByIdAsync(id, ct);
         // إذا لم يوجد السند
         if (expense == null)
             // إرجاع خطأ عدم وجود السند
             return ServiceResult<ExpenseResponseDto>.Failure("سند المصروف غير موجود", ErrorCodes.ExpenseNotFound);
-
         // التحقق من تصنيف المصروف الجديد إن تم تغييره
         if (expense.ExpenseCategoryId != dto.ExpenseCategoryId)
         {
@@ -265,7 +233,6 @@ public class ExpenseService : IExpenseService
             if (category == null)
                 // إرجاع خطأ عدم وجود التصنيف
                 return ServiceResult<ExpenseResponseDto>.Failure("تصنيف المصروف غير موجود", ErrorCodes.ExpenseCategoryNotFound);
-
             // إذا كان التصنيف الجديد معطلاً
             if (!category.IsActive)
                 // إرجاع خطأ تعطيل التصنيف
@@ -278,14 +245,13 @@ public class ExpenseService : IExpenseService
         _unitOfWork.Accounting.UpdateExpense(expense);
         // حفظ التعديلات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // جلب السند المحدث بالتفاصيل
         var updated = await _unitOfWork.Accounting.GetExpenseWithDetailsAsync(id, ct) ?? expense;
         // إرجاع النتيجة بنجاح
         return ServiceResult<ExpenseResponseDto>.Success(_mapper.Map<ExpenseResponseDto>(updated));
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     /// <summary>
     /// حذف ناعم لسند المصروف وعكس حركته المالية بإعادة المبلغ للخزينة المسحوب منها ضمن معاملة ذرية.
     /// </summary>
@@ -297,7 +263,6 @@ public class ExpenseService : IExpenseService
         if (expense == null)
             // إرجاع خطأ عدم وجود السند
             return ServiceResult<bool>.Failure("سند المصروف غير موجود", ErrorCodes.ExpenseNotFound);
-
         // إذا كان المصروف مسحوباً من خزينة، نقوم باسترداد المبلغ وإيداعه مجدداً
         if (expense.SafeId.HasValue)
         {
@@ -312,14 +277,12 @@ public class ExpenseService : IExpenseService
                 if (!sessionResult.IsSuccess)
                     // إرجاع خطأ الوردية
                     return ServiceResult<bool>.Failure(sessionResult.ErrorMessage!, sessionResult.ErrorCode);
-
                 // بدء المعاملة الذرية للاسترداد
                 await _unitOfWork.BeginTransactionAsync(ct);
                 try
                 {
                     // إعادة المبلغ المخصوم إلى رصيد الخزينة
                     safe.CurrentBalance += expense.Amount;
-
                     // توليد رقم حركة استرداد تسلسلي
                     var txNumber = await _unitOfWork.Accounting.GenerateSafeTransactionNumberAsync(ct);
                     // إنشاء حركة عكسية واردة للخزينة
@@ -333,23 +296,19 @@ public class ExpenseService : IExpenseService
                         TransactionDate = DateTime.UtcNow,
                         DocumentType = FinancialDocumentType.Adjustment,
                         DocumentId = expense.Id,
-                        Description = $"استرداد إلغاء سند المصروف [{expense.ExpenseNumber}]"
-                    };
+                        Description = $"استرداد إلغاء سند المصروف [{expense.ExpenseNumber}]"};
                     // ربط الحركة بالوردية
                     reverseTx.CashSessionId = sessionResult.Data;
-
                     // إضافة الحركة العكسية
                     await _unitOfWork.Accounting.AddSafeTransactionAsync(reverseTx, ct);
                     // تحديث رصيد الخزينة
                     _unitOfWork.Accounting.UpdateSafe(safe);
                     // تطبيق الحذف الناعم على سند المصروف
                     _unitOfWork.Accounting.SoftDeleteExpense(expense);
-
                     // حفظ التغييرات
                     await _unitOfWork.SaveChangesAsync(ct);
                     // تأكيد المعاملة
                     await _unitOfWork.CommitTransactionAsync(ct);
-
                     // إرجاع نجاح العملية
                     return ServiceResult<bool>.Success(true);
                 }
@@ -367,7 +326,6 @@ public class ExpenseService : IExpenseService
         _unitOfWork.Accounting.SoftDeleteExpense(expense);
         // حفظ التغييرات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نجاح الحذف
         return ServiceResult<bool>.Success(true);
     }

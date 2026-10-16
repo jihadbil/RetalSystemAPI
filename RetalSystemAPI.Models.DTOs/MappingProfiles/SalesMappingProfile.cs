@@ -70,14 +70,14 @@ public class SalesMappingProfile : Profile
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء فاتورة المبيعات إلى كيان الفاتورة
-        CreateMap<CreateSalesInvoiceDto, SalesInvoice>()
+        CreateMap<CreateSalesInvoiceDto, SalesInvoice>(MemberList.None)
             // احتساب المبلغ المتبقي تلقائياً بطرح المدفوع من الإجمالي الكلي
             .ForMember(dest => dest.RemainingAmount, opt => opt.MapFrom(src => src.TotalAmount - src.PaidAmount))
             // تجاهل إسقاط البنود لتتم معالجتها والتحقق من توفر أرصدتها في الخدمة
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
         // تكوين تحويل ناقل بيانات تعديل فاتورة المبيعات إلى كيان الفاتورة
-        CreateMap<UpdateSalesInvoiceDto, SalesInvoice>()
+        CreateMap<UpdateSalesInvoiceDto, SalesInvoice>(MemberList.None)
             // استبعاد المعرف Id لمنع تعديل المفتاح الأساسي
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             // تجاهل المبلغ المتبقي ليتم إعادة حسابه في طبقة الخدمات
@@ -93,7 +93,7 @@ public class SalesMappingProfile : Profile
             .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null));
 
         // تكوين تحويل ناقل بيانات بند فاتورة المبيعات إلى كيان البند
-        CreateMap<SalesInvoiceItemDto, SalesInvoiceItem>()
+        CreateMap<SalesInvoiceItemDto, SalesInvoiceItem>(MemberList.None)
             // احتساب إجمالي السطر (الكمية × السعر) مخصوماً منها الخصم الممنوح
             .ForMember(dest => dest.LineTotal, opt => opt.MapFrom(src => (src.Quantity * src.UnitPrice) - src.DiscountAmount));
 
@@ -139,7 +139,7 @@ public class SalesMappingProfile : Profile
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء مرتجع المبيعات إلى كيان المرتجع
-        CreateMap<CreateSalesReturnDto, SalesReturn>()
+        CreateMap<CreateSalesReturnDto, SalesReturn>(MemberList.None)
             // تجاهل البنود لتتم معالجتها في خدمة المرتجعات مع إعادة المخزون
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
@@ -153,7 +153,7 @@ public class SalesMappingProfile : Profile
             .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null));
 
         // تكوين تحويل ناقل بيانات إنشاء بند مرتجع المبيعات إلى كيان البند
-        CreateMap<SalesReturnItemDto, SalesReturnItem>()
+        CreateMap<SalesReturnItemDto, SalesReturnItem>(MemberList.None)
             // احتساب إجمالي السطر (الكمية × السعر)
             .ForMember(dest => dest.LineTotal, opt => opt.MapFrom(src => src.Quantity * src.UnitPrice));
     }

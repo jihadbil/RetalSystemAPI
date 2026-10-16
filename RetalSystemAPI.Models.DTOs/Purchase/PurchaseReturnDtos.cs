@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -24,23 +25,28 @@ public class CreatePurchaseReturnDto
 
     /// <summary>معرف المورد</summary>
     [Required(ErrorMessage = "معرف المورد مطلوب")]
+    [NotEmptyGuid]
     public Guid SupplierId { get; set; }
 
     /// <summary>معرف الفرع</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف المستودع المسحوبة منه البضاعة المرتجعة</summary>
     [Required(ErrorMessage = "معرف المستودع الرئيسي مطلوب")]
+    [NotEmptyGuid]
     public Guid WarehouseId { get; set; }
 
     /// <summary>طريقة التسوية أو استرداد القيمة</summary>
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>الخزينة التي تستلم قيمة المرتجع عند التسوية غير الآجلة.</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب إرجاع المشتريات (تالف، مخالف للمواصفات، منتهي الصلاحية، إلخ)</summary>
+    [EnumDataType(typeof(PurchaseReturnReason))]
     public PurchaseReturnReason Reason { get; set; } = PurchaseReturnReason.Defective;
 
     /// <summary>ملاحظات إضافية</summary>
@@ -49,6 +55,7 @@ public class CreatePurchaseReturnDto
 
     /// <summary>قائمة البنود المطلوب إرجاعها للمورد</summary>
     [MinLength(1, ErrorMessage = "يجب إضافة بند واحد على الأقل لمرتجع المشتريات")]
+    [NoNullItems]
     public List<CreatePurchaseReturnItemDto> Items { get; set; } = new();
 }
 
@@ -59,6 +66,7 @@ public class CreatePurchaseReturnItemDto
 {
     /// <summary>معرف الصنف</summary>
     [Required(ErrorMessage = "معرف الصنف مطلوب")]
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود</summary>
@@ -66,10 +74,12 @@ public class CreatePurchaseReturnItemDto
 
     /// <summary>الكمية المرتجعة</summary>
     [Range(0.0001, double.MaxValue, ErrorMessage = "الكمية المرتجعة يجب أن تكون أكبر من صفر")]
+    [WholeQuantity]
     public decimal Quantity { get; set; }
 
     /// <summary>سعر وحدة الصنف المرتجع</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سعر الإرجاع للوحدة يجب أن يكون أكبر من أو يساوي صفر")]
+    [MoneyAmount]
     public decimal UnitPrice { get; set; }
 
     /// <summary>ملاحظات على بند الإرجاع</summary>

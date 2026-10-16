@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Sales;
@@ -9,6 +10,7 @@ public class SalesReturnItemDto
 {
     /// <summary>معرف الصنف المرتجع</summary>
     [Required(ErrorMessage = "معرف الصنف مطلوب")]
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود إن وجد</summary>
@@ -20,6 +22,7 @@ public class SalesReturnItemDto
 
     /// <summary>سعر الإرجاع للوحدة</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سعر الإرجاع للوحدة يجب أن يكون أكبر من أو يساوي 0")]
+    [MoneyAmount]
     public decimal UnitPrice { get; set; }
 
     /// <summary>ملاحظات إضافية حول سبب الإرجاع للبند</summary>

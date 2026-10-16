@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.Collections.Generic;
 
@@ -71,12 +73,14 @@ public class CreateUserDto
     public Guid TenantId { get; set; }
 
     /// <summary>معرف الفرع الافتراضي</summary>
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>الدور الأولي المسند للمستخدم</summary>
     public string? Role { get; set; }
 
     /// <summary>قائمة الصلاحيات الخاصة الإضافية إن وجدت</summary>
+    [NoNullItems]
     public List<string>? CustomPermissions { get; set; }
 }
 
@@ -92,6 +96,7 @@ public class UpdateUserDto
     public string? PhoneNumber { get; set; }
 
     /// <summary>معرف الفرع الجديد</summary>
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>الدور المسند</summary>
@@ -101,6 +106,7 @@ public class UpdateUserDto
     public bool IsActive { get; set; } = true;
 
     /// <summary>قائمة الصلاحيات المخصصة</summary>
+    [NoNullItems]
     public List<string>? CustomPermissions { get; set; }
 }
 
@@ -173,6 +179,7 @@ public class UpdateRolePermissionsDto
     public string RoleId { get; set; } = string.Empty;
 
     /// <summary>القائمة الجديدة للصلاحيات المسندة للدور</summary>
+    [NoNullItems]
     public List<string> Permissions { get; set; } = new();
 }
 
@@ -215,5 +222,6 @@ public class UpdateUserPermissionsDto
     public bool IsCustomized { get; set; }
 
     /// <summary>قائمة الصلاحيات المباشرة الجديدة للمستخدم</summary>
+    [NoNullItems]
     public List<string> Permissions { get; set; } = new();
 }

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -17,23 +18,33 @@ public class DesignDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     /// <returns>نسخة مهيأة من AppDbContext صالحة لإنشاء وتطبيق الهجرات</returns>
     public AppDbContext CreateDbContext(string[] args)
     {
-        // استخراج المسار الحالي لمجلد العمل قيد التنفيذ
         var basePath = Directory.GetCurrentDirectory();
+        if (!File.Exists(Path.Combine(basePath, "appsettings.json"))
+            && File.Exists(Path.Combine(basePath, "RetalSystemAPI", "RetalSystemAPI.csproj")))
+            basePath = Path.Combine(basePath, "RetalSystemAPI");
 
-        // بناء كائن قراءة الإعدادات والملفات لتحديد ملف appsettings.json
-        var configuration = new ConfigurationBuilder()
-            // تحديد المجلد الأساسي للبحث عن ملفات الإعدادات
+        using var overrides = (ConfigurationRoot)new ConfigurationBuilder().AddEnvironmentVariables().AddCommandLine(args).Build();
+        var environment = overrides["environment"] ?? overrides["DOTNET_ENVIRONMENT"]
+            ?? overrides["ASPNETCORE_ENVIRONMENT"] ?? "Production";
+        var configurationBuilder = new ConfigurationBuilder()
             .SetBasePath(basePath)
-            // قراءة ملف الإعدادات الأساسي appsettings.json إن وجد مع تفعيل إعادة التحميل التلقائي
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            // قراءة ملف إعدادات بيئة التطوير إن وجد لتجاوز القيم السابقة
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            // تجميع وبناء كائن التكوين النهائي
-            .Build();
-
-        // قراءة سلسلة اتصال قاعدة البيانات أو استخدام السلسلة المحلية الافتراضية كاحتياط
-        var connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? "Server=(local);Database=RetalSystemDB;Trusted_Connection=True;MultipleActiveResultSets=true";
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true);
+        if (string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                configurationBuilder.AddUserSecrets(Assembly.Load("RetalSystemAPI"), optional: true);
+            }
+            catch (FileNotFoundException)
+            {
+                // The API assembly is optional when DataAccess is the startup project.
+            }
+        }
+        using var configuration = (ConfigurationRoot)configurationBuilder.AddEnvironmentVariables().AddCommandLine(args).Build();
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required for EF tools. Configure it through environment variables, user-secrets or command-line configuration.");
 
         // إنشاء كائن بناء خيارات DbContextOptionsBuilder الخاص بـ AppDbContext
         var builder = new DbContextOptionsBuilder<AppDbContext>();

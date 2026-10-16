@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
+using RetalSystemAPI.Models.Common;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
@@ -12,11 +10,8 @@ using RetalSystemAPI.Models.Purchase;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Purchase.Interfaces;
-using RetalSystemAPI.Services.Purchase.Specifications;
-using RetalSystemAPI.Services.Warehouses.Specifications;
 
 namespace RetalSystemAPI.Services.Purchase.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة أوامر الشراء وحساب إجماليات وتفاصيل الأصناف وتغيير الحالات وتغذية المخزون وتوليد الفواتير آلياً.
 /// </summary>
@@ -26,25 +21,26 @@ public class PurchaseOrderService : IPurchaseOrderService
     private readonly IUnitOfWork _unitOfWork;
     // المحول لرسم الكيانات إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
-
+    private readonly IPurchaseInvoiceService _purchaseInvoices;
     /// <summary>
     /// تهيئة خدمة أوامر الشراء مع حقن وحدة العمل والمحول.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل للتعامل مع قاعدة البيانات</param>
-    /// <param name="mapper">خدمة تحويل الكائنات</param>
-    public PurchaseOrderService(IUnitOfWork unitOfWork, IMapper mapper)
+    /// <param name = "unitOfWork">وحدة العمل للتعامل مع قاعدة البيانات</param>
+    /// <param name = "mapper">خدمة تحويل الكائنات</param>
+    public PurchaseOrderService(IUnitOfWork unitOfWork, IMapper mapper, IPurchaseInvoiceService purchaseInvoices)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
         // تعيين مرجع محول البيانات
         _mapper = mapper;
+        _purchaseInvoices = purchaseInvoices;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PurchaseOrderResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // الاستعلام عن أمر الشراء بالمعرف مع تضمين الفرع والمستودع والمورد وتفاصيل الأصناف والباركود
-        var order = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct);
+        var order = await _unitOfWork.PurchaseOrders.GetDetailsAsync(id, ct);
         // التحقق من وجود أمر الشراء في قاعدة البيانات
         if (order is null)
         {
@@ -58,42 +54,42 @@ public class PurchaseOrderService : IPurchaseOrderService
         return ServiceResult<PurchaseOrderResponseDto>.Success(dto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<PurchaseOrderSummaryDto>>> GetAllAsync(Guid? branchId = null, Guid? warehouseId = null, PurchaseOrderStatus? status = null, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام خفيفة لقائمة أوامر الشراء بحسب الفلاتر
-        var spec = new PurchaseOrderListSpec(branchId, warehouseId, status);
         // جلب قائمة أوامر الشراء المطابقة للمواصفة
-        var orders = await _unitOfWork.PurchaseOrders.FindAsync(spec, ct);
+        var orders = await _unitOfWork.PurchaseOrders.ListAsync(new PurchaseOrderQuery { BranchId = branchId, WarehouseId = warehouseId, Status = status }, ct);
         // تحويل قائمة الكيانات إلى قائمة ملخصات DTO
         var dtos = _mapper.Map<IReadOnlyList<PurchaseOrderSummaryDto>>(orders);
-
         // إرجاع النتيجة الناجحة مع قائمة الملخصات
         return ServiceResult<IReadOnlyList<PurchaseOrderSummaryDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PagedResult<PurchaseOrderSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? branchId = null, Guid? warehouseId = null, PurchaseOrderStatus? status = null, string? search = null, CancellationToken ct = default)
     {
         // بناء مواصفة الاستعلام المصفاة مع البحث بالرقم
-        var spec = new PurchaseOrderListSpec(branchId, warehouseId, status, search);
         // تنفيذ الاستعلام الصفحي لجلب عناصر الصفحة الحالية وإجمالي عدد السجلات
-        var (items, totalCount) = await _unitOfWork.PurchaseOrders.GetPagedAsync(spec, pageNumber, pageSize, ct);
-
+        var(items, totalCount) = await _unitOfWork.PurchaseOrders.SearchAsync(new PurchaseOrderQuery { BranchId = branchId, WarehouseId = warehouseId, Status = status, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل عناصر الصفحة الحالية إلى قائمة ملخصات
         var dtos = _mapper.Map<IReadOnlyList<PurchaseOrderSummaryDto>>(items);
         // إنشاء كائن النتيجة المصفحة مع حساب إجمالي الصفحات
         var pagedResult = PagedResult<PurchaseOrderSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة الناجحة بالبيانات المصفحة
         return ServiceResult<PagedResult<PurchaseOrderSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PurchaseOrderResponseDto>> CreateAsync(CreatePurchaseOrderDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<PurchaseOrderResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
+        if (dto.Items?.Any(i => !StockQuantity.IsValid(i.Quantity)) == true)
+            return ServiceResult<PurchaseOrderResponseDto>.Failure("الكميات يجب أن تكون أعداداً صحيحة موجبة من أصغر وحدة، ضمن الحد المسموح", ErrorCodes.ValidationError);
         // التحقق من صحة وجود الفرع المسند لأمر الشراء
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         // في حال عدم وجود الفرع
         if (!branchExists)
         {
@@ -105,7 +101,7 @@ public class PurchaseOrderService : IPurchaseOrderService
         if (dto.SupplierId.HasValue && dto.SupplierId.Value != Guid.Empty)
         {
             // التحقق من وجود المورد في قاعدة البيانات
-            bool supplierExists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Id == dto.SupplierId.Value, ct);
+            bool supplierExists = await _unitOfWork.Suppliers.ExistsByIdAsync(dto.SupplierId.Value, ct);
             // في حال عدم وجود المورد
             if (!supplierExists)
             {
@@ -118,7 +114,7 @@ public class PurchaseOrderService : IPurchaseOrderService
         if (dto.WarehouseId.HasValue)
         {
             // التحقق من وجود المستودع في قاعدة البيانات
-            bool warehouseExists = await _unitOfWork.Warehouses.ExistsAsync(w => w.Id == dto.WarehouseId.Value, ct);
+            bool warehouseExists = await _unitOfWork.Warehouses.ExistsByIdAsync(dto.WarehouseId.Value, ct);
             // في حال عدم وجود المستودع
             if (!warehouseExists)
             {
@@ -128,7 +124,7 @@ public class PurchaseOrderService : IPurchaseOrderService
         }
 
         // التحقق من عدم تكرار رقم أمر الشراء
-        bool orderNumExists = await _unitOfWork.PurchaseOrders.ExistsAsync(p => p.OrderNumber == dto.OrderNumber, ct);
+        bool orderNumExists = await _unitOfWork.PurchaseOrders.NumberExistsAsync(dto.OrderNumber, ct);
         // في حال وجود رقم الطلبية مسبقاً
         if (orderNumExists)
         {
@@ -144,23 +140,15 @@ public class PurchaseOrderService : IPurchaseOrderService
         order.OrderDate = dto.OrderDate == default ? DateTime.UtcNow : dto.OrderDate;
         // تعيين الحالة المبدئية كمسودة
         order.Status = PurchaseOrderStatus.Draft;
-
         // معالجة بنود الطلبية واحتساب الإجماليات
         if (dto.Items != null && dto.Items.Any())
         {
             // تحويل بنود الإدخال إلى كيانات PurchaseOrderItem
-            order.Items = dto.Items.Select(item => new PurchaseOrderItem
-            {
-                // ربط معرف باركود الصنف
-                ProductBarCodeId = item.ProductBarCodeId,
-                // الكمية المطلوبة
-                Quantity = item.Quantity,
-                // سعر الوحدة التقديري
-                UnitPrice = item.UnitPrice,
-                // إجمالي البند (الكمية × السعر)
-                LineTotal = item.Quantity * item.UnitPrice
-            }).ToList();
-
+            order.Items = dto.Items.Select(item => new PurchaseOrderItem { // ربط معرف باركود الصنف
+ ProductBarCodeId = item.ProductBarCodeId, // الكمية المطلوبة
+ Quantity = item.Quantity, // سعر الوحدة التقديري
+ UnitPrice = item.UnitPrice, // إجمالي البند (الكمية × السعر)
+ LineTotal = item.Quantity * item.UnitPrice }).ToList();
             // احتساب إجمالي أمر الشراء كمجموع إجماليات البنود
             order.TotalAmount = order.Items.Sum(i => i.LineTotal);
         }
@@ -174,21 +162,24 @@ public class PurchaseOrderService : IPurchaseOrderService
         await _unitOfWork.PurchaseOrders.AddAsync(order, ct);
         // حفظ التغييرات في قاعدة البيانات لتوليد المعرف
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب أمر الشراء مع العلاقات الكاملة للتأكد من اكتمال كائن الاستجابة
-        var createdOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(order.Id), ct) ?? order;
+        var createdOrder = await _unitOfWork.PurchaseOrders.GetDetailsAsync(order.Id, ct) ?? order;
         // تحويل الكيان إلى DTO الاستجابة
         var responseDto = _mapper.Map<PurchaseOrderResponseDto>(createdOrder);
-
         // إرجاع النتيجة الناجحة مع بيانات أمر الشراء المنشأ
         return ServiceResult<PurchaseOrderResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PurchaseOrderResponseDto>> UpdateAsync(Guid id, UpdatePurchaseOrderDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<PurchaseOrderResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
+        if (dto.Items?.Any(i => !StockQuantity.IsValid(i.Quantity)) == true)
+            return ServiceResult<PurchaseOrderResponseDto>.Failure("الكميات يجب أن تكون أعداداً صحيحة موجبة من أصغر وحدة، ضمن الحد المسموح", ErrorCodes.ValidationError);
         // استعلام أمر الشراء المطلوب تعديله مع كافة تفاصيله
-        var order = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct);
+        var order = await _unitOfWork.PurchaseOrders.GetDetailsAsync(id, ct);
         // التحقق من وجود أمر الشراء
         if (order is null)
         {
@@ -210,7 +201,7 @@ public class PurchaseOrderService : IPurchaseOrderService
             if (dto.SupplierId.Value != Guid.Empty)
             {
                 // الاستعلام عن وجود المورد
-                bool supplierExists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Id == dto.SupplierId.Value, ct);
+                bool supplierExists = await _unitOfWork.Suppliers.ExistsByIdAsync(dto.SupplierId.Value, ct);
                 // في حال عدم وجود المورد
                 if (!supplierExists)
                 {
@@ -218,6 +209,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                     return ServiceResult<PurchaseOrderResponseDto>.Failure("المورد المحدد غير موجود", ErrorCodes.SupplierNotFound);
                 }
             }
+
             // تحديث معرف المورد أو تفريغه
             order.SupplierId = dto.SupplierId.Value == Guid.Empty ? null : dto.SupplierId;
         }
@@ -226,7 +218,7 @@ public class PurchaseOrderService : IPurchaseOrderService
         if (dto.WarehouseId.HasValue)
         {
             // الاستعلام عن وجود المستودع
-            bool warehouseExists = await _unitOfWork.Warehouses.ExistsAsync(w => w.Id == dto.WarehouseId.Value, ct);
+            bool warehouseExists = await _unitOfWork.Warehouses.ExistsByIdAsync(dto.WarehouseId.Value, ct);
             // في حال عدم وجود المستودع
             if (!warehouseExists)
             {
@@ -236,10 +228,9 @@ public class PurchaseOrderService : IPurchaseOrderService
         }
 
         // تحديث معرف المستودع
-        order.WarehouseId = dto.WarehouseId;
+        if (dto.WarehouseId.HasValue) order.WarehouseId = dto.WarehouseId;
         // تحديث التاريخ المتوقع لوصول البضاعة
         order.ExpectedDate = dto.ExpectedDate;
-
         // تحديث بنود أمر الشراء في حال تم إرسالها
         if (dto.Items != null)
         {
@@ -255,20 +246,12 @@ public class PurchaseOrderService : IPurchaseOrderService
             }
 
             // إنشاء قائمة البنود الجديدة من بيانات الإدخال
-            order.Items = dto.Items.Select(item => new PurchaseOrderItem
-            {
-                // ربط البند بأمر الشراء
-                PurchaseOrderId = id,
-                // معرف باركود الصنف
-                ProductBarCodeId = item.ProductBarCodeId,
-                // الكمية المطلوبة
-                Quantity = item.Quantity,
-                // سعر الوحدة
-                UnitPrice = item.UnitPrice,
-                // إجمالي البند
-                LineTotal = item.Quantity * item.UnitPrice
-            }).ToList();
-
+            order.Items = dto.Items.Select(item => new PurchaseOrderItem { // ربط البند بأمر الشراء
+ PurchaseOrderId = id, // معرف باركود الصنف
+ ProductBarCodeId = item.ProductBarCodeId, // الكمية المطلوبة
+ Quantity = item.Quantity, // سعر الوحدة
+ UnitPrice = item.UnitPrice, // إجمالي البند
+ LineTotal = item.Quantity * item.UnitPrice }).ToList();
             // إعادة احتساب إجمالي مبلغ أمر الشراء
             order.TotalAmount = order.Items.Sum(i => i.LineTotal);
         }
@@ -277,325 +260,76 @@ public class PurchaseOrderService : IPurchaseOrderService
         _unitOfWork.PurchaseOrders.Update(order);
         // حفظ التعديلات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب أمر الشراء المحدث بكامل تفاصيله
-        var updatedOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct) ?? order;
+        var updatedOrder = await _unitOfWork.PurchaseOrders.GetDetailsAsync(id, ct) ?? order;
         // تحويل الكيان إلى DTO الاستجابة
         var responseDto = _mapper.Map<PurchaseOrderResponseDto>(updatedOrder);
-
         // إرجاع النتيجة الناجحة
         return ServiceResult<PurchaseOrderResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PurchaseOrderResponseDto>> UpdateStatusAsync(Guid id, PurchaseOrderStatus status, CancellationToken ct = default)
     {
-        // استعلام أمر الشراء بكامل تفاصيله وبنوده
-        var order = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct);
-        // التحقق من وجود أمر الشراء
+        if (!Enum.IsDefined(status))
+            return ServiceResult<PurchaseOrderResponseDto>.Failure("حالة الطلبية غير صحيحة", ErrorCodes.ValidationError);
+        var order = await _unitOfWork.PurchaseOrders.GetDetailsForUpdateAsync(id, ct);
         if (order is null)
-        {
-            // إرجاع خطأ بعدم العثور على الطلبية
             return ServiceResult<PurchaseOrderResponseDto>.Failure("أمر الشراء/الطلبية غير موجودة", ErrorCodes.PurchaseOrderNotFound);
-        }
+        if (order.Status is PurchaseOrderStatus.Received or PurchaseOrderStatus.Cancelled)
+            return ServiceResult<PurchaseOrderResponseDto>.Failure("لا يمكن تغيير حالة طلبية مستلمة أو ملغاة", ErrorCodes.ValidationError);
 
-        // الحماية الصارمة من تكرار الاستلام أو التلاعب بالطلبيات المغلقة
-        if (order.Status == PurchaseOrderStatus.Received)
+        if (status == PurchaseOrderStatus.Received)
         {
-            // منع إعادة استلام أو تعديل طلبية تم استلامها وإغلاقها مسبقاً
-            return ServiceResult<PurchaseOrderResponseDto>.Failure("الطلبية مستلمة ومغلقة نهائياً، لا يمكن تعديل حالتها مجدداً منعاً لتكرار المخزون", ErrorCodes.ValidationError);
-        }
-
-        // منع تغيير حالة طلبية تم إلغاؤها بالفعل
-        if (order.Status == PurchaseOrderStatus.Cancelled)
-        {
-            // إرجاع خطأ بعدم جواز إعادة تفعيل طلبية ملغاة
-            return ServiceResult<PurchaseOrderResponseDto>.Failure("الطلبية ملغاة ولا يمكن إعادة تفعيلها", ErrorCodes.ValidationError);
-        }
-
-        // فحص ما إذا كان التعديل يمثل استلاماً جديداً للبضاعة
-        bool isNewlyReceived = (status == PurchaseOrderStatus.Received);
-
-        // التحقق من اكتمال البيانات الإلزامية في حال الاستلام
-        if (isNewlyReceived)
-        {
-            // التأكد من تحديد المورد قبل إتمام الاستلام لإنشاء الفاتورة
-            if (!order.SupplierId.HasValue || order.SupplierId.Value == Guid.Empty)
+            if (!order.SupplierId.HasValue || !order.WarehouseId.HasValue || order.Items.Count == 0)
+                return ServiceResult<PurchaseOrderResponseDto>.Failure("يجب تحديد المورد والمستودع وبنود الطلبية قبل الاستلام", ErrorCodes.ValidationError);
+            var barcodeIds = order.Items.Select(i => i.ProductBarCodeId).Distinct().ToList();
+            var barcodes = (await _unitOfWork.Products.GetBarcodesByIdsAsync(barcodeIds, ct)).ToDictionary(b => b.Id);
+            if (barcodes.Count != barcodeIds.Count)
+                return ServiceResult<PurchaseOrderResponseDto>.Failure("أحد باركودات الطلبية غير موجود", ErrorCodes.BarCodeNotFound);
+            var request = new CreatePurchaseInvoiceDto
             {
-                // إرجاع خطأ طلب تحديد المورد
-                return ServiceResult<PurchaseOrderResponseDto>.Failure("يجب تحديد المورد أولاً قبل إتمام استلام الطلبية وتوليد فاتورتها", ErrorCodes.ValidationError);
-            }
-
-            // التأكد من تحديد المستودع أو الصالة المستلمة
-            if (!order.WarehouseId.HasValue || order.WarehouseId.Value == Guid.Empty)
-            {
-                // إرجاع خطأ طلب تحديد المستودع
-                return ServiceResult<PurchaseOrderResponseDto>.Failure("يجب تحديد المستودع أو الصالة المستلمة أولاً قبل إتمام استلام الطلبية", ErrorCodes.ValidationError);
-            }
-        }
-
-        // جلب نسخة الكيان المتتبعة لتعديل الحالة
-        var orderToUpdate = await _unitOfWork.PurchaseOrders.GetByIdAsync(id, ct);
-        // التحقق من وجود الكيان المتتبع
-        if (orderToUpdate is null)
-        {
-            // إرجاع خطأ في حال عدم وجود الطلبية
-            return ServiceResult<PurchaseOrderResponseDto>.Failure("أمر الشراء/الطلبية غير موجودة", ErrorCodes.PurchaseOrderNotFound);
-        }
-
-        // تحديث حالة أمر الشراء إلى الحالة الجديدة
-        orderToUpdate.Status = status;
-        // تعليم الكيان كمحدث في المستودع
-        _unitOfWork.PurchaseOrders.Update(orderToUpdate);
-
-        // خريطة استنباط ProductId من الباركود دفعة واحدة — تخدم تحديث المخزون وتوليد الفاتورة معاً
-        var receivedProductIds = new Dictionary<Guid, Guid>();
-
-        // تنفيذ منطق تغذية المخزون وتوليد الفاتورة عند تحويل الحالة إلى مستلم (Received)
-        if (isNewlyReceived && order.WarehouseId.HasValue && order.Items != null && order.Items.Count > 0)
-        {
-            // جلب بيانات المستودع لمعرفة نوعه (مخزن تخزين رئيسي أم صالة عرض)
-            var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(order.WarehouseId.Value, ct);
-            // التأكد من وجود المستودع
-            if (warehouse != null)
-            {
-                // إذا كان المستودع مخزن تخزين رئيسي (Storge)
-                if (warehouse.Type == WarehouseType.Storge)
-                {
-                    // استخراج البنود ذات الباركود الصالح
-                    var validItems = order.Items.Where(i => i.ProductBarCodeId != Guid.Empty).ToList();
-                    // تجميع معرفات الباركود الفريدة دفعة واحدة لتفادي مشكلة N+1
-                    var barcodeIds = validItems.Select(i => i.ProductBarCodeId).Distinct().ToList();
-
-                    // جلب كيانات الباركود دفعة واحدة وبناء قاموس البحث السريع بالمعرف
-                    var barcodesById = barcodeIds.Count > 0
-                        ? (await _unitOfWork.Products.FindBarCodesAsync(b => barcodeIds.Contains(b.Id), ct))
-                            .ToDictionary(b => b.Id)
-                        : new Dictionary<Guid, ProductBarCode>();
-
-                    // جلب أرصدة المخزن المتتبعة للباركودات المعنية دفعة واحدة
-                    var stocksByBarcode = barcodeIds.Count > 0
-                        ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
-                            s => s.WarehouseId == order.WarehouseId.Value && barcodeIds.Contains(s.ProductBarcodeId), ct))
-                            .ToDictionary(s => s.ProductBarcodeId)
-                        : new Dictionary<Guid, StorgeStock>();
-
-                    // المرور على بنود الطلبية وتحديث رصيد المخزن لكل صنف ونكهة
-                    foreach (var item in validItems)
-                    {
-                        // فحص وجود سجل رصيد مخزني مسبق لهذا الباركود في هذا المخزن
-                        if (stocksByBarcode.TryGetValue(item.ProductBarCodeId, out var stock))
-                        {
-                            // زيادة الكمية المستلمة إلى الرصيد الحالي
-                            stock.Quantity += (int)item.Quantity;
-                        }
-                        else
-                        {
-                            // إنشاء سجل رصيد مخزني جديد للباركود المستلم
-                            var newStock = new StorgeStock
-                            {
-                                // تعيين معرف المستأجر
-                                TenantId = order.TenantId,
-                                // تعيين معرف المخزن
-                                WarehouseId = order.WarehouseId.Value,
-                                // تعيين معرف الباركود
-                                ProductBarcodeId = item.ProductBarCodeId,
-                                // تعيين الكمية المستلمة
-                                Quantity = (int)item.Quantity,
-                                // ضبط الحد الأدنى الافتراضي للرصيد
-                                MinStockLevel = 0
-                            };
-                            // إضافة سجل الرصيد المخزني الجديد للمستودع
-                            await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
-                            // حفظ السجل الجديد في القاموس لمنع التكرار في نفس الدفعة
-                            stocksByBarcode[item.ProductBarCodeId] = newStock;
-                        }
-                    }
-
-                    // استنباط ProductId للبنود التي تحتاجه (للفاتورة المولدة أدناه) من نفس دفعة الباركودات
-                    foreach (var item in validItems)
-                    {
-                        // إضافة معرف الصنف إلى الخريطة للاستخدام لاحقاً
-                        receivedProductIds.TryAdd(item.ProductBarCodeId,
-                            barcodesById.TryGetValue(item.ProductBarCodeId, out var bc) ? bc.ProductId : Guid.Empty);
-                    }
-                }
-                // إذا كان المستودع عبارة عن صالة عرض (Showroom)
-                else if (warehouse.Type == WarehouseType.Show)
-                {
-                    // استخراج البنود ذات الباركود الصالح
-                    var validItems = order.Items.Where(i => i.ProductBarCodeId != Guid.Empty).ToList();
-
-                    // استنباط الباركودات دفعة واحدة
-                    var barcodeIds = validItems.Select(i => i.ProductBarCodeId).Distinct().ToList();
-                    // جلب الباركودات وبناء القاموس
-                    var barcodesById = barcodeIds.Count > 0
-                        ? (await _unitOfWork.Products.FindBarCodesAsync(b => barcodeIds.Contains(b.Id), ct))
-                            .ToDictionary(b => b.Id)
-                        : new Dictionary<Guid, ProductBarCode>();
-
-                    // استخراج معرفات الأصناف الفريدة لصالة العرض
-                    var productIds = validItems
-                        .Select(i => barcodesById.TryGetValue(i.ProductBarCodeId, out var bc) ? bc.ProductId : Guid.Empty)
-                        .Where(pid => pid != Guid.Empty)
-                        .Distinct()
-                        .ToList();
-
-                    // جلب أرصدة صالة العرض المتتبعة دفعة واحدة للأصناف المعنية
-                    var stocksByProduct = productIds.Count > 0
-                        ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
-                            s => s.WarehouseId == order.WarehouseId.Value && productIds.Contains(s.ProductId), ct))
-                            .ToDictionary(s => s.ProductId)
-                        : new Dictionary<Guid, ShowroomStock>();
-
-                    // المرور على البنود وتحديث رصيد صالة العرض
-                    foreach (var item in validItems)
-                    {
-                        // تخطي البند في حال تعذر الحصول على معرف الصنف
-                        if (!barcodesById.TryGetValue(item.ProductBarCodeId, out var bc) || bc.ProductId == Guid.Empty) continue;
-
-                        // إذا كان للصنف رصيد مسبق في الصالة
-                        if (stocksByProduct.TryGetValue(bc.ProductId, out var stock))
-                        {
-                            // زيادة رصيد الصالة بالكمية المستلمة
-                            stock.Quantity += (int)item.Quantity;
-                        }
-                        else
-                        {
-                            // إنشاء رصيد جديد في صالة العرض لهذا الصنف
-                            var newStock = new ShowroomStock
-                            {
-                                // تعيين معرف المستأجر
-                                TenantId = order.TenantId,
-                                // تعيين معرف الصالة
-                                WarehouseId = order.WarehouseId.Value,
-                                // تعيين معرف الصنف
-                                ProductId = bc.ProductId,
-                                // تعيين الكمية
-                                Quantity = (int)item.Quantity,
-                                // ضبط الحد الأدنى
-                                MinStockLevel = 0
-                            };
-                            // إضافة سجل رصيد الصالة
-                            await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
-                            // حفظ السجل في القاموس
-                            stocksByProduct[bc.ProductId] = newStock;
-                        }
-                    }
-
-                    // استنباط ProductId للفاتورة المولدة
-                    foreach (var item in validItems)
-                    {
-                        // فحص الباركود وإضافته لخريطة الأصناف
-                        if (barcodesById.TryGetValue(item.ProductBarCodeId, out var bc))
-                        {
-                            // تخزين معرف الصنف
-                            receivedProductIds.TryAdd(item.ProductBarCodeId, bc.ProductId);
-                        }
-                    }
-                }
-            }
-
-            // توليد فاتورة مشتريات معتمدة آلياً لتوثيق استلام الطلبية
-            var invoiceNumber = $"PINV-{DateTime.UtcNow:yyyyMMddHHmmss}";
-            // بناء كيان فاتورة المشتريات الآلية
-            var purchaseInvoice = new PurchaseInvoice
-            {
-                // تعيين معرف المستأجر
-                TenantId = order.TenantId,
-                // تعيين رقم الفاتورة الفريد
-                InvoiceNumber = invoiceNumber,
-                // تعيين تاريخ الفاتورة بالوقت الحالي
+                InvoiceNumber = $"PO-{order.Id:N}",
                 InvoiceDate = DateTime.UtcNow,
-                // تعيين المورد
-                SupplierId = order.SupplierId!.Value,
-                // تعيين الفرع
+                SupplierId = order.SupplierId.Value,
                 BranchId = order.BranchId,
-                // تعيين المستودع المستلم
                 WarehouseId = order.WarehouseId.Value,
-                // تعيين حالة الفاتورة كمدفوعة ومكتملة
-                Status = InvoiceStatus.Paid,
-                // تعيين طريقة الدفع نقداً
-                PaymentMethod = PaymentMethod.Cash,
-                // ربط الفاتورة بأمر الشراء الحالي
                 PurchaseOrderId = order.Id,
-                // تدوين ملاحظة آلية توضح مصدر الفاتورة
-                Notes = $"فاتورة مشتريات منشأة آلياً بموجب استلام طلبية الشراء رقم {order.OrderNumber}",
-                // تهيئة قائمة بنود الفاتورة
-                Items = new List<PurchaseInvoiceItem>()
+                Status = InvoiceStatus.Pending,
+                PaymentMethod = PaymentMethod.Credit,
+                PaidAmount = 0,
+                Notes = $"فاتورة مشتريات بموجب استلام طلبية الشراء رقم {order.OrderNumber}",
+                Items = order.Items.Select(i => new CreatePurchaseInvoiceItemDto
+                {
+                    ProductId = barcodes[i.ProductBarCodeId].ProductId,
+                    ProductBarCodeId = i.ProductBarCodeId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
             };
-
-            // تحويل بنود أمر الشراء إلى بنود فاتورة مشتريات
-            foreach (var item in order.Items)
+            // The invoice service owns the transaction and saves this tracked status with stock and ledger entries.
+            var previousStatus = order.Status;
+            order.Status = status;
+            var result = await _purchaseInvoices.CreateAsync(request, ct);
+            if (!result.IsSuccess)
             {
-                // استنباط معرف الصنف للبند
-                Guid productId = Guid.Empty;
-                // محاولة الحصول عليه من الخريطة المجمعة مسبقاً
-                if (receivedProductIds.TryGetValue(item.ProductBarCodeId, out var mappedPid))
-                {
-                    // تعيين معرف الصنف المستنبط
-                    productId = mappedPid;
-                }
-                // محاولة الحصول عليه من خاصية التنقل
-                else if (item.ProductBarCode != null)
-                {
-                    // تعيين معرف الصنف من الباركود
-                    productId = item.ProductBarCode.ProductId;
-                }
-
-                // تخطي البند في حال عدم التمكن من تحديد الصنف
-                if (productId == Guid.Empty) continue;
-
-                // إضافة البند إلى الفاتورة المنشأة
-                purchaseInvoice.Items.Add(new PurchaseInvoiceItem
-                {
-                    // تعيين معرف المستأجر
-                    TenantId = order.TenantId,
-                    // معرف الصنف
-                    ProductId = productId,
-                    // معرف باركود الصنف
-                    ProductBarCodeId = item.ProductBarCodeId,
-                    // الكمية المستلمة
-                    Quantity = item.Quantity,
-                    // سعر الوحدة
-                    UnitPrice = item.UnitPrice,
-                    // لا يوجد خصم افتراضي على البند
-                    DiscountAmount = 0,
-                    // إجمالي قيمة البند
-                    LineTotal = item.Quantity * item.UnitPrice
-                });
+                order.Status = previousStatus;
+                return ServiceResult<PurchaseOrderResponseDto>.Failure(result.ErrorMessage!, result.ErrorCode);
             }
-
-            // احتساب إجمالي الفاتورة الفرعي
-            purchaseInvoice.SubTotal = purchaseInvoice.Items.Sum(i => i.LineTotal);
-            // احتساب إجمالي الفاتورة النهائي
-            purchaseInvoice.TotalAmount = purchaseInvoice.SubTotal;
-            // تعيين المبلغ المدفوع بالكامل
-            purchaseInvoice.PaidAmount = purchaseInvoice.TotalAmount;
-            // تصفير المبلغ المتبقي
-            purchaseInvoice.RemainingAmount = 0;
-
-            // إضافة فاتورة المشتريات الجديدة للمستودع
-            await _unitOfWork.PurchaseInvoices.AddAsync(purchaseInvoice, ct);
         }
-
-        // حفظ كافة التغييرات وحركات المخزون والفاتورة في معاملة واحدة
-        await _unitOfWork.SaveChangesAsync(ct);
-
-        // إعادة تحميل أمر الشراء بكامل تفاصيله لعرض أحدث البيانات
-        var updatedOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(new PurchaseOrderWithDetailsSpec(id), ct) ?? order;
-        // تحويل الكيان إلى كائن الاستجابة DTO
-        var responseDto = _mapper.Map<PurchaseOrderResponseDto>(updatedOrder);
-
-        // إرجاع النتيجة الناجحة
-        return ServiceResult<PurchaseOrderResponseDto>.Success(responseDto);
+        else
+        {
+            order.Status = status;
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+        var updated = await _unitOfWork.PurchaseOrders.GetDetailsAsync(id, ct) ?? order;
+        return ServiceResult<PurchaseOrderResponseDto>.Success(_mapper.Map<PurchaseOrderResponseDto>(updated));
     }
-
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // تحميل متتبع لتفادي تضارب النسخ المكررة عند تكرار الصنف في البنود أثناء SoftDelete
-        var order = await _unitOfWork.PurchaseOrders.FirstOrDefaultTrackedAsync(new PurchaseOrderWithDetailsSpec(id), ct);
+        var order = await _unitOfWork.PurchaseOrders.GetDetailsForUpdateAsync(id, ct);
         // التحقق من وجود أمر الشراء المطلوب حذفه
         if (order is null)
         {
@@ -607,7 +341,6 @@ public class PurchaseOrderService : IPurchaseOrderService
         _unitOfWork.PurchaseOrders.SoftDelete(order);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة نجاح العملية
         return ServiceResult.Success();
     }

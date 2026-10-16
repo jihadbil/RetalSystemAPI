@@ -29,27 +29,27 @@ public class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<PurchaseInv
 
         // ضبط نوع العمود للإجمالي الفرعي بدقة عشرية (18, 2)
         builder.Property(p => p.SubTotal)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لقيمة الخصم بدقة عشرية (18, 2)
         builder.Property(p => p.DiscountAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود لمبلغ الضريبة بدقة عشرية (18, 2)
         builder.Property(p => p.TaxAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود للإجمالي النهائي لفاتورة الشراء بدقة عشرية (18, 2)
         builder.Property(p => p.TotalAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود للمبلغ المدفوع للمورد بدقة عشرية (18, 2)
         builder.Property(p => p.PaidAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // ضبط نوع العمود للمبلغ المتبقي لصالح المورد بدقة عشرية (18, 2)
         builder.Property(p => p.RemainingAmount)
-            .HasPrecision(18, 2);
+            .HasPrecision(18, 4);
 
         // تكوين حقل الملاحظات بحد أقصى 500 حرف
         builder.Property(p => p.Notes)

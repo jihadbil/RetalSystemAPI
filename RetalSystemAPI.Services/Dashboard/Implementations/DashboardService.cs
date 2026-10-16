@@ -65,12 +65,12 @@ public class DashboardService : IDashboardService
         // 1. إعداد استعلام فواتير المبيعات الأساسي مع استبعاد الملغاة والمردودة
         var salesQuery = _dbContext.SalesInvoices
             .AsNoTracking()
-            .Where(i => i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Voided);
+            .Where(i => i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Voided);
 
         // إعداد استعلام فواتير المشتريات الأساسي مع استبعاد الملغاة والمردودة
         var purchasesQuery = _dbContext.PurchaseInvoices
             .AsNoTracking()
-            .Where(p => p.Status != InvoiceStatus.Cancelled && p.Status != InvoiceStatus.Voided);
+            .Where(p => p.Status != InvoiceStatus.Draft && p.Status != InvoiceStatus.Cancelled && p.Status != InvoiceStatus.Voided);
 
         // تطبيق فلترة الفرع إن تم تحديده
         if (branchId.HasValue && branchId.Value != Guid.Empty)
@@ -123,11 +123,13 @@ public class DashboardService : IDashboardService
             .Where(i => i.InvoiceDate >= monthStart)
             .SumAsync(i => i.TotalAmount, ct);
 
-        // حساب إجمالي الديون والذمم المدينة المتبقية على العملاء
-        decimal totalReceivables = await salesQuery
-            .Where(i => i.RemainingAmount > 0)
-            .SumAsync(i => i.RemainingAmount, ct);
-
+        // الحساب الموحد يشمل الرصيد الافتتاحي والسداد والمرتجعات.
+        // على مستوى الفرع نحسب صافي قيوده؛ الأرصدة الافتتاحية غير المنسوبة لفرع تظهر في الإجمالي فقط.
+        decimal totalReceivables = branchId.HasValue && branchId.Value != Guid.Empty
+            ? await _dbContext.CustomerTransactions.AsNoTracking().Where(t => t.BranchId == branchId.Value)
+                .GroupBy(t => t.CustomerId).Select(g => g.Sum(t => t.DebitAmount - t.CreditAmount))
+                .Where(balance => balance > 0).SumAsync(ct)
+            : await _dbContext.Customers.AsNoTracking().Where(c => c.CurrentBalance > 0).SumAsync(c => c.CurrentBalance, ct);
         // حساب إجمالي مشتريات اليوم
         decimal todayPurchases = await purchasesQuery
             .Where(p => p.InvoiceDate >= todayStart && p.InvoiceDate < tomorrowStart)
@@ -138,11 +140,11 @@ public class DashboardService : IDashboardService
             .Where(p => p.InvoiceDate >= monthStart)
             .SumAsync(p => p.TotalAmount, ct);
 
-        // حساب إجمالي الذمم الدائنة ومستحقات الموردين المتبقية
-        decimal totalPayables = await purchasesQuery
-            .Where(p => p.RemainingAmount > 0)
-            .SumAsync(p => p.RemainingAmount, ct);
-
+        decimal totalPayables = branchId.HasValue && branchId.Value != Guid.Empty
+            ? await _dbContext.SupplierTransactions.AsNoTracking().Where(t => t.BranchId == branchId.Value)
+                .GroupBy(t => t.SupplierId).Select(g => g.Sum(t => t.CreditAmount - t.DebitAmount))
+                .Where(balance => balance > 0).SumAsync(ct)
+            : await _dbContext.Suppliers.AsNoTracking().Where(s => s.CurrentBalance > 0).SumAsync(s => s.CurrentBalance, ct);
         // تعبئة كائن مؤشرات الأداء الرئيسية KPIs
         summary.Kpis = new DashboardKpiDto
         {
@@ -298,7 +300,7 @@ public class DashboardService : IDashboardService
         // بناء استعلام الفواتير الصالحة ضمن النطاق
         var query = _dbContext.SalesInvoices
             .AsNoTracking()
-            .Where(i => i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Voided && i.InvoiceDate >= startDate);
+            .Where(i => i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Voided && i.InvoiceDate >= startDate);
 
         // تطبيق فلترة الفرع إن وجدت
         if (branchId.HasValue && branchId.Value != Guid.Empty)
@@ -385,7 +387,7 @@ public class DashboardService : IDashboardService
         // استعلام بنود فواتير المبيعات الصالحة
         var itemsQuery = _dbContext.SalesInvoiceItems
             .AsNoTracking()
-            .Where(item => item.SalesInvoice.Status != InvoiceStatus.Cancelled && item.SalesInvoice.Status != InvoiceStatus.Voided);
+            .Where(item => item.SalesInvoice.Status != InvoiceStatus.Draft && item.SalesInvoice.Status != InvoiceStatus.Cancelled && item.SalesInvoice.Status != InvoiceStatus.Voided);
 
         // تطبيق فلترة الفرع على البنود إن تم تحديده
         if (branchId.HasValue && branchId.Value != Guid.Empty)

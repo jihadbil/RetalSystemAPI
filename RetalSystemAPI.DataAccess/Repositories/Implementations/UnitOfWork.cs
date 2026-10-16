@@ -113,6 +113,7 @@ public class UnitOfWork : IUnitOfWork
     /// <inheritdoc />
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
+        _context.EnsureTransactionUsable();
         if (_transaction is not null)
         {
             throw new InvalidOperationException("توجد معاملة مفعلة بالفعل على وحدة العمل الحالية.");
@@ -149,15 +150,22 @@ public class UnitOfWork : IUnitOfWork
             {
                 // Disposing the transaction below is the final rollback safeguard.
             }
+            finally
+            {
+                _context.InvalidateAfterRollback();
+            }
 
             throw;
         }
         finally
         {
-            await transaction.DisposeAsync();
-            if (ReferenceEquals(_transaction, transaction))
+            try
             {
-                _transaction = null;
+                await transaction.DisposeAsync();
+            }
+            finally
+            {
+                if (ReferenceEquals(_transaction, transaction)) _transaction = null;
             }
         }
     }
@@ -170,14 +178,19 @@ public class UnitOfWork : IUnitOfWork
 
         try
         {
-            await transaction.RollbackAsync(ct);
+            // Cleanup must still run when the request has been cancelled.
+            await transaction.RollbackAsync(CancellationToken.None);
         }
         finally
         {
-            await transaction.DisposeAsync();
-            if (ReferenceEquals(_transaction, transaction))
+            _context.InvalidateAfterRollback();
+            try
             {
-                _transaction = null;
+                await transaction.DisposeAsync();
+            }
+            finally
+            {
+                if (ReferenceEquals(_transaction, transaction)) _transaction = null;
             }
         }
     }

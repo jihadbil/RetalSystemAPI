@@ -31,9 +31,9 @@ public class CatalogMappingProfile : Profile
                 opt => opt.MapFrom(src => src.Products.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء الفئة إلى كيان الفئة
-        CreateMap<CreateCategoryDto, Category>();
+        CreateMap<CreateCategoryDto, Category>(MemberList.None);
         // تكوين تحويل ناقل بيانات تحديث الفئة إلى كيان الفئة
-        CreateMap<UpdateCategoryDto, Category>()
+        CreateMap<UpdateCategoryDto, Category>(MemberList.None)
             // استبعاد المعرف Id من التعديل للحفاظ على هوية السجل
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
@@ -41,9 +41,9 @@ public class CatalogMappingProfile : Profile
         // تكوين تحويل كيان الوحدة إلى ناقل بيانات استجابة الوحدة
         CreateMap<Unit, UnitResponseDto>();
         // تكوين تحويل ناقل بيانات إنشاء الوحدة إلى كيان الوحدة
-        CreateMap<CreateUnitDto, Unit>();
+        CreateMap<CreateUnitDto, Unit>(MemberList.None);
         // تكوين تحويل ناقل بيانات تحديث الوحدة إلى كيان الوحدة
-        CreateMap<UpdateUnitDto, Unit>()
+        CreateMap<UpdateUnitDto, Unit>(MemberList.None)
             // استبعاد المعرف Id من التعديل
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
@@ -57,13 +57,13 @@ public class CatalogMappingProfile : Profile
             // إسقاط سعر التكلفة من كيان الصنف المرتبط
             .ForMember(dest => dest.CostPrice, opt => opt.MapFrom(src => src.Product != null ? src.Product.CostPrice : 0m));
         // تكوين تحويل ناقل بيانات إنشاء الباركود إلى كيان الباركود
-        CreateMap<CreateProductBarCodeDto, ProductBarCode>();
+        CreateMap<CreateProductBarCodeDto, ProductBarCode>(MemberList.None);
 
         // ── تحويلات صور الأصناف (ProductImage) ────────────────────────────────
         // تكوين تحويل كيان صورة الصنف إلى ناقل بيانات استجابة الصورة
         CreateMap<ProductImage, ProductImageResponseDto>();
         // تكوين تحويل ناقل بيانات إنشاء الصورة إلى كيان الصورة
-        CreateMap<CreateProductImageDto, ProductImage>();
+        CreateMap<CreateProductImageDto, ProductImage>(MemberList.None);
 
         // ── تحويلات وحدات الصنف (ProductUnit) ─────────────────────────────────
         // تكوين تحويل كيان وحدة الصنف إلى ناقل بيانات الاستجابة
@@ -72,7 +72,7 @@ public class CatalogMappingProfile : Profile
             .ForMember(dest => dest.UnitName,
                 opt => opt.MapFrom(src => src.Unit != null ? src.Unit.Name : null));
         // تكوين تحويل ناقل بيانات ربط وحدة بصنف إلى كيان وحدة الصنف
-        CreateMap<CreateProductUnitDto, ProductUnit>();
+        CreateMap<CreateProductUnitDto, ProductUnit>(MemberList.None);
 
         // ── تحويلات المنتجات والأصناف (Product) ──────────────────────────────
         // تكوين تحويل كيان الصنف إلى ناقل بيانات الاستجابة التفصيلي
@@ -89,6 +89,11 @@ public class CatalogMappingProfile : Profile
 
         // تكوين تحويل كيان الصنف إلى ناقل بيانات الملخص السريع لعرض الجداول
         CreateMap<Product, ProductSummaryDto>()
+            // المنتج لا يملك حقلاً مستقلاً للكود؛ الباركود الأول هو الكود التشغيلي المعروض.
+            .ForMember(dest => dest.Code,
+                opt => opt.MapFrom(src => src.ProductBarCodes.FirstOrDefault() != null
+                    ? src.ProductBarCodes.First().BarCode
+                    : string.Empty))
             // إسقاط اسم التصنيف
             .ForMember(dest => dest.CategoryName,
                 opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
@@ -114,9 +119,9 @@ public class CatalogMappingProfile : Profile
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ProductImages));
 
         // تكوين تحويل ناقل بيانات إنشاء الصنف إلى كيان الصنف
-        CreateMap<CreateProductDto, Product>();
+        CreateMap<CreateProductDto, Product>(MemberList.None);
         // تكوين تحويل ناقل بيانات تعديل الصنف إلى كيان الصنف
-        CreateMap<UpdateProductDto, Product>()
+        CreateMap<UpdateProductDto, Product>(MemberList.None)
             // استبعاد المعرف الأساسي Id من عملية التعديل
             .ForMember(dest => dest.Id, opt => opt.Ignore());
     }

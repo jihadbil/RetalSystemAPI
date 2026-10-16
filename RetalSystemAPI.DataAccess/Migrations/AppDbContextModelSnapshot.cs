@@ -223,6 +223,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -233,8 +234,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("CashDrawerId")
                         .IsUnique()
                         .HasFilter("[Status] IN (1,2) AND [IsDeleted] = 0");
@@ -243,9 +242,13 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique()
                         .HasFilter("[Status] IN (1,2) AND [IsDeleted] = 0");
 
-                    b.HasIndex("PosTerminalId");
+                    b.HasIndex("TenantId", "BranchId");
+
+                    b.HasIndex("TenantId", "CashDrawerId");
 
                     b.HasIndex("TenantId", "OpenedAt");
+
+                    b.HasIndex("TenantId", "PosTerminalId");
 
                     b.ToTable("CashSessions", null, t =>
                         {
@@ -313,6 +316,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -323,13 +327,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("ExpenseCategoryId");
-
                     b.HasIndex("ExpenseDate");
-
-                    b.HasIndex("SafeId");
 
                     b.HasIndex("TenantId");
 
@@ -384,6 +382,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -401,7 +400,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId", "IsDeleted");
 
                     b.HasIndex("TenantId", "Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("ExpenseCategories", (string)null);
                 });
@@ -440,6 +440,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("TokenHash")
@@ -454,8 +455,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("PosTerminalId");
 
                     b.HasIndex("TokenHash")
                         .IsUnique();
@@ -516,6 +515,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -526,12 +526,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("DefaultCashDrawerId");
-
                     b.HasIndex("TenantId", "Code")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "DefaultCashDrawerId");
 
                     b.HasIndex("TenantId", "IsDeleted");
 
@@ -598,6 +596,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Type")
@@ -611,8 +610,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "BranchId");
@@ -624,7 +621,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId", "Type");
 
                     b.HasIndex("TenantId", "BranchId", "Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Safes", null, t =>
                         {
@@ -696,6 +694,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("TransactionDate")
@@ -713,10 +712,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CashSessionId");
-
-                    b.HasIndex("SafeId");
 
                     b.HasIndex("TenantId");
 
@@ -821,6 +816,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId");
 
+                    b.HasIndex("TenantId", "BranchId");
+
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
@@ -858,6 +855,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -909,6 +907,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -919,10 +918,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
+                    b.HasIndex("TenantId", "BranchId");
 
                     b.HasIndex("TenantId", "PhoneNumber")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("BranchPhones", (string)null);
                 });
@@ -963,6 +963,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -972,8 +973,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ParentCategoryId");
 
                     b.HasIndex("TenantId");
 
@@ -1025,6 +1024,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1034,8 +1034,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("TenantId");
 
@@ -1082,6 +1080,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Title")
@@ -1096,8 +1095,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("TenantId", "BarCode")
                         .IsUnique()
@@ -1142,6 +1139,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1156,7 +1154,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "ProductId")
+                        .IsUnique()
+                        .HasFilter("[IsDefault] = 1 AND [IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "ProductId", "BarcodeId");
 
                     b.ToTable("ProductImages", (string)null);
                 });
@@ -1192,6 +1194,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("UnitId")
@@ -1205,14 +1208,20 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "ProductId")
+                        .IsUnique()
+                        .HasFilter("[IsDefault] = 1 AND [IsDeleted] = 0");
 
-                    b.HasIndex("UnitId");
+                    b.HasIndex("TenantId", "UnitId");
 
                     b.HasIndex("ProductId", "UnitId", "TenantId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("ProductUnits", (string)null);
+                    b.ToTable("ProductUnits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductUnits_ConversionFactor", "[ConversionFactor] > 0");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Unit", b =>
@@ -1246,6 +1255,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("UnitPackage")
@@ -1264,9 +1274,13 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Units", (string)null);
+                    b.ToTable("Units", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Units_UnitPackage", "[UnitPackage] > 0");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Customers.Customer", b =>
@@ -1328,6 +1342,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Type")
@@ -1389,6 +1404,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1400,6 +1416,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("TenantId", "CustomerId");
 
                     b.HasIndex("TenantId", "PhoneNumber");
 
@@ -1464,6 +1482,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("TransactionDate")
@@ -1479,10 +1498,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("CustomerId");
 
                     b.HasIndex("TenantId");
 
@@ -1526,8 +1541,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("DiscountAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
@@ -1545,8 +1560,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal>("PaidAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
@@ -1558,8 +1573,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("RemainingAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1571,22 +1586,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("SubTotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<Guid>("SupplierId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TaxAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1603,16 +1619,22 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("InvoiceDate");
 
-                    b.HasIndex("PaymentSafeId");
-
-                    b.HasIndex("PurchaseOrderId");
-
                     b.HasIndex("SupplierId");
 
                     b.HasIndex("WarehouseId");
 
+                    b.HasIndex("TenantId", "BranchId");
+
                     b.HasIndex("TenantId", "InvoiceNumber")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "PaymentSafeId");
+
+                    b.HasIndex("TenantId", "PurchaseOrderId");
+
+                    b.HasIndex("TenantId", "SupplierId");
+
+                    b.HasIndex("TenantId", "WarehouseId");
 
                     b.ToTable("PurchaseInvoices", null, t =>
                         {
@@ -1633,15 +1655,15 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("DiscountAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<decimal>("LineTotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<Guid?>("ProductBarCodeId")
                         .HasColumnType("uniqueidentifier");
@@ -1653,8 +1675,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1663,11 +1685,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1683,9 +1706,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("PurchaseInvoiceId");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "PurchaseInvoiceId");
 
-                    b.ToTable("PurchaseInvoiceItems", (string)null);
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
+
+                    b.ToTable("PurchaseInvoiceItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseInvoiceItems_BaseQuantity", "[Quantity] > 0 AND [Quantity] <= 2147483647 AND [Quantity] = FLOOR([Quantity])");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItemBreakdown", b =>
@@ -1704,8 +1732,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal>("PackageQuantity")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<Guid>("ProductBarCodeId")
                         .HasColumnType("uniqueidentifier");
@@ -1714,8 +1742,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1724,6 +1752,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitPrice")
@@ -1745,9 +1774,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("PurchaseInvoiceItemId");
 
+                    b.HasIndex("TenantId", "ProductBarCodeId");
+
                     b.HasIndex("TenantId", "PurchaseInvoiceItemId", "ProductBarCodeId");
 
-                    b.ToTable("PurchaseInvoiceItemBreakdowns", (string)null);
+                    b.ToTable("PurchaseInvoiceItemBreakdowns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseInvoiceItemBreakdowns_BaseQuantity", "[Quantity] > 0 AND [Quantity] <= 2147483647 AND [Quantity] = FLOOR([Quantity])");
+
+                            t.HasCheckConstraint("CK_PurchaseInvoiceItemBreakdowns_Packages", "[PackageQuantity] > 0 AND [UnitsPerPackage] > 0 AND [Quantity] = [PackageQuantity] * [UnitsPerPackage]");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrder", b =>
@@ -1792,6 +1828,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalAmount")
@@ -1810,13 +1847,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("OrderDate");
-
-                    b.HasIndex("SupplierId");
-
-                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "BranchId");
 
@@ -1828,6 +1859,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId", "Status");
 
                     b.HasIndex("TenantId", "SupplierId");
+
+                    b.HasIndex("TenantId", "WarehouseId");
 
                     b.ToTable("PurchaseOrders", (string)null);
                 });
@@ -1866,6 +1899,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitPrice")
@@ -1885,7 +1919,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "IsDeleted");
 
-                    b.ToTable("PurchaseOrderItems", (string)null);
+                    b.HasIndex("TenantId", "ProductBarCodeId");
+
+                    b.HasIndex("TenantId", "PurchaseOrderId");
+
+                    b.ToTable("PurchaseOrderItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderItems_BaseQuantity", "[Quantity] > 0 AND [Quantity] <= 2147483647 AND [Quantity] = FLOOR([Quantity])");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseReturn", b =>
@@ -1940,6 +1981,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalAmount")
@@ -1959,21 +2001,15 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("PurchaseInvoiceId");
-
-                    b.HasIndex("RefundSafeId");
-
                     b.HasIndex("ReturnDate");
-
-                    b.HasIndex("SupplierId");
-
-                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "BranchId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "PurchaseInvoiceId");
+
+                    b.HasIndex("TenantId", "RefundSafeId");
 
                     b.HasIndex("TenantId", "ReturnNumber")
                         .IsUnique();
@@ -2033,6 +2069,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitPrice")
@@ -2057,7 +2094,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "IsDeleted");
 
-                    b.ToTable("PurchaseReturnItems", (string)null);
+                    b.HasIndex("TenantId", "PurchaseReturnId");
+
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
+
+                    b.ToTable("PurchaseReturnItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseReturnItems_BaseQuantity", "[Quantity] > 0 AND [Quantity] <= 2147483647 AND [Quantity] = FLOOR([Quantity])");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesInvoice", b =>
@@ -2140,6 +2184,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasDefaultValue(0m);
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalAmount")
@@ -2158,19 +2203,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("CashSessionId");
-
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("InvoiceDate");
-
-                    b.HasIndex("PaymentSafeId");
-
-                    b.HasIndex("PosTerminalId");
-
-                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "BranchId");
 
@@ -2182,6 +2215,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique();
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "PaymentSafeId");
+
+                    b.HasIndex("TenantId", "PosTerminalId");
 
                     b.HasIndex("TenantId", "Status");
 
@@ -2237,6 +2274,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitCost")
@@ -2264,6 +2302,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("SalesInvoiceId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "SalesInvoiceId");
+
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
 
                     b.ToTable("SalesInvoiceItems", (string)null);
                 });
@@ -2325,6 +2367,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalAmount")
@@ -2343,23 +2386,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("OriginalInvoiceId");
-
-                    b.HasIndex("RefundSafeId");
-
                     b.HasIndex("ReturnDate");
-
-                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "BranchId");
 
                     b.HasIndex("TenantId", "CustomerId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "OriginalInvoiceId");
+
+                    b.HasIndex("TenantId", "RefundSafeId");
 
                     b.HasIndex("TenantId", "ReturnNumber")
                         .IsUnique();
@@ -2415,6 +2452,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitPrice")
@@ -2437,6 +2475,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("SalesReturnId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "SalesReturnId");
+
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
 
                     b.ToTable("SalesReturnItems", (string)null);
                 });
@@ -2485,6 +2527,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2538,6 +2581,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2551,7 +2595,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("SupplierId");
 
                     b.HasIndex("TenantId", "PhoneNumber")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "SupplierId");
 
                     b.ToTable("SupplierPhones", (string)null);
                 });
@@ -2614,6 +2661,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("TransactionDate")
@@ -2629,10 +2677,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("SupplierId");
 
                     b.HasIndex("TenantId");
 
@@ -2793,7 +2837,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Tenants", (string)null);
                 });
@@ -2833,6 +2878,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2846,16 +2892,19 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
                     b.HasIndex("TenantId");
 
                     b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "IsDeleted");
 
+                    b.HasIndex("TenantId", "ProductId");
+
+                    b.HasIndex("TenantId", "WarehouseId");
+
                     b.HasIndex("WarehouseId", "ProductId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("ShowroomStocks", (string)null);
                 });
@@ -2897,6 +2946,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2911,8 +2961,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AdjustmentDate");
-
-                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "AdjustmentNumber")
                         .IsUnique();
@@ -2969,6 +3017,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("UnitCost")
@@ -2991,6 +3040,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("StockAdjustmentId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "StockAdjustmentId");
+
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
 
                     b.ToTable("StockAdjustmentItems", (string)null);
                 });
@@ -3027,6 +3080,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ToWarehouseId")
@@ -3047,10 +3101,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FromWarehouseId");
-
-                    b.HasIndex("ToWarehouseId");
 
                     b.HasIndex("TransferDate");
 
@@ -3106,6 +3156,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -3123,6 +3174,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("StockTransferId");
 
                     b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "StockTransferId");
+
+                    b.HasIndex("TenantId", "ProductId", "ProductBarCodeId");
 
                     b.ToTable("StockTransferItems", (string)null);
                 });
@@ -3162,6 +3217,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -3175,16 +3231,19 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductBarcodeId");
-
                     b.HasIndex("TenantId");
 
                     b.HasIndex("WarehouseId");
 
                     b.HasIndex("TenantId", "IsDeleted");
 
+                    b.HasIndex("TenantId", "ProductBarcodeId");
+
+                    b.HasIndex("TenantId", "WarehouseId");
+
                     b.HasIndex("WarehouseId", "ProductBarcodeId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("StorgeStocks", (string)null);
                 });
@@ -3224,6 +3283,7 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("TenantId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Type")
@@ -3236,8 +3296,6 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -3303,27 +3361,30 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.CashSession", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
                         .WithMany()
-                        .HasForeignKey("BranchId")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "CashDrawer")
                         .WithMany("CashSessions")
-                        .HasForeignKey("CashDrawerId")
+                        .HasForeignKey("TenantId", "CashDrawerId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
                         .WithMany("CashSessions")
-                        .HasForeignKey("PosTerminalId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("TenantId", "PosTerminalId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3338,28 +3399,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Expense", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.ExpenseCategory", "ExpenseCategory")
-                        .WithMany("Expenses")
-                        .HasForeignKey("ExpenseCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "Safe")
-                        .WithMany()
-                        .HasForeignKey("SafeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.ExpenseCategory", "ExpenseCategory")
+                        .WithMany("Expenses")
+                        .HasForeignKey("TenantId", "ExpenseCategoryId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "Safe")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SafeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Branch");
 
@@ -3383,16 +3447,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosDeviceCredential", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
-                        .WithMany("DeviceCredentials")
-                        .HasForeignKey("PosTerminalId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
+                        .WithMany("DeviceCredentials")
+                        .HasForeignKey("TenantId", "PosTerminalId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("PosTerminal");
@@ -3402,21 +3467,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.PosTerminal", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
                         .WithMany()
-                        .HasForeignKey("BranchId")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "DefaultCashDrawer")
                         .WithMany("PosTerminals")
-                        .HasForeignKey("DefaultCashDrawerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("TenantId", "DefaultCashDrawerId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3429,15 +3496,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Safe", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3448,20 +3516,22 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.SafeTransaction", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Accounting.CashSession", "CashSession")
                         .WithMany()
-                        .HasForeignKey("CashSessionId")
+                        .HasForeignKey("TenantId", "CashSessionId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "Safe")
                         .WithMany("Transactions")
-                        .HasForeignKey("SafeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("TenantId", "SafeId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3474,15 +3544,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.ApplicationUser", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany("ApplicationUsers")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("ApplicationUsers")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3504,16 +3575,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Branchs.BranchPhone", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany("BranchPhones")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("BranchPhones")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Branch");
@@ -3523,16 +3595,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Category", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Category", "ParentCategory")
-                        .WithMany("SubCategories")
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Category", "ParentCategory")
+                        .WithMany("SubCategories")
+                        .HasForeignKey("TenantId", "ParentCategoryId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentCategory");
 
@@ -3541,15 +3614,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Product", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Category", "Category")
-                        .WithMany("Products")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Category", "Category")
+                        .WithMany("Products")
+                        .HasForeignKey("TenantId", "CategoryId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3560,16 +3634,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.ProductBarCode", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany("ProductBarCodes")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany("ProductBarCodes")
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
@@ -3579,22 +3654,24 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.ProductImage", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "BarcodeCode")
-                        .WithMany("ProductImages")
-                        .HasForeignKey("BarcodeId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany("ProductImages")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany("ProductImages")
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "BarcodeCode")
+                        .WithMany("ProductImages")
+                        .HasForeignKey("TenantId", "ProductId", "BarcodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("BarcodeCode");
 
@@ -3605,21 +3682,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.ProductUnit", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany("ProductUnits")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany("ProductUnits")
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Catalog.Unit", "Unit")
                         .WithMany("ProductUnits")
-                        .HasForeignKey("UnitId")
+                        .HasForeignKey("TenantId", "UnitId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3654,16 +3733,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Customers.CustomerPhone", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
-                        .WithMany("CustomerPhones")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
+                        .WithMany("CustomerPhones")
+                        .HasForeignKey("TenantId", "CustomerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Customer");
@@ -3673,21 +3753,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Customers.CustomerTransaction", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
                         .WithMany()
-                        .HasForeignKey("BranchId")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
                         .WithMany("CustomerTransactions")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("TenantId", "CustomerId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3700,37 +3782,42 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoice", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
-                        .WithMany()
-                        .HasForeignKey("PaymentSafeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseOrder", "PurchaseOrder")
-                        .WithMany()
-                        .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentSafeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseOrder", "PurchaseOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PurchaseOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany()
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3749,28 +3836,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseInvoice", "PurchaseInvoice")
-                        .WithMany("Items")
-                        .HasForeignKey("PurchaseInvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseInvoice", "PurchaseInvoice")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "PurchaseInvoiceId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -3783,22 +3873,24 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItemBreakdown", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
                         .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
+                        .HasForeignKey("TenantId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItem", "PurchaseInvoiceItem")
                         .WithMany("Breakdowns")
-                        .HasForeignKey("PurchaseInvoiceItemId")
+                        .HasForeignKey("TenantId", "PurchaseInvoiceItemId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("ProductBarCode");
@@ -3810,27 +3902,30 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrder", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany("PurchaseOrders")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany("PurchaseOrders")
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Branch");
 
@@ -3843,22 +3938,24 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrderItem", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
                         .WithMany("PurchaseOrderItems")
-                        .HasForeignKey("ProductBarCodeId")
+                        .HasForeignKey("TenantId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseOrder", "PurchaseOrder")
                         .WithMany("Items")
-                        .HasForeignKey("PurchaseOrderId")
+                        .HasForeignKey("TenantId", "PurchaseOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("ProductBarCode");
@@ -3870,37 +3967,42 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseReturn", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseInvoice", "PurchaseInvoice")
-                        .WithMany("Returns")
-                        .HasForeignKey("PurchaseInvoiceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
-                        .WithMany()
-                        .HasForeignKey("RefundSafeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseInvoice", "PurchaseInvoice")
+                        .WithMany("Returns")
+                        .HasForeignKey("TenantId", "PurchaseInvoiceId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundSafeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany()
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3919,28 +4021,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseReturnItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseReturn", "PurchaseReturn")
-                        .WithMany("Items")
-                        .HasForeignKey("PurchaseReturnId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Purchase.PurchaseReturn", "PurchaseReturn")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "PurchaseReturnId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -3953,41 +4058,47 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesInvoice", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.CashSession", "CashSession")
-                        .WithMany()
-                        .HasForeignKey("CashSessionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
-                        .WithMany("SalesInvoices")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
-                        .WithMany()
-                        .HasForeignKey("PaymentSafeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
-                        .WithMany()
-                        .HasForeignKey("PosTerminalId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.CashSession", "CashSession")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CashSessionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
+                        .WithMany("SalesInvoices")
+                        .HasForeignKey("TenantId", "CustomerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "PaymentSafe")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentSafeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.PosTerminal", "PosTerminal")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PosTerminalId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany()
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4008,28 +4119,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesInvoiceItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Sales.SalesInvoice", "SalesInvoice")
-                        .WithMany("Items")
-                        .HasForeignKey("SalesInvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Sales.SalesInvoice", "SalesInvoice")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "SalesInvoiceId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -4042,36 +4156,41 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesReturn", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Sales.SalesInvoice", "OriginalInvoice")
-                        .WithMany("Returns")
-                        .HasForeignKey("OriginalInvoiceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
-                        .WithMany()
-                        .HasForeignKey("RefundSafeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CustomerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Sales.SalesInvoice", "OriginalInvoice")
+                        .WithMany("Returns")
+                        .HasForeignKey("TenantId", "OriginalInvoiceId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetalSystemAPI.Models.Accounting.Safe", "RefundSafe")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundSafeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany()
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4090,28 +4209,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesReturnItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Sales.SalesReturn", "SalesReturn")
-                        .WithMany("Items")
-                        .HasForeignKey("SalesReturnId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Sales.SalesReturn", "SalesReturn")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "SalesReturnId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -4135,16 +4257,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierPhone", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
-                        .WithMany("SupplierPhones")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
+                        .WithMany("SupplierPhones")
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Supplier");
@@ -4154,21 +4277,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Suppliers.SupplierTransaction", b =>
                 {
+                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
                         .WithMany()
-                        .HasForeignKey("BranchId")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RetalSystemAPI.Models.Suppliers.Supplier", "Supplier")
                         .WithMany("SupplierTransactions")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4181,21 +4306,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.ShowroomStock", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany("ShowroomStocks")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany("ShowroomStocks")
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany("ShowroomStocks")
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4216,7 +4343,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany()
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4227,28 +4355,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StockAdjustmentItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Warehouses.StockAdjustment", "StockAdjustment")
-                        .WithMany("Items")
-                        .HasForeignKey("StockAdjustmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.StockAdjustment", "StockAdjustment")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "StockAdjustmentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -4261,21 +4392,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StockTransfer", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "FromWarehouse")
-                        .WithMany()
-                        .HasForeignKey("FromWarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "FromWarehouse")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FromWarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "ToWarehouse")
                         .WithMany()
-                        .HasForeignKey("ToWarehouseId")
+                        .HasForeignKey("TenantId", "ToWarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4288,28 +4421,31 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StockTransferItem", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
-                        .WithMany()
-                        .HasForeignKey("ProductBarCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RetalSystemAPI.Models.Warehouses.StockTransfer", "StockTransfer")
-                        .WithMany("Items")
-                        .HasForeignKey("StockTransferId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Warehouses.StockTransfer", "StockTransfer")
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "StockTransferId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarCode")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId", "ProductBarCodeId")
+                        .HasPrincipalKey("TenantId", "ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Product");
 
@@ -4322,21 +4458,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StorgeStock", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarcode")
-                        .WithMany("StorgeStocks")
-                        .HasForeignKey("ProductBarcodeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("RetalSystemAPI.Models.Catalog.ProductBarCode", "ProductBarcode")
+                        .WithMany("StorgeStocks")
+                        .HasForeignKey("TenantId", "ProductBarcodeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RetalSystemAPI.Models.Warehouses.Warehouse", "Warehouse")
                         .WithMany("WarehouseStocks")
-                        .HasForeignKey("WarehouseId")
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4349,15 +4487,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.Warehouse", b =>
                 {
-                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
-                        .WithMany("Warehouses")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("RetalSystemAPI.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetalSystemAPI.Models.Branchs.Branch", "Branch")
+                        .WithMany("Warehouses")
+                        .HasForeignKey("TenantId", "BranchId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

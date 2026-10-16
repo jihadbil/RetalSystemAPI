@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.Unit;
@@ -13,6 +14,7 @@ public class CreateUnitDto
     public string Name { get; set; } = null!;
 
     /// <summary>وصف الوحدة</summary>
+    [MaxLength(500)]
     public string? Description { get; set; }
 
     /// <summary>عدد القطع التي تحتويها هذه العبوة أو الوحدة</summary>

@@ -22,7 +22,7 @@ public sealed class FinancialPostingTests
         var branchId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);
         await using var unitOfWork = new UnitOfWork(context);
-        var service = new FinancialPostingService(unitOfWork);
+        var service = new FinancialPostingService(unitOfWork, new PosCashService(context, new ModelIntegrityTests.TestUser()));
 
         context.Add(new Branch { Id = branchId, TenantId = tenantId, Name = "Branch", IsActive = true });
 
@@ -80,7 +80,7 @@ public sealed class FinancialPostingTests
         var branchId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);
         await using var unitOfWork = new UnitOfWork(context);
-        var service = new FinancialPostingService(unitOfWork);
+        var service = new FinancialPostingService(unitOfWork, new PosCashService(context, new ModelIntegrityTests.TestUser()));
         context.Add(new Branch { Id = branchId, TenantId = tenantId, Name = "Branch", IsActive = true });
         var safe = new Safe
         {

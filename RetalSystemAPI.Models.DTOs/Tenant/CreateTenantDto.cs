@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Common;
 
@@ -33,6 +34,7 @@ public class CreateTenantDto
     public string Address { get; set; } = string.Empty;
 
     /// <summary>رابط أو مسار شعار المنشأة (Logo)</summary>
+    [MaxLength(2000)]
     public string LogoUrl { get; set; } = string.Empty;
 
     /// <summary>الاسم التجاري الرسمي المسجل</summary>
@@ -92,6 +94,7 @@ public class CreateTenantDto
     public string DefaultCurrencySymbol { get; set; } = "د.ل";
 
     /// <summary>نسبة الضريبة الافتراضية المطبقة</summary>
+    [Range(typeof(decimal), "0", "100")]
     public decimal DefaultTaxRate { get; set; } = 0m;
 
     /// <summary>هل الأسعار المعروضة شاملة الضريبة</summary>
@@ -99,5 +102,6 @@ public class CreateTenantDto
 
     /// <summary>المنطقة الزمنية المعتمدة للعمليات</summary>
     [MaxLength(100, ErrorMessage = "المنطقة الزمنية يجب أن لا تتجاوز 100 حرف")]
+    [TimeZoneId]
     public string Timezone { get; set; } = "Africa/Tripoli";
 }

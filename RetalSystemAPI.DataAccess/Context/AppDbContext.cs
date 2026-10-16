@@ -23,6 +23,19 @@ namespace RetalSystemAPI.DataAccess.Context;
 public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     private readonly ICurrentTenantService? _tenantService;
+    private bool _transactionFailed;
+
+    internal void EnsureTransactionUsable()
+    {
+        if (_transactionFailed)
+            throw new InvalidOperationException("تم التراجع عن المعاملة. أنشئ سياق بيانات جديداً قبل متابعة الكتابة.");
+    }
+
+    internal void InvalidateAfterRollback()
+    {
+        _transactionFailed = true;
+        ChangeTracker.Clear();
+    }
 
     /// <summary>
     /// تهيئة سياق قاعدة البيانات مع تمرير الخيارات وحقن خدمة المستأجر الحالي.
@@ -169,6 +182,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         // اكتشاف وتطبيق كافة فئات التكوين (IEntityTypeConfiguration) في هذا التجميع تلقائياً
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        ModelIntegrityConfiguration.Apply(builder);
 
         // المرور على كافة الكيانات المسجلة في النموذج لفحص شجرة وراثتها وتطبيق مرشحات الأمان
         foreach (var entityType in builder.Model.GetEntityTypes())
@@ -235,24 +249,29 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     /// </summary>
     /// <param name="cancellationToken">رمز إلغاء العملية غير المتزامنة</param>
     /// <returns>عدد السجلات التي تأثرت بعملية الحفظ في قاعدة البيانات</returns>
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        => SaveChangesAsync(true, cancellationToken);
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         // استدعاء دالة حقن معلومات التدقيق والتواريخ ومعرف المستأجر
         ApplyAuditAndTenantInfo();
         // تمرير الحفظ لمحرك EF Core الأساسي
-        return await base.SaveChangesAsync(cancellationToken);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
     /// <summary>
     /// حفظ كافة التغييرات المعلقة في سياق البيانات بشكل تزامني مع تطبيق بيانات التدقيق وتعيين المستأجر.
     /// </summary>
     /// <returns>عدد السجلات التي تأثرت بعملية الحفظ في قاعدة البيانات</returns>
-    public override int SaveChanges()
+    public override int SaveChanges() => SaveChanges(true);
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         // استدعاء دالة حقن معلومات التدقيق والتواريخ ومعرف المستأجر
         ApplyAuditAndTenantInfo();
         // تمرير الحفظ لمحرك EF Core الأساسي
-        return base.SaveChanges();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     /// <summary>
@@ -260,6 +279,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     /// </summary>
     private void ApplyAuditAndTenantInfo()
     {
+        EnsureTransactionUsable();
         // جلب معرف المستأجر الحالي المرتبط بالجلسة الحالية
         var tenantId = CurrentTenantId;
         // تحديد التوقيت الحالي بتوقيت جرينتش UTC لضمان الدقة
@@ -268,6 +288,19 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         // المرور على كافة الكيانات المتتبعة في ChangeTracker والتي ترث من BaseEntity
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
+            if (entry.Entity is TenantBaseEntity owned && entry.Entity is not Tenant
+                && entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            {
+                if (entry.State == EntityState.Added && owned.TenantId == Guid.Empty)
+                    owned.TenantId = tenantId;
+
+                var originalTenantId = entry.Property(nameof(TenantBaseEntity.TenantId)).OriginalValue;
+                if (owned.TenantId == Guid.Empty
+                    || (tenantId != Guid.Empty && owned.TenantId != tenantId)
+                    || (entry.State != EntityState.Added && !Equals(originalTenantId, owned.TenantId)))
+                    throw new UnauthorizedAccessException("لا يمكن حفظ بيانات تخص مستأجراً آخر أو تغيير مالك السجل.");
+            }
+
             // في حالة إضافة سجل جديد تماماً
             if (entry.State == EntityState.Added)
             {

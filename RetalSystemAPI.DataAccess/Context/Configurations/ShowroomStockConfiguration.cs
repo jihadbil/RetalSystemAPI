@@ -53,7 +53,7 @@ public class ShowroomStockConfiguration : IEntityTypeConfiguration<ShowroomStock
 
         // إنشاء فهرس مركب فريد على (WarehouseId, ProductId) لضمان سجل رصيد واحد لكل صنف في كل صالة عرض
         builder.HasIndex(ss => new { ss.WarehouseId, ss.ProductId })
-            .IsUnique();
+            .IsUnique().HasFilter("[IsDeleted] = 0");
 
         // إنشاء فهرس على عمود TenantId لتسريع تصفية أرصدة الصالات حسب المستأجر
         builder.HasIndex(ss => ss.TenantId);

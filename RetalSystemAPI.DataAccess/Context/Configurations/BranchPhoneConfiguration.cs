@@ -48,6 +48,6 @@ public class BranchPhoneConfiguration : IEntityTypeConfiguration<BranchPhone>
 
         // إنشاء فهرس مركب فريد على (TenantId, PhoneNumber) لضمان عدم تكرار نفس رقم الهاتف للفرع لدى نفس المستأجر
         builder.HasIndex(bp => new { bp.TenantId, bp.PhoneNumber })
-            .IsUnique();
+            .IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

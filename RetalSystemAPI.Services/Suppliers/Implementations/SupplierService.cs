@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
@@ -11,11 +8,9 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Suppliers;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Suppliers.Interfaces;
-using RetalSystemAPI.Services.Suppliers.Specifications;
 using RetalSystemAPI.Services.Accounting.Interfaces;
 
 namespace RetalSystemAPI.Services.Suppliers.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة الموردين، حساباتهم، وجهات الاتصال وأرقام الهواتف التابعة لهم.
 /// </summary>
@@ -23,32 +18,28 @@ public class SupplierService : ISupplierService
 {
     // وحدة العمل للوصول إلى مستودعات الموردين وهواتفهم وحفظ التعديلات
     private readonly IUnitOfWork _unitOfWork;
-
     // محول النماذج للتحويل التلقائي بين الكيانات وDTOs
     private readonly IMapper _mapper;
     private readonly IPosCashService _posCashService;
-
     /// <summary>
     /// تهيئة خدمة الموردين مع حقن وحدة العمل وAutoMapper.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل للمستودعات</param>
-    /// <param name="mapper">محول الكيانات</param>
+    /// <param name = "unitOfWork">وحدة العمل للمستودعات</param>
+    /// <param name = "mapper">محول الكيانات</param>
     public SupplierService(IUnitOfWork unitOfWork, IMapper mapper, IPosCashService posCashService)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
-
         // تعيين مرجع المحول
         _mapper = mapper;
         _posCashService = posCashService;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // البحث عن المورد بالمعرف مع تضمين أرقام هواتفه
-        var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(id), ct);
-
+        var supplier = await _unitOfWork.Suppliers.GetDetailsAsync(id, ct);
         // التحقق من وجود المورد
         if (supplier is null)
         {
@@ -58,49 +49,43 @@ public class SupplierService : ISupplierService
 
         // تحويل الكيان إلى كائن استجابة DTO
         var dto = _mapper.Map<SupplierResponseDto>(supplier);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<SupplierResponseDto>.Success(dto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<SupplierSummaryDto>>> GetAllAsync(CancellationToken ct = default)
     {
         // استرجاع كافة الموردين مع هواتفهم مرتبين بالاسم
-        var suppliers = await _unitOfWork.Suppliers.FindAsync(new SupplierWithDetailsSpec(), ct);
-
+        var suppliers = await _unitOfWork.Suppliers.ListAsync(new SupplierQuery { }, ct);
         // تحويل قائمة الكيانات إلى قائمة ملخصات DTOs
         var dtos = _mapper.Map<IReadOnlyList<SupplierSummaryDto>>(suppliers);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<IReadOnlyList<SupplierSummaryDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المخصصة بالبحث والترتيب
-        var spec = new SupplierWithDetailsSpec(search);
-
         // تنفيذ استعلام الصفحة المجزأة مع إجمالي العدد
-        var (items, totalCount) = await _unitOfWork.Suppliers.GetPagedAsync(spec, pageNumber, pageSize, ct);
-
+        var(items, totalCount) = await _unitOfWork.Suppliers.SearchAsync(new SupplierQuery { Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل قائمة العناصر المسترجعة إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<SupplierSummaryDto>>(items);
-
         // بناء كائن النتيجة المجزأة الموحد
         var pagedResult = PagedResult<SupplierSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<PagedResult<SupplierSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierResponseDto>> CreateAsync(CreateSupplierDto dto, CancellationToken ct = default)
     {
-        // التحقق من عدم تكرار اسم المورد للمستأجر الحالي
-        bool exists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Name == dto.Name, ct);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SupplierResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // التحقق من عدم تكرار اسم المورد للمستأجر الحالي
+        bool exists = await _unitOfWork.Suppliers.NameExistsAsync(dto.Name, ct);
         // في حال وجود مورد آخر مسجل بنفس الاسم
         if (exists)
         {
@@ -111,42 +96,35 @@ public class SupplierService : ISupplierService
         // تحويل كائن DTO إلى كيان المورد
         var supplier = _mapper.Map<Supplier>(dto);
         supplier.CurrentBalance = dto.OpeningBalance;
-
         // التحقق من وجود هواتف مرفقة مع المورد الجديد
         if (dto.Phones != null && dto.Phones.Any())
         {
             // بناء كيانات هواتف المورد
-            supplier.SupplierPhones = dto.Phones.Select(p => new SupplierPhone
-            {
-                // تعيين رقم الهاتف
-                PhoneNumber = p.PhoneNumber,
-                // تعيين اسم جهة الاتصال
-                Name = p.Name
-            }).ToList();
+            supplier.SupplierPhones = dto.Phones.Select(p => new SupplierPhone { // تعيين رقم الهاتف
+ PhoneNumber = p.PhoneNumber, // تعيين اسم جهة الاتصال
+ Name = p.Name }).ToList();
         }
 
         // إضافة كيان المورد وهواتفه إلى المستودع
         await _unitOfWork.Suppliers.AddAsync(supplier, ct);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب المورد المحفوظ مع هواتفه
-        var created = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(supplier.Id), ct) ?? supplier;
-
+        var created = await _unitOfWork.Suppliers.GetDetailsAsync(supplier.Id, ct) ?? supplier;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<SupplierResponseDto>(created);
-
         // إرجاع نتيجة النجاح
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierResponseDto>> UpdateAsync(Guid id, UpdateSupplierDto dto, CancellationToken ct = default)
     {
-        // البحث عن المورد الحالي مع هواتفه
-        var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(id), ct);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SupplierResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // البحث عن المورد الحالي مع هواتفه
+        var supplier = await _unitOfWork.Suppliers.GetDetailsAsync(id, ct);
         // التحقق من وجود المورد
         if (supplier is null)
         {
@@ -155,8 +133,7 @@ public class SupplierService : ISupplierService
         }
 
         // التحقق من عدم تعارض الاسم الجديد مع مورد آخر
-        bool nameExists = await _unitOfWork.Suppliers.ExistsAsync(s => s.Name == dto.Name && s.Id != id, ct);
-
+        bool nameExists = await _unitOfWork.Suppliers.NameExistsAsync(dto.Name, id, ct);
         // في حال وجود مورد آخر بنفس الاسم
         if (nameExists)
         {
@@ -166,32 +143,25 @@ public class SupplierService : ISupplierService
 
         // نقل البيانات المحدثة من DTO إلى الكيان
         _mapper.Map(dto, supplier);
-
         // ضمان ثبات معرف المورد الأصلي
         supplier.Id = id;
-
         // وسم الكيان للتحديث في المستودع
         _unitOfWork.Suppliers.Update(supplier);
-
         // حفظ التعديلات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب المورد المحدث مع هواتفه
-        var updated = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(id), ct) ?? supplier;
-
+        var updated = await _unitOfWork.Suppliers.GetDetailsAsync(id, ct) ?? supplier;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<SupplierResponseDto>(updated);
-
         // إرجاع نتيجة النجاح
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // جلب سجل المورد بالمعرف
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id, ct);
-
+        var supplier = await _unitOfWork.Suppliers.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود المورد
         if (supplier is null)
         {
@@ -201,20 +171,20 @@ public class SupplierService : ISupplierService
 
         // تطبيق الحذف المنطقي للمورد
         _unitOfWork.Suppliers.SoftDelete(supplier);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierResponseDto>> AddPhoneAsync(Guid supplierId, SupplierPhoneDto dto, CancellationToken ct = default)
     {
-        // البحث عن المورد بالمعرف
-        var supplier = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(supplierId), ct);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SupplierResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // البحث عن المورد بالمعرف
+        var supplier = await _unitOfWork.Suppliers.GetDetailsAsync(supplierId, ct);
         // التحقق من وجود المورد
         if (supplier is null)
         {
@@ -232,29 +202,23 @@ public class SupplierService : ISupplierService
             // تعيين اسم جهة الاتصال
             Name = dto.Name
         };
-
         // إضافة الهاتف إلى المستودع
         await _unitOfWork.Suppliers.AddPhoneAsync(phone, ct);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب المورد مع قائمة الهواتف المحدثة
-        var updated = await _unitOfWork.Suppliers.FirstOrDefaultAsync(new SupplierWithDetailsSpec(supplierId), ct) ?? supplier;
-
+        var updated = await _unitOfWork.Suppliers.GetDetailsAsync(supplierId, ct) ?? supplier;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<SupplierResponseDto>(updated);
-
         // إرجاع نتيجة النجاح
         return ServiceResult<SupplierResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeletePhoneAsync(Guid supplierId, Guid phoneId, CancellationToken ct = default)
     {
         // جلب سجل الهاتف بالمعرف
         var phone = await _unitOfWork.Suppliers.GetPhoneByIdAsync(phoneId, ct);
-
         // التحقق من وجود الهاتف وارتباطه بنفس المورد المحدد
         if (phone is null || phone.SupplierId != supplierId)
         {
@@ -264,35 +228,25 @@ public class SupplierService : ISupplierService
 
         // تطبيق الحذف المنطقي للهاتف
         _unitOfWork.Suppliers.SoftDeletePhone(phone);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierStatementDto>> GetStatementAsync(SupplierStatementFilterDto filter, CancellationToken ct = default)
     {
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(filter.SupplierId, ct);
+        var supplier = await _unitOfWork.Suppliers.GetByIdForUpdateAsync(filter.SupplierId, ct);
         if (supplier == null)
             return ServiceResult<SupplierStatementDto>.Failure("المورد غير موجود", ErrorCodes.SupplierNotFound);
-
         // حساب الرصيد قبل بداية الفترة
-        decimal balanceBeforePeriod = filter.FromDate.HasValue
-            ? await _unitOfWork.Suppliers.GetBalanceBeforeDateAsync(supplier.Id, filter.FromDate.Value, ct)
-            : supplier.OpeningBalance;
-
+        decimal balanceBeforePeriod = filter.FromDate.HasValue ? await _unitOfWork.Suppliers.GetBalanceBeforeDateAsync(supplier.Id, filter.FromDate.Value, ct) : supplier.OpeningBalance;
         // جلب الحركات خلال الفترة
-        var transactions = await _unitOfWork.Suppliers.GetTransactionsByDateRangeAsync(
-            supplier.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
-
+        var transactions = await _unitOfWork.Suppliers.GetTransactionsByDateRangeAsync(supplier.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
         var transactionDtos = _mapper.Map<List<SupplierTransactionResponseDto>>(transactions);
-
         var totalDebit = transactionDtos.Sum(t => t.DebitAmount);
         var totalCredit = transactionDtos.Sum(t => t.CreditAmount);
-
         var statement = new SupplierStatementDto
         {
             SupplierId = supplier.Id,
@@ -306,27 +260,25 @@ public class SupplierService : ISupplierService
             ToDate = filter.ToDate,
             Transactions = transactionDtos
         };
-
         return ServiceResult<SupplierStatementDto>.Success(statement);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierTransactionResponseDto>> AddPaymentAsync(CreateSupplierPaymentDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SupplierTransactionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         if (!Enum.IsDefined(dto.PaymentMethod) || dto.PaymentMethod == PaymentMethod.Credit)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("طريقة السداد غير صالحة", ErrorCodes.ValidationError);
-
         if (!dto.SafeId.HasValue)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("يجب تحديد الخزينة التي سُحب منها المبلغ", ErrorCodes.ValidationError);
-
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(dto.SupplierId, ct);
+        var supplier = await _unitOfWork.Suppliers.GetByIdForUpdateAsync(dto.SupplierId, ct);
         if (supplier == null)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("المورد غير موجود", ErrorCodes.SupplierNotFound);
-
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         if (!branchExists)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
-
         Safe? safe = null;
         Guid? cashSessionId = null;
         if (dto.SafeId.HasValue)
@@ -334,23 +286,17 @@ public class SupplierService : ISupplierService
             safe = await _unitOfWork.Accounting.GetSafeByIdAsync(dto.SafeId.Value, ct);
             if (safe == null)
                 return ServiceResult<SupplierTransactionResponseDto>.Failure("الخزينة المحددة غير موجودة", ErrorCodes.SafeNotFound);
-
             if (!safe.IsActive)
                 return ServiceResult<SupplierTransactionResponseDto>.Failure("الخزينة معطلة حالياً", ErrorCodes.SafeInactive);
-
             if (safe.BranchId != dto.BranchId)
                 return ServiceResult<SupplierTransactionResponseDto>.Failure("الخزينة المحددة لا تتبع فرع عملية السداد", ErrorCodes.ValidationError);
-
             var sessionResult = await _posCashService.ResolveDrawerPostingSessionAsync(safe.Id, ct);
             if (!sessionResult.IsSuccess)
                 return ServiceResult<SupplierTransactionResponseDto>.Failure(sessionResult.ErrorMessage!, sessionResult.ErrorCode);
             cashSessionId = sessionResult.Data;
-
             if (safe.CurrentBalance < dto.Amount)
             {
-                return ServiceResult<SupplierTransactionResponseDto>.Failure(
-                    $"رصيد الخزينة الحالي ({safe.CurrentBalance:N2}) غير كافٍ لسداد دفعة المورد بمبلغ ({dto.Amount:N2})",
-                    ErrorCodes.InsufficientSafeBalance);
+                return ServiceResult<SupplierTransactionResponseDto>.Failure($"رصيد الخزينة الحالي ({safe.CurrentBalance:N2}) غير كافٍ لسداد دفعة المورد بمبلغ ({dto.Amount:N2})", ErrorCodes.InsufficientSafeBalance);
             }
         }
 
@@ -358,7 +304,6 @@ public class SupplierService : ISupplierService
         try
         {
             supplier.CurrentBalance -= dto.Amount;
-
             var transaction = new SupplierTransaction
             {
                 SupplierId = supplier.Id,
@@ -373,10 +318,8 @@ public class SupplierService : ISupplierService
                 Description = dto.Description ?? "سند صرف / سداد دفعة للمورد",
                 Notes = dto.Notes
             };
-
             await _unitOfWork.Suppliers.AddTransactionAsync(transaction, ct);
             _unitOfWork.Suppliers.Update(supplier);
-
             if (safe != null)
             {
                 safe.CurrentBalance -= dto.Amount;
@@ -395,18 +338,15 @@ public class SupplierService : ISupplierService
                     Notes = dto.Notes
                 };
                 safeTx.CashSessionId = cashSessionId;
-
                 await _unitOfWork.Accounting.AddSafeTransactionAsync(safeTx, ct);
                 _unitOfWork.Accounting.UpdateSafe(safe);
             }
 
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitTransactionAsync(ct);
-
-            var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+            var branch = await _unitOfWork.Branches.GetByIdForUpdateAsync(dto.BranchId, ct);
             transaction.Branch = branch!;
             transaction.Supplier = supplier;
-
             return ServiceResult<SupplierTransactionResponseDto>.Success(_mapper.Map<SupplierTransactionResponseDto>(transaction));
         }
         catch
@@ -416,20 +356,20 @@ public class SupplierService : ISupplierService
         }
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<SupplierTransactionResponseDto>> AddAdjustmentAsync(CreateSupplierAdjustmentDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SupplierTransactionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         if (!Enum.IsDefined(dto.Direction))
             return ServiceResult<SupplierTransactionResponseDto>.Failure("اتجاه التسوية غير صالح", ErrorCodes.ValidationError);
-
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(dto.SupplierId, ct);
+        var supplier = await _unitOfWork.Suppliers.GetByIdForUpdateAsync(dto.SupplierId, ct);
         if (supplier == null)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("المورد غير موجود", ErrorCodes.SupplierNotFound);
-
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         if (!branchExists)
             return ServiceResult<SupplierTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
-
         // Inbound: زيادة التزام على المحل للمورد -> دائن
         // Outbound: تخفيض التزام على المحل لصالح المورد -> مدين
         decimal debit = 0;
@@ -458,15 +398,12 @@ public class SupplierService : ISupplierService
             Description = dto.Reason,
             Notes = dto.Notes
         };
-
         await _unitOfWork.Suppliers.AddTransactionAsync(transaction, ct);
         _unitOfWork.Suppliers.Update(supplier);
         await _unitOfWork.SaveChangesAsync(ct);
-
-        var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+        var branch = await _unitOfWork.Branches.GetByIdForUpdateAsync(dto.BranchId, ct);
         transaction.Branch = branch!;
         transaction.Supplier = supplier;
-
         return ServiceResult<SupplierTransactionResponseDto>.Success(_mapper.Map<SupplierTransactionResponseDto>(transaction));
     }
 }

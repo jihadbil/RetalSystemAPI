@@ -48,6 +48,6 @@ public class UnitConfiguration : IEntityTypeConfiguration<Unit>
         builder.HasIndex(u => u.TenantId);
         // إنشاء فهرس مركب فريد على (TenantId, Name) لمنع تكرار اسم الوحدة لنفس المستأجر
         builder.HasIndex(u => new { u.TenantId, u.Name })
-            .IsUnique();
+            .IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

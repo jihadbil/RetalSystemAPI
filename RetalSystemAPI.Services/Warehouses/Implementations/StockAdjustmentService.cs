@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.DTOs.Warehouses.StockAdjustment;
@@ -10,10 +7,8 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Warehouses.Interfaces;
-using RetalSystemAPI.Services.Warehouses.Specifications;
 
 namespace RetalSystemAPI.Services.Warehouses.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة التسويات الجردية وضبط كميات المخزون الفعلية ومعالجة الفوارق المحاسبية.
 /// </summary>
@@ -21,30 +16,26 @@ public class StockAdjustmentService : IStockAdjustmentService
 {
     // وحدة العمل للتعامل مع مستودعات التسويات والمخازن والأرصدة
     private readonly IUnitOfWork _unitOfWork;
-
     // محول النماذج لتحويل الكيانات إلى DTOs
     private readonly IMapper _mapper;
-
     /// <summary>
     /// تهيئة خدمة التسويات الجردية مع حقن وحدة العمل والمحول.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل للمستودعات</param>
-    /// <param name="mapper">محول الكيانات</param>
+    /// <param name = "unitOfWork">وحدة العمل للمستودعات</param>
+    /// <param name = "mapper">محول الكيانات</param>
     public StockAdjustmentService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
-
         // تعيين مرجع المحول
         _mapper = mapper;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<StockAdjustmentResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام التسوية الجردية بالمعرف مع تفاصيل البنود والمنتجات
-        var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(id), ct);
-
+        var adjustment = await _unitOfWork.StockAdjustments.GetDetailsAsync(id, ct);
         // التحقق من وجود التسوية
         if (adjustment is null)
         {
@@ -54,17 +45,15 @@ public class StockAdjustmentService : IStockAdjustmentService
 
         // تحويل الكيان إلى DTO
         var dto = _mapper.Map<StockAdjustmentResponseDto>(adjustment);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<StockAdjustmentResponseDto>.Success(dto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<StockAdjustmentResponseDto>> GetByAdjustmentNumberAsync(string adjustmentNumber, CancellationToken ct = default)
     {
         // استعلام التسوية الجردية برقم السند
-        var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(adjustmentNumber), ct);
-
+        var adjustment = await _unitOfWork.StockAdjustments.GetByNumberAsync(adjustmentNumber, ct);
         // التحقق من وجود التسوية
         if (adjustment is null)
         {
@@ -74,224 +63,124 @@ public class StockAdjustmentService : IStockAdjustmentService
 
         // تحويل الكيان إلى DTO
         var dto = _mapper.Map<StockAdjustmentResponseDto>(adjustment);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<StockAdjustmentResponseDto>.Success(dto);
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<IReadOnlyList<StockAdjustmentSummaryDto>>> GetAllAsync(
-        Guid? warehouseId = null,
-        StockAdjustmentReason? reason = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        string? search = null,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<IReadOnlyList<StockAdjustmentSummaryDto>>> GetAllAsync(Guid? warehouseId = null, StockAdjustmentReason? reason = null, DateTime? fromDate = null, DateTime? toDate = null, string? search = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة استعلام التسويات مع الفلاتر
-        var spec = new StockAdjustmentWithDetailsSpec(warehouseId, reason, fromDate, toDate, search);
-
         // جلب قائمة التسويات المطابقة
-        var adjustments = await _unitOfWork.StockAdjustments.FindAsync(spec, ct);
-
+        var adjustments = await _unitOfWork.StockAdjustments.ListAsync(new StockAdjustmentQuery { WarehouseId = warehouseId, Reason = reason, FromDate = fromDate, ToDate = toDate, Search = search }, ct);
         // تحويل الكيانات إلى ملخصات DTO
         var dtos = _mapper.Map<IReadOnlyList<StockAdjustmentSummaryDto>>(adjustments);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<IReadOnlyList<StockAdjustmentSummaryDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
-    public async Task<ServiceResult<PagedResult<StockAdjustmentSummaryDto>>> GetPagedAsync(
-        int pageNumber,
-        int pageSize,
-        Guid? warehouseId = null,
-        StockAdjustmentReason? reason = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        string? search = null,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<ServiceResult<PagedResult<StockAdjustmentSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? warehouseId = null, StockAdjustmentReason? reason = null, DateTime? fromDate = null, DateTime? toDate = null, string? search = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المفلترة
-        var spec = new StockAdjustmentWithDetailsSpec(warehouseId, reason, fromDate, toDate, search);
-
         // تنفيذ استعلام الصفحة المجزأة مع إجمالي العدد
-        var (items, totalCount) = await _unitOfWork.StockAdjustments.GetPagedAsync(spec, pageNumber, pageSize, ct);
-
+        var(items, totalCount) = await _unitOfWork.StockAdjustments.SearchAsync(new StockAdjustmentQuery { WarehouseId = warehouseId, Reason = reason, FromDate = fromDate, ToDate = toDate, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل عناصر الصفحة إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<StockAdjustmentSummaryDto>>(items);
-
         // إنشاء كائن النتيجة المجزأة الموحد
         var pagedResult = PagedResult<StockAdjustmentSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<PagedResult<StockAdjustmentSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<StockAdjustmentResponseDto>> CreateAsync(CreateStockAdjustmentDto dto, CancellationToken ct = default)
     {
-        // استعلام المستودع للتأكد من وجوده ومعرفة نوعه (صالة أم مخزن)
-        var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(dto.WarehouseId, ct);
-
-        // التحقق من وجود المستودع
-        if (warehouse is null)
-        {
-            // إرجاع خطأ عدم وجود المستودع
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<StockAdjustmentResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+        if (dto.Items is null || dto.Items.Count == 0)
+            return ServiceResult<StockAdjustmentResponseDto>.Failure("يجب إضافة بند واحد على الأقل للتسوية", ErrorCodes.ValidationError);
+        var warehouse = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(dto.WarehouseId, ct);
+        if (warehouse is null || !Enum.IsDefined(warehouse.Type))
             return ServiceResult<StockAdjustmentResponseDto>.Failure("المستودع أو الصالة المحددة غير موجودة", ErrorCodes.WarehouseNotFound);
-        }
-
-        // التحقق من عدم تكرار رقم التسوية الجردية
-        bool numExists = await _unitOfWork.StockAdjustments.ExistsAsync(a => a.AdjustmentNumber == dto.AdjustmentNumber, ct);
-
-        // في حال وجود سند تسوية بنفس الرقم
-        if (numExists)
+        if (await _unitOfWork.StockAdjustments.NumberExistsAsync(dto.AdjustmentNumber, ct))
+            return ServiceResult<StockAdjustmentResponseDto>.Failure("رقم التسوية مستخدم بالفعل", ErrorCodes.StockAdjustmentNumberExists);
+        var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+        if ((await _unitOfWork.Products.GetByIdsAsync(productIds, ct)).Count != productIds.Count)
+            return ServiceResult<StockAdjustmentResponseDto>.Failure("أحد الأصناف المحددة غير موجود", ErrorCodes.ProductNotFound);
+        var barcodeIds = dto.Items.Where(i => i.ProductBarCodeId.HasValue).Select(i => i.ProductBarCodeId!.Value).Distinct().ToList();
+        var barcodes = (await _unitOfWork.Products.GetBarcodesByIdsAsync(barcodeIds, ct)).ToDictionary(b => b.Id);
+        foreach (var item in dto.Items)
         {
-            // إرجاع خطأ تكرار رقم التسوية
-            return ServiceResult<StockAdjustmentResponseDto>.Failure("رقم التسوية الجردية مستخدم بالفعل", ErrorCodes.StockAdjustmentNumberExists);
+            if (warehouse.Type == WarehouseType.Storge && !item.ProductBarCodeId.HasValue ||
+                item.ProductBarCodeId.HasValue && (!barcodes.TryGetValue(item.ProductBarCodeId.Value, out var barcode) || barcode.ProductId != item.ProductId))
+                return ServiceResult<StockAdjustmentResponseDto>.Failure("الباركود مطلوب للمخزن ويجب أن يتبع الصنف المحدد", ErrorCodes.ValidationError);
         }
+        if (warehouse.Type == WarehouseType.Show && dto.Items.Select(i => i.ProductId).Distinct().Count() != dto.Items.Count ||
+            warehouse.Type == WarehouseType.Storge && barcodeIds.Count != dto.Items.Count)
+            return ServiceResult<StockAdjustmentResponseDto>.Failure("لا يجوز تكرار الصنف أو الباركود في التسوية", ErrorCodes.ValidationError);
 
-        // التحقق من احتواء التسوية على بند واحد على الأقل
-        if (dto.Items == null || !dto.Items.Any())
-        {
-            // إرجاع خطأ تحقق لغياب البنود
-            return ServiceResult<StockAdjustmentResponseDto>.Failure("يجب إضافة بند واحد على الأقل للتسوية الجردية", ErrorCodes.ValidationError);
-        }
-
-        // تحويل كائن DTO إلى كيان التسوية الجردية
         var adjustment = _mapper.Map<StockAdjustment>(dto);
-
-        // تعيين تاريخ التسوية الجردية
+        adjustment.TenantId = warehouse.TenantId;
         adjustment.AdjustmentDate = dto.AdjustmentDate == default ? DateTime.UtcNow : dto.AdjustmentDate;
-
-        // بناء بنود التسوية مع حساب فوارق الجرد تلقائياً
-        adjustment.Items = dto.Items.Select(item => new StockAdjustmentItem
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            // تعيين معرف المنتج
-            ProductId = item.ProductId,
-            // تعيين معرف الباركود
-            ProductBarCodeId = item.ProductBarCodeId,
-            // الكمية المقيدة دفترياً
-            SystemQuantity = item.SystemQuantity,
-            // الكمية الفعلية الناتجة عن الجرد
-            ActualQuantity = item.ActualQuantity,
-            // الفارق بين الفعلي والدفتري (موجب = زيادة، سالب = عجز)
-            DifferenceQuantity = item.ActualQuantity - item.SystemQuantity,
-            // تكلفة الوحدة
-            UnitCost = item.UnitCost,
-            // سبب البند إن حُدد، وإلا يتم توريث سبب التسوية العام
-            Reason = item.Reason ?? adjustment.Reason
-        }).ToList();
-
-        // تحديث أرصدة المخزون بناءً على الكميات الفعلية للجرد دفعة واحدة
-        if (warehouse.Type == WarehouseType.Show)
-        {
-            // استخراج معرفات منتجات صالة العرض
-            var productIds = adjustment.Items.Select(i => i.ProductId).Distinct().ToList();
-
-            // استرجاع أرصدة الصالة المتتبعة في قاموس
-            var stocksByProduct = productIds.Count > 0
-                ? (await _unitOfWork.Stock.FindShowroomStockTrackedAsync(
-                    s => s.WarehouseId == warehouse.Id && productIds.Contains(s.ProductId), ct))
-                    .ToDictionary(s => s.ProductId)
+            var showroom = warehouse.Type == WarehouseType.Show
+                ? (await _unitOfWork.Stock.GetShowroomForUpdateAsync(warehouse.Id, productIds, ct)).ToDictionary(s => s.ProductId)
                 : new Dictionary<Guid, ShowroomStock>();
-
-            // ضبط الكمية لكل بند بناءً على الجرد الفعلي
-            foreach (var item in adjustment.Items)
-            {
-                // إذا كان سجل الرصيد موجوداً يتم تعديله
-                if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
-                {
-                    // مطابقة الرصيد مع الكمية الفعلية
-                    stock.Quantity = item.ActualQuantity;
-                }
-                else
-                {
-                    // إنشاء سجل رصيد جديد في الصالة بالكمية الفعلية
-                    var newStock = new ShowroomStock
-                    {
-                        TenantId = adjustment.TenantId,
-                        WarehouseId = warehouse.Id,
-                        ProductId = item.ProductId,
-                        Quantity = item.ActualQuantity,
-                        MinStockLevel = 0
-                    };
-                    // إضافة السجل للمستودع
-                    await _unitOfWork.Stock.AddShowroomStockAsync(newStock, ct);
-                    // حفظه بالقاموس
-                    stocksByProduct[item.ProductId] = newStock;
-                }
-            }
-        }
-        else if (warehouse.Type == WarehouseType.Storge)
-        {
-            // استخراج معرفات الباركودات لمخزن التخزين
-            var barcodeIds = adjustment.Items
-                .Where(i => i.ProductBarCodeId.HasValue)
-                .Select(i => i.ProductBarCodeId!.Value)
-                .Distinct()
-                .ToList();
-
-            // استرجاع أرصدة المخزن المتتبعة في قاموس
-            var stocksByBarcode = barcodeIds.Count > 0
-                ? (await _unitOfWork.Stock.FindStorgeStockTrackedAsync(
-                    s => s.WarehouseId == warehouse.Id && barcodeIds.Contains(s.ProductBarcodeId), ct))
-                    .ToDictionary(s => s.ProductBarcodeId)
+            var storage = warehouse.Type == WarehouseType.Storge
+                ? (await _unitOfWork.Stock.GetStorageForUpdateAsync(warehouse.Id, barcodeIds, ct)).ToDictionary(s => s.ProductBarcodeId)
                 : new Dictionary<Guid, StorgeStock>();
-
-            // ضبط الكمية لكل باركود
-            foreach (var item in adjustment.Items)
+            foreach (var item in dto.Items)
             {
-                // التحقق من وجود معرف الباركود
-                if (!item.ProductBarCodeId.HasValue) continue;
-
-                // إذا كان سجل الرصيد موجوداً يتم تعديله
-                if (stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
+                var systemQuantity = 0;
+                if (warehouse.Type == WarehouseType.Show)
                 {
-                    // مطابقة الرصيد مع الكمية الفعلية
+                    if (!showroom.TryGetValue(item.ProductId, out var stock))
+                    {
+                        stock = new ShowroomStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductId = item.ProductId };
+                        await _unitOfWork.Stock.AddShowroomStockAsync(stock, ct);
+                    }
+                    systemQuantity = stock.Quantity;
                     stock.Quantity = item.ActualQuantity;
                 }
                 else
                 {
-                    // إنشاء سجل رصيد جديد بالكمية الفعلية
-                    var newStock = new StorgeStock
+                    if (!storage.TryGetValue(item.ProductBarCodeId!.Value, out var stock))
                     {
-                        TenantId = adjustment.TenantId,
-                        WarehouseId = warehouse.Id,
-                        ProductBarcodeId = item.ProductBarCodeId.Value,
-                        Quantity = item.ActualQuantity,
-                        MinStockLevel = 0
-                    };
-                    // إضافة السجل للمستودع
-                    await _unitOfWork.Stock.AddStorgeStockAsync(newStock, ct);
-                    // حفظه بالقاموس
-                    stocksByBarcode[item.ProductBarCodeId.Value] = newStock;
+                        stock = new StorgeStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductBarcodeId = item.ProductBarCodeId.Value };
+                        await _unitOfWork.Stock.AddStorgeStockAsync(stock, ct);
+                    }
+                    systemQuantity = stock.Quantity;
+                    stock.Quantity = item.ActualQuantity;
                 }
+                adjustment.Items.Add(new StockAdjustmentItem
+                {
+                    TenantId = warehouse.TenantId, ProductId = item.ProductId, ProductBarCodeId = item.ProductBarCodeId,
+                    SystemQuantity = systemQuantity, ActualQuantity = item.ActualQuantity,
+                    DifferenceQuantity = checked(item.ActualQuantity - systemQuantity), UnitCost = item.UnitCost,
+                    Reason = item.Reason ?? adjustment.Reason
+                });
             }
+            await _unitOfWork.StockAdjustments.AddAsync(adjustment, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
         }
-
-        // إضافة سند التسوية إلى المستودع
-        await _unitOfWork.StockAdjustments.AddAsync(adjustment, ct);
-
-        // حفظ كافة التغييرات وحركات المخزون في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
-
-        // إعادة جلب التسوية مع تفاصيل المستودع والبنود
-        var created = await _unitOfWork.StockAdjustments.FirstOrDefaultAsync(new StockAdjustmentWithDetailsSpec(adjustment.Id), ct) ?? adjustment;
-
-        // تحويل الكيان إلى DTO
-        var responseDto = _mapper.Map<StockAdjustmentResponseDto>(created);
-
-        // إرجاع النتيجة بنجاح
-        return ServiceResult<StockAdjustmentResponseDto>.Success(responseDto);
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
+        var created = await _unitOfWork.StockAdjustments.GetDetailsAsync(adjustment.Id, ct) ?? adjustment;
+        return ServiceResult<StockAdjustmentResponseDto>.Success(_mapper.Map<StockAdjustmentResponseDto>(created));
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام سند التسوية ككيان متتبع
-        var adjustment = await _unitOfWork.StockAdjustments.FirstOrDefaultTrackedAsync(new StockAdjustmentWithDetailsSpec(id), ct);
-
+        var adjustment = await _unitOfWork.StockAdjustments.GetDetailsForUpdateAsync(id, ct);
         // التحقق من وجود التسوية
         if (adjustment is null)
         {
@@ -299,13 +188,6 @@ public class StockAdjustmentService : IStockAdjustmentService
             return ServiceResult.Failure("التسوية الجردية غير موجودة", ErrorCodes.StockAdjustmentNotFound);
         }
 
-        // تطبيق الحذف المنطقي لسند التسوية
-        _unitOfWork.StockAdjustments.SoftDelete(adjustment);
-
-        // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
-
-        // إرجاع نتيجة النجاح
-        return ServiceResult.Success();
+        return ServiceResult.Failure("التسوية مرحلة ولا يمكن حذفها؛ سجل تسوية جديدة لعكس أثرها مع الاحتفاظ بسجل الجرد", ErrorCodes.ValidationError);
     }
 }

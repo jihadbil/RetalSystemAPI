@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
@@ -10,7 +7,6 @@ using RetalSystemAPI.Services.Catalog.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Catalog.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة وحدات القياس والتحقق من عدم تكرار الأسماء والتحقق من عدم وجود ارتباطات سابقة عند الحذف.
 /// </summary>
@@ -20,12 +16,11 @@ public class UnitService : IUnitService
     private readonly IUnitOfWork _unitOfWork;
     // محول البيانات لتحويل الكيانات إلى كائنات نقل البيانات والعكس
     private readonly IMapper _mapper;
-
     /// <summary>
     /// تهيئة خدمة وحدات القياس مع حقن وحدة العمل وAutoMapper.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
-    /// <param name="mapper">خدمة تحويل النماذج</param>
+    /// <param name = "unitOfWork">وحدة العمل لإدارة التفاعل مع قاعدة البيانات</param>
+    /// <param name = "mapper">خدمة تحويل النماذج</param>
     public UnitService(IUnitOfWork unitOfWork, IMapper mapper)
     {
         // تعيين مرجع وحدة العمل
@@ -34,11 +29,11 @@ public class UnitService : IUnitService
         _mapper = mapper;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<UnitResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام وحدة القياس بواسطة المعرف الفريد
-        var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);
+        var unit = await _unitOfWork.Units.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود الوحدة
         if (unit is null)
         {
@@ -52,22 +47,25 @@ public class UnitService : IUnitService
         return ServiceResult<UnitResponseDto>.Success(result);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<UnitResponseDto>>> GetAllAsync(CancellationToken ct = default)
     {
         // جلب قائمة بكافة وحدات القياس المسجلة في النظام
-        var units = await _unitOfWork.Units.GetAllAsync(ct);
+        var units = await _unitOfWork.Units.ListLookupAsync(ct);
         // تحويل قائمة الكيانات إلى قائمة كائنات DTO
         var result = _mapper.Map<IReadOnlyList<UnitResponseDto>>(units);
         // إرجاع النتيجة الناجحة
         return ServiceResult<IReadOnlyList<UnitResponseDto>>.Success(result);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<UnitResponseDto>> CreateAsync(CreateUnitDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<UnitResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من عدم وجود وحدة قياس بنفس الاسم مسبقاً
-        bool nameExists = await _unitOfWork.Units.ExistsAsync(u => u.Name == dto.Name, ct);
+        bool nameExists = await _unitOfWork.Units.NameExistsAsync(dto.Name, ct);
         // في حال وجود الاسم مسبقاً
         if (nameExists)
         {
@@ -81,18 +79,20 @@ public class UnitService : IUnitService
         await _unitOfWork.Units.AddAsync(unit, ct);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // تحويل الكيان المنشأ إلى كائن استجابة DTO
         var responseDto = _mapper.Map<UnitResponseDto>(unit);
         // إرجاع النتيجة الناجحة
         return ServiceResult<UnitResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<UnitResponseDto>> UpdateAsync(Guid id, UpdateUnitDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<UnitResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // استعلام وحدة القياس المطلوب تعديلها
-        var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);
+        var unit = await _unitOfWork.Units.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود الوحدة
         if (unit is null)
         {
@@ -101,7 +101,7 @@ public class UnitService : IUnitService
         }
 
         // التحقق من عدم استخدام الاسم الجديد لدى وحدة قياس أخرى
-        bool nameExists = await _unitOfWork.Units.ExistsAsync(u => u.Name == dto.Name && u.Id != id, ct);
+        bool nameExists = await _unitOfWork.Units.NameExistsAsync(dto.Name, id, ct);
         // في حال تكرار الاسم
         if (nameExists)
         {
@@ -113,23 +113,21 @@ public class UnitService : IUnitService
         _mapper.Map(dto, unit);
         // تثبيت المعرف الأصلي
         unit.Id = id;
-
         // تحديث الكيان في المستودع
         _unitOfWork.Units.Update(unit);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // تحويل الكيان المحدث إلى DTO الاستجابة
         var responseDto = _mapper.Map<UnitResponseDto>(unit);
         // إرجاع النتيجة الناجحة
         return ServiceResult<UnitResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام وحدة القياس المراد حذفها
-        var unit = await _unitOfWork.Units.GetByIdAsync(id, ct);
+        var unit = await _unitOfWork.Units.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود الوحدة
         if (unit is null)
         {
@@ -138,7 +136,7 @@ public class UnitService : IUnitService
         }
 
         // التحقق مما إذا كانت الوحدة مستخدمة في أي منتج قائم
-        bool inUse = await _unitOfWork.Products.UnitExistsAsync(pu => pu.UnitId == id, ct);
+        bool inUse = await _unitOfWork.Products.IsUnitInUseAsync(id, ct);
         // في حال وجود ارتباطات قائمة
         if (inUse)
         {
@@ -150,7 +148,6 @@ public class UnitService : IUnitService
         _unitOfWork.Units.SoftDelete(unit);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }

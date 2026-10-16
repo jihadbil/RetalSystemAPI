@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -13,6 +14,7 @@ public class UpdateStockTransferDto
     public Guid Id { get; set; }
 
     /// <summary>الحالة الجديدة لأمر التحويل (تأكيد، إلغاء)</summary>
+    [EnumDataType(typeof(StockTransferStatus))]
     public StockTransferStatus Status { get; set; }
 
     /// <summary>ملاحظات إضافية</summary>

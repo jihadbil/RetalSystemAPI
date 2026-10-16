@@ -1,6 +1,7 @@
+using System.ComponentModel.DataAnnotations;
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.Collections.Generic;
-using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.Models.DTOs.Purchase;
@@ -217,39 +218,51 @@ public class PurchaseInvoiceItemBreakdownResponseDto : BaseDto
 public class CreatePurchaseInvoiceDto
 {
     /// <summary>رقم فاتورة الشراء</summary>
+    [MaxLength(50)]
+    [Required]
     public string InvoiceNumber { get; set; } = null!;
 
     /// <summary>تاريخ وتوقيت إصدار الفاتورة</summary>
     public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
 
     /// <summary>معرف المورد</summary>
+    [NotEmptyGuid]
     public Guid SupplierId { get; set; }
 
     /// <summary>معرف الفرع</summary>
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف المستودع المستلم</summary>
+    [NotEmptyGuid]
     public Guid WarehouseId { get; set; }
 
     /// <summary>حالة الفاتورة (افتراضي: مدفوعة ومغلقة)</summary>
+    [EnumDataType(typeof(InvoiceStatus))]
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Paid;
 
     /// <summary>طريقة الدفع (افتراضي: نقدي)</summary>
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>المجموع الفرعي</summary>
+    [MoneyAmount]
     public decimal SubTotal { get; set; }
 
     /// <summary>مبلغ الخصم</summary>
+    [MoneyAmount]
     public decimal DiscountAmount { get; set; } = 0;
 
     /// <summary>مبلغ الضريبة</summary>
+    [MoneyAmount]
     public decimal TaxAmount { get; set; } = 0;
 
     /// <summary>المبلغ الإجمالي الكلي</summary>
+    [MoneyAmount]
     public decimal TotalAmount { get; set; }
 
     /// <summary>المبلغ المدفوع للمورد</summary>
+    [MoneyAmount]
     public decimal PaidAmount { get; set; }
 
     /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
@@ -259,9 +272,13 @@ public class CreatePurchaseInvoiceDto
     public Guid? PurchaseOrderId { get; set; }
 
     /// <summary>ملاحظات إضافية على الفاتورة</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
 
     /// <summary>قائمة بنود الأصناف المشتراة</summary>
+    [NoNullItems]
+    [Required]
+    [MinLength(1)]
     public List<CreatePurchaseInvoiceItemDto> Items { get; set; } = new();
 }
 
@@ -271,21 +288,26 @@ public class CreatePurchaseInvoiceDto
 public class CreatePurchaseInvoiceItemDto
 {
     /// <summary>معرف المنتج</summary>
+    [NotEmptyGuid]
     public Guid ProductId { get; set; }
 
     /// <summary>معرف الباركود</summary>
     public Guid? ProductBarCodeId { get; set; }
 
     /// <summary>الكمية المشتراة</summary>
+    [WholeQuantity]
     public decimal Quantity { get; set; }
 
     /// <summary>سعر الوحدة</summary>
+    [MoneyAmount]
     public decimal UnitPrice { get; set; }
 
     /// <summary>مبلغ الخصم</summary>
+    [MoneyAmount]
     public decimal DiscountAmount { get; set; } = 0;
 
     /// <summary>تفاصيل تفكيك العبوات إن وجدت</summary>
+    [NoNullItems]
     public List<CreatePurchaseInvoiceItemBreakdownDto>? Breakdowns { get; set; }
 }
 
@@ -295,18 +317,23 @@ public class CreatePurchaseInvoiceItemDto
 public class CreatePurchaseInvoiceItemBreakdownDto
 {
     /// <summary>معرف الباركود للوحدة المفككة</summary>
+    [NotEmptyGuid]
     public Guid ProductBarCodeId { get; set; }
 
     /// <summary>كمية العبوات المشتراة</summary>
+    [Range(typeof(decimal), "0.0001", "2147483647")]
     public decimal PackageQuantity { get; set; } = 1;
 
     /// <summary>عدد القطع أو الوحدات داخل العبوة الواحدة</summary>
+    [Range(1, int.MaxValue)]
     public int UnitsPerPackage { get; set; } = 1;
 
     /// <summary>الكمية الإجمالية المحتسبة بالقطع</summary>
+    [WholeQuantity(AllowZero = true)]
     public decimal Quantity { get; set; }
 
     /// <summary>سعر تكلفة القطعة</summary>
+    [MoneyAmount]
     public decimal UnitPrice { get; set; }
 }
 
@@ -316,47 +343,61 @@ public class CreatePurchaseInvoiceItemBreakdownDto
 public class UpdatePurchaseInvoiceDto
 {
     /// <summary>رقم فاتورة الشراء</summary>
+    [MaxLength(50)]
+    [Required]
     public string InvoiceNumber { get; set; } = null!;
 
     /// <summary>تاريخ الفاتورة</summary>
     public DateTime InvoiceDate { get; set; }
 
     /// <summary>معرف المورد</summary>
+    [NotEmptyGuid]
     public Guid SupplierId { get; set; }
 
     /// <summary>معرف الفرع</summary>
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف المستودع</summary>
+    [NotEmptyGuid]
     public Guid WarehouseId { get; set; }
 
     /// <summary>حالة الفاتورة</summary>
+    [EnumDataType(typeof(InvoiceStatus))]
     public InvoiceStatus Status { get; set; }
 
     /// <summary>طريقة الدفع</summary>
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod PaymentMethod { get; set; }
 
     /// <summary>المجموع الفرعي</summary>
+    [MoneyAmount]
     public decimal SubTotal { get; set; }
 
     /// <summary>مبلغ الخصم</summary>
+    [MoneyAmount]
     public decimal DiscountAmount { get; set; }
 
     /// <summary>مبلغ الضريبة</summary>
+    [MoneyAmount]
     public decimal TaxAmount { get; set; }
 
     /// <summary>المبلغ الإجمالي</summary>
+    [MoneyAmount]
     public decimal TotalAmount { get; set; }
 
     /// <summary>المبلغ المدفوع</summary>
+    [MoneyAmount]
     public decimal PaidAmount { get; set; }
 
     /// <summary>الخزينة التي يصرف منها المبلغ المدفوع للمورد.</summary>
     public Guid? PaymentSafeId { get; set; }
 
     /// <summary>ملاحظات</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
 
     /// <summary>قائمة بنود الفاتورة المحدثة</summary>
+    [NoNullItems]
     public List<CreatePurchaseInvoiceItemDto>? Items { get; set; }
 }

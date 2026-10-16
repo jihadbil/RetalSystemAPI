@@ -45,6 +45,6 @@ public class ProductUnitConfiguration : IEntityTypeConfiguration<ProductUnit>
 
         // إنشاء فهرس مركب فريد على (ProductId, UnitId, TenantId) لمنع تكرار نفس الوحدة للصنف الواحد
         builder.HasIndex(pu => new { pu.ProductId, pu.UnitId, pu.TenantId })
-            .IsUnique();
+            .IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

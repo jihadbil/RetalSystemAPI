@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
+using RetalSystemAPI.Models.DTOs.Common;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +16,6 @@ using RetalSystemAPI.Services.Auth.Interfaces;
 using RetalSystemAPI.Services.Common.Models;
 
 namespace RetalSystemAPI.Services.Auth.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة المصادقة وتوليد رموز التوثيق JWT والتحقق من حسابات المستخدمين والمستأجرين وتدقيق الصلاحيات.
 /// </summary>
@@ -28,51 +23,41 @@ public class AuthService : IAuthService
 {
     // مدير هوية المستخدمين لإنشاء الحسابات والتحقق من كلمات المرور
     private readonly UserManager<ApplicationUser> _userManager;
-
     // مدير أدوار النظام للبحث عن الأدوار واستخراج مطالباتها
     private readonly RoleManager<IdentityRole> _roleManager;
-
     // موفر إعدادات التكوين لقراءة إعدادات JWT ومفاتيح التشفير
     private readonly IConfiguration _configuration;
-
     // وحدة العمل للوصول إلى مستودعات البيانات والتحقق من وجود المستأجر
     private readonly IUnitOfWork _unitOfWork;
     private readonly AppDbContext _dbContext;
     private readonly ICurrentTenantService _currentTenantService;
-
     /// <summary>
     /// تهيئة خدمة المصادقة مع حقن مدير المستخدمين ومدير الأدوار وإعدادات التكوين ووحدة العمل.
     /// </summary>
-    /// <param name="userManager">مدير مستخدمي الهوية</param>
-    /// <param name="roleManager">مدير أدوار الهوية</param>
-    /// <param name="configuration">إعدادات التطبيق لقراءة تكوينات التوكن</param>
-    /// <param name="unitOfWork">وحدة العمل للوصول للمستودعات</param>
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager,
-        IConfiguration configuration,
-        IUnitOfWork unitOfWork,
-        AppDbContext dbContext,
-        ICurrentTenantService currentTenantService)
+    /// <param name = "userManager">مدير مستخدمي الهوية</param>
+    /// <param name = "roleManager">مدير أدوار الهوية</param>
+    /// <param name = "configuration">إعدادات التطبيق لقراءة تكوينات التوكن</param>
+    /// <param name = "unitOfWork">وحدة العمل للوصول للمستودعات</param>
+    public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration, IUnitOfWork unitOfWork, AppDbContext dbContext, ICurrentTenantService currentTenantService)
     {
         // تعيين مرجع مدير المستخدمين
         _userManager = userManager;
-
         // تعيين مرجع مدير الأدوار
         _roleManager = roleManager;
-
         // تعيين مرجع التكوينات
         _configuration = configuration;
-
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
         _dbContext = dbContext;
         _currentTenantService = currentTenantService;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<AuthResponseDto>> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<AuthResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         var currentTenantId = _currentTenantService.TenantId;
         if (currentTenantId == Guid.Empty)
         {
@@ -87,7 +72,7 @@ public class AuthService : IAuthService
         }
 
         // 1. التحقق من وجود المستأجر في قاعدة البيانات
-        var tenant = await _unitOfWork.Tenants.GetByIdAsync(currentTenantId, ct);
+        var tenant = await _unitOfWork.Tenants.GetByIdForUpdateAsync(currentTenantId, ct);
         // إذا لم يتم العثور على المستأجر، يتم إرجاع نتيجة فشل
         if (tenant is null)
         {
@@ -100,9 +85,7 @@ public class AuthService : IAuthService
             return ServiceResult<AuthResponseDto>.Failure("حساب المستأجر غير نشط", ErrorCodes.Unauthorized);
         }
 
-        var branchExists = await _unitOfWork.Branches.ExistsAsync(
-            b => b.Id == dto.BranchId && b.TenantId == currentTenantId && b.IsActive,
-            ct);
+        var branchExists = await _unitOfWork.Branches.IsActiveForTenantAsync(dto.BranchId, currentTenantId, ct);
         if (!branchExists)
         {
             return ServiceResult<AuthResponseDto>.Failure("الفرع المحدد غير موجود أو غير نشط", ErrorCodes.BranchNotFound);
@@ -139,7 +122,6 @@ public class AuthService : IAuthService
             BranchId = dto.BranchId,
             LockoutEnabled = true
         };
-
         // حفظ وإنشاء المستخدم مع تشفير كلمة المرور عبر Identity
         var createResult = await _userManager.CreateAsync(user, dto.Password);
         // التحقق من نجاح عملية الإنشاء
@@ -153,18 +135,18 @@ public class AuthService : IAuthService
 
         // 4. توليد رمز JWT وتجهيز بيانات الاستجابة للمستخدم الجديد
         var authResponse = await GenerateJwtTokenAsync(user);
-
         // إرجاع النتيجة الناجحة متضمنة بيانات الجلسة والتوكن
         return ServiceResult<AuthResponseDto>.Success(authResponse);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<AuthResponseDto>> LoginAsync(LoginDto dto, CancellationToken ct = default)
     {
-        // البحث عن المستخدم بواسطة اسم المستخدم أو البريد الإلكتروني
-        var user = await _userManager.FindByNameAsync(dto.UserName)
-                   ?? await _userManager.FindByEmailAsync(dto.UserName);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<AuthResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // البحث عن المستخدم بواسطة اسم المستخدم أو البريد الإلكتروني
+        var user = await _userManager.FindByNameAsync(dto.UserName) ?? await _userManager.FindByEmailAsync(dto.UserName);
         // التحقق من وجود المستخدم
         if (user is null)
         {
@@ -180,18 +162,13 @@ public class AuthService : IAuthService
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
         }
 
-        var tenant = await _dbContext.Tenants
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == user.TenantId, ct);
+        var tenant = await _dbContext.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == user.TenantId, ct);
         if (tenant is null || !tenant.IsActive)
         {
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
         }
 
-        var branchIsActive = await _dbContext.Branches
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .AnyAsync(b => b.Id == user.BranchId && b.TenantId == user.TenantId && b.IsActive && !b.IsDeleted, ct);
+        var branchIsActive = await _dbContext.Branches.IgnoreQueryFilters().AsNoTracking().AnyAsync(b => b.Id == user.BranchId && b.TenantId == user.TenantId && b.IsActive && !b.IsDeleted, ct);
         if (!branchIsActive)
         {
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
@@ -207,8 +184,8 @@ public class AuthService : IAuthService
                 user.LockoutEnabled = true;
                 await _userManager.UpdateAsync(user);
             }
-            await _userManager.AccessFailedAsync(user);
 
+            await _userManager.AccessFailedAsync(user);
             // إرجاع خطأ في بيانات الاعتماد
             return ServiceResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة", ErrorCodes.InvalidCredentials);
         }
@@ -220,12 +197,11 @@ public class AuthService : IAuthService
 
         // توليد رمز JWT وتجميع صلاحيات وأدوار المستخدم
         var authResponse = await GenerateJwtTokenAsync(user);
-
         // إرجاع نتيجة نجاح المصادقة مع التوكن
         return ServiceResult<AuthResponseDto>.Success(authResponse);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> LogoutAsync(string userId, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -247,35 +223,26 @@ public class AuthService : IAuthService
     /// <summary>
     /// توليد توكن مصادقة JWT مشفر وموقع يحمل بيانات ومعرفات المستخدم والمستأجر والفرع والأدوار والصلاحيات.
     /// </summary>
-    /// <param name="user">كائن المستخدم المستهدف</param>
+    /// <param name = "user">كائن المستخدم المستهدف</param>
     /// <returns>استجابة المصادقة متضمنة التوكن وتاريخ انتهاء الصلاحية وقائمة الصلاحيات</returns>
     private async Task<AuthResponseDto> GenerateJwtTokenAsync(ApplicationUser user)
     {
         // قراءة المفتاح السري لتوقيع التوكن من ملف الإعدادات أو استخدام القيمة الافتراضية
-        var secretKey = _configuration["JwtSettings:Secret"]
-            ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
-
+        var secretKey = _configuration["JwtSettings:Secret"] ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
         // قراءة مصدر التوكن (Issuer)
         var issuer = _configuration["JwtSettings:Issuer"] ?? "RetalSystemAPI";
-
         // قراءة الجمهور المستهدف (Audience)
         var audience = _configuration["JwtSettings:Audience"] ?? "RetalSystemAPI-Client";
-
         // قراءة مدة صلاحية التوكن بالساعات مع تعيين 8 ساعات كقيمة افتراضية
         var expiryHours = int.TryParse(_configuration["JwtSettings:ExpiryHours"], out var hours) ? hours : 8;
-
         // تجهيز المفتاح المتماثل من بايتات المفتاح السري
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-
         // إعداد بيانات التوقيع الرقمي باستخدام خوارزمية HMAC-SHA256
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         // حساب وقت وتاريخ انتهاء صلاحية التوكن بالتوقيت العالمي UTC
         var expiresAt = DateTime.UtcNow.AddHours(expiryHours);
-
         // جلب قائمة أسماء الأدوار المسندة للمستخدم من Identity
         var roles = await _userManager.GetRolesAsync(user);
-
         // بناء قائمة المطالبات (Claims) الأساسية لبيانات الجلسة
         var claims = new List<Claim>
         {
@@ -290,7 +257,6 @@ public class AuthService : IAuthService
             // نسخة الجلسة المستخدمة لإبطال الرموز عند الخروج أو تغيير الصلاحيات
             new("SecurityStamp", user.SecurityStamp ?? string.Empty)
         };
-
         // إضافة كل دور من أدوار المستخدم كمطالبة منفصلة
         foreach (var role in roles)
         {
@@ -307,11 +273,9 @@ public class AuthService : IAuthService
 
         // استخراج وتجميع كافة الصلاحيات الممنوحة للمستخدم بدون تكرار
         var permissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
         // التحقق مما إذا كان المستخدم يملك دور مسؤول عام أو مسؤول نظام
         bool isPlatformAdmin = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
         bool isTenantAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-
         // فحص حالة المسؤول لمنحه كافة الصلاحيات مباشرة
         if (isPlatformAdmin || isTenantAdmin)
         {
@@ -322,6 +286,7 @@ public class AuthService : IAuthService
                 {
                     continue;
                 }
+
                 // إدراج الصلاحية في المجموعة
                 permissions.Add(perm);
             }
@@ -330,10 +295,8 @@ public class AuthService : IAuthService
         {
             // جلب مطالبات المستخدم المباشرة المخزنة في قاعدة البيانات
             var userClaims = await _userManager.GetClaimsAsync(user);
-
             // التحقق مما إذا كانت صلاحيات المستخدم مخصصة بشكل يدوي
             bool isCustomized = userClaims.Any(c => c.Type == "Permissions.Customized" && c.Value == "true");
-
             // فحص حالة التخصيص
             if (isCustomized)
             {
@@ -407,16 +370,12 @@ public class AuthService : IAuthService
             // تعيين بيانات التوقيع والمفتاح السري
             SigningCredentials = credentials
         };
-
         // إنشاء معالج رموز JWT
         var tokenHandler = new JwtSecurityTokenHandler();
-
         // إنشاء كائن رمز التوثيق
         var token = tokenHandler.CreateToken(tokenDescriptor);
-
         // تحويل الرمز إلى صيغة نصية مشفرة (String Token)
         var tokenString = tokenHandler.WriteToken(token);
-
         // بناء كائن الاستجابة بكافة البيانات المطلوبة للعميل
         return new AuthResponseDto
         {

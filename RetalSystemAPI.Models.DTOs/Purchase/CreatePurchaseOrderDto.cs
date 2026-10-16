@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Purchase;
@@ -14,6 +15,7 @@ public class CreatePurchaseOrderDto
 
     /// <summary>معرف الفرع الطالب</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف المورد المستهدف</summary>
@@ -31,5 +33,6 @@ public class CreatePurchaseOrderDto
 
     /// <summary>قائمة بنود الأصناف المطلوبة في أمر الشراء</summary>
     [MinLength(1, ErrorMessage = "يجب إضافة بند واحد على الأقل")]
+    [NoNullItems]
     public List<PurchaseOrderItemDto> Items { get; set; } = new();
 }

@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
@@ -11,14 +12,17 @@ public class CreateSupplierPaymentDto
 {
     /// <summary>معرف المورد</summary>
     [Required(ErrorMessage = "معرف المورد مطلوب")]
+    [NotEmptyGuid]
     public Guid SupplierId { get; set; }
 
     /// <summary>المبلغ المدفوع</summary>
     [Range(0.0001, double.MaxValue, ErrorMessage = "مبلغ السداد يجب أن يكون أكبر من الصفر")]
+    [MoneyAmount]
     public decimal Amount { get; set; }
 
     /// <summary>طريقة الدفع</summary>
     [Required(ErrorMessage = "طريقة الدفع مطلوبة")]
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>معرف الخزينة أو الحساب المسحوب منه المبلغ</summary>
@@ -26,6 +30,7 @@ public class CreateSupplierPaymentDto
 
     /// <summary>معرف الفرع</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>تاريخ السداد</summary>

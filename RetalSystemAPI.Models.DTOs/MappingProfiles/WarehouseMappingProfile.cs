@@ -27,7 +27,7 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : null!))
             // ترجمة نوع المستودع التعدادي (مخزن / صالة عرض) إلى نص عربي
             .ForMember(dest => dest.TypeName, opt => opt.MapFrom(src =>
-                src.Type == WarehouseType.Storge ? "مخزن" : "صالة عرض"));
+                src.Type == WarehouseType.Storge ? "مخزن" : src.Type == WarehouseType.Show ? "صالة عرض" : src.Type.ToString()));
 
         // تكوين تحويل كيان المستودع إلى ناقل بيانات الملخص السريع للجداول
         CreateMap<Warehouse, WarehouseSummaryDto>()
@@ -35,13 +35,13 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : null!))
             // ترجمة نوع المستودع إلى نص عربي
             .ForMember(dest => dest.TypeName, opt => opt.MapFrom(src =>
-                src.Type == WarehouseType.Storge ? "مخزن" : "صالة عرض"));
+                src.Type == WarehouseType.Storge ? "مخزن" : src.Type == WarehouseType.Show ? "صالة عرض" : src.Type.ToString()));
 
         // تكوين تحويل ناقل بيانات إنشاء المستودع إلى كيان المستودع
-        CreateMap<CreateWarehouseDto, Warehouse>();
+        CreateMap<CreateWarehouseDto, Warehouse>(MemberList.None);
 
         // تكوين تحويل ناقل بيانات تعديل المستودع إلى كيان المستودع
-        CreateMap<UpdateWarehouseDto, Warehouse>()
+        CreateMap<UpdateWarehouseDto, Warehouse>(MemberList.None)
             // استبعاد المعرف الأساسي Id لمنع تعديله
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
@@ -121,14 +121,14 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء تحويل مخزني إلى كيان التحويل
-        CreateMap<CreateStockTransferDto, StockTransfer>()
+        CreateMap<CreateStockTransferDto, StockTransfer>(MemberList.None)
             // تعيين الحالة الافتراضية للتحويل الجديد إلى مسودة (Draft)
             .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => StockTransferStatus.Draft))
             // تجاهل البنود لتتم معالجتها في خدمة المخزون مع التحقق من الأرصدة المتاحة
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
         // تكوين تحويل ناقل بيانات تعديل التحويل المخزني إلى كيان التحويل
-        CreateMap<UpdateStockTransferDto, StockTransfer>()
+        CreateMap<UpdateStockTransferDto, StockTransfer>(MemberList.None)
             // استبعاد المعرف الأساسي Id من التعديل
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
@@ -142,7 +142,7 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.BarcodeValue, opt => opt.MapFrom(src => src.ProductBarCode != null ? src.ProductBarCode.BarCode : null));
 
         // تكوين تحويل ناقل بيانات بند التحويل المخزني إلى كيان بند التحويل
-        CreateMap<StockTransferItemDto, StockTransferItem>();
+        CreateMap<StockTransferItemDto, StockTransferItem>(MemberList.None);
 
         // ── تحويلات تسويات الجرد المخزني (Stock Adjustment) ─────────────────
         // تكوين تحويل كيان تسوية المخزون إلى ناقل بيانات الاستجابة التفصيلي
@@ -174,7 +174,7 @@ public class WarehouseMappingProfile : Profile
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
         // تكوين تحويل ناقل بيانات إنشاء تسوية المخزون إلى كيان التسوية
-        CreateMap<CreateStockAdjustmentDto, StockAdjustment>()
+        CreateMap<CreateStockAdjustmentDto, StockAdjustment>(MemberList.None)
             // تجاهل البنود لتتم معالجتها وإنشاء حركات التسوية بدقة في الخدمة
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 
@@ -195,8 +195,9 @@ public class WarehouseMappingProfile : Profile
                 src.Reason == StockAdjustmentReason.Other ? "أخرى" : src.Reason.ToString()));
 
         // تكوين تحويل ناقل بيانات بند تسوية المخزون إلى كيان البند
-        CreateMap<StockAdjustmentItemDto, StockAdjustmentItem>()
-            // احتساب فارق الكمية تلقائياً (الكمية الفعلية - الكمية الدفترية)
-            .ForMember(dest => dest.DifferenceQuantity, opt => opt.MapFrom(src => src.ActualQuantity - src.SystemQuantity));
+        CreateMap<StockAdjustmentItemDto, StockAdjustmentItem>(MemberList.None)
+            // الرصيد الدفتري والفارق يحددهما الخادم من المخزون أثناء التسوية.
+            .ForMember(dest => dest.SystemQuantity, opt => opt.Ignore())
+            .ForMember(dest => dest.DifferenceQuantity, opt => opt.Ignore());
     }
 }

@@ -12,7 +12,7 @@ namespace RetalSystemAPI.Services.Accounting.Implementations;
 /// تنفيذ خدمة الترحيل المالي لإنشاء القيود وحركات الخزائن وتحديث أرصدة العملاء والموردين داخل معاملة وحدة العمل الحالية.
 /// </summary>
 /// <param name="unitOfWork">وحدة العمل لإدارة العمليات ومستودعات البيانات داخل نفس المعاملة</param>
-public sealed class FinancialPostingService(IUnitOfWork unitOfWork) : IFinancialPostingService
+public sealed class FinancialPostingService(IUnitOfWork unitOfWork, IPosCashService posCashService) : IFinancialPostingService
 {
     /// <inheritdoc />
     /// <summary>
@@ -72,6 +72,13 @@ public sealed class FinancialPostingService(IUnitOfWork unitOfWork) : IFinancial
             return ServiceResult<Safe?>.Failure(
                 $"رصيد الخزينة الحالي ({safe.CurrentBalance:N2}) غير كافٍ للحركة المطلوبة ({amount:N2}).",
                 ErrorCodes.InsufficientSafeBalance);
+
+        if (safe.Type == SafeType.CashDrawer)
+        {
+            var session = await posCashService.ResolveDrawerPostingSessionAsync(safe.Id, ct);
+            if (!session.IsSuccess)
+                return ServiceResult<Safe?>.Failure(session.ErrorMessage!, session.ErrorCode);
+        }
 
         // إرجاع الخزينة المطابقة بنجاح
         return ServiceResult<Safe?>.Success(safe);
@@ -182,6 +189,16 @@ public sealed class FinancialPostingService(IUnitOfWork unitOfWork) : IFinancial
             throw new InvalidOperationException("رصيد الخزينة غير كافٍ لإتمام الحركة المالية.");
 
         // تعديل رصيد الخزينة الحالي
+        if (safe.Type == SafeType.CashDrawer)
+        {
+            var session = await posCashService.ResolveDrawerPostingSessionAsync(safe.Id, ct);
+            if (!session.IsSuccess)
+                throw new InvalidOperationException(session.ErrorMessage);
+            if (cashSessionId.HasValue && session.Data != cashSessionId)
+                throw new InvalidOperationException("وردية درج النقود لم تعد متاحة للترحيل");
+            cashSessionId = session.Data;
+        }
+
         safe.CurrentBalance += balanceDelta;
         // إنشاء وإضافة حركة الخزينة في دفتر اليومية النقدية
         await unitOfWork.Accounting.AddSafeTransactionAsync(new SafeTransaction

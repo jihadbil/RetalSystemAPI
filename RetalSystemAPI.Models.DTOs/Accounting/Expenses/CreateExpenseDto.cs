@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
@@ -15,18 +16,22 @@ public class CreateExpenseDto
 
     /// <summary>الفرع الذي تم فيه الصرف</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف تصنيف المصروف</summary>
     [Required(ErrorMessage = "تصنيف المصروف مطلوب")]
+    [NotEmptyGuid]
     public Guid ExpenseCategoryId { get; set; }
 
     /// <summary>مبلغ المصروف</summary>
     [Range(0.0001, double.MaxValue, ErrorMessage = "مبلغ المصروف يجب أن يكون أكبر من الصفر")]
+    [MoneyAmount]
     public decimal Amount { get; set; }
 
     /// <summary>طريقة الدفع (نقدي، تحويل مصرفي، بطاقة...)</summary>
     [Required(ErrorMessage = "طريقة الدفع مطلوبة")]
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>معرف الخزينة أو الدرج المسحوب منه المبلغ (اختياري / مطلوب في الدفع النقدي والبنكي)</summary>

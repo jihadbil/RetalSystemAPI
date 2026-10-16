@@ -77,6 +77,6 @@ public class SafeConfiguration : IEntityTypeConfiguration<Safe>
         builder.HasIndex(s => new { s.TenantId, s.Type });
         builder.HasIndex(s => new { s.TenantId, s.IsActive });
         builder.HasIndex(s => new { s.TenantId, s.IsDeleted });
-        builder.HasIndex(s => new { s.TenantId, s.BranchId, s.Name }).IsUnique();
+        builder.HasIndex(s => new { s.TenantId, s.BranchId, s.Name }).IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

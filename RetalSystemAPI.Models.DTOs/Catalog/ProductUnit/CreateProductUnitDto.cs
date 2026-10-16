@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Catalog.ProductUnit;
@@ -14,6 +15,7 @@ public class CreateProductUnitDto
 
     /// <summary>المعرف الفريد لوحدة القياس المراد ربطها</summary>
     [Required(ErrorMessage = "معرف الوحدة مطلوب")]
+    [NotEmptyGuid]
     public Guid UnitId { get; set; }
 
     /// <summary>معامل التحويل (عدد الوحدات الأساسية التي تعادلها هذه الوحدة)</summary>

@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -22,10 +23,12 @@ public class CreateSalesReturnDto
 
     /// <summary>معرف الفرع</summary>
     [Required(ErrorMessage = "معرف الفرع مطلوب")]
+    [NotEmptyGuid]
     public Guid BranchId { get; set; }
 
     /// <summary>معرف المستودع أو الصالة المستلمة للبضاعة المرتجعة</summary>
     [Required(ErrorMessage = "معرف المستودع أو الصالة مطلوب")]
+    [NotEmptyGuid]
     public Guid WarehouseId { get; set; }
 
     /// <summary>معرف العميل</summary>
@@ -33,15 +36,18 @@ public class CreateSalesReturnDto
 
     /// <summary>المبلغ المعاد فعلياً للعميل؛ وما تبقى يخفض رصيد حسابه.</summary>
     [Range(0, double.MaxValue, ErrorMessage = "المبلغ المرتجع يجب أن يكون أكبر من أو يساوي صفر")]
+    [MoneyAmount]
     public decimal? RefundedAmount { get; set; }
 
     /// <summary>طريقة رد المبلغ. استخدم Credit لقيد كامل القيمة في حساب العميل.</summary>
+    [EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod? PaymentMethod { get; set; }
 
     /// <summary>الخزينة التي يُصرف منها المبلغ المرتجع.</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع (بضاعة معيبة، صنف خاطئ، تغيير رأي العميل، منتهي الصلاحية)</summary>
+    [EnumDataType(typeof(SalesReturnReason))]
     public SalesReturnReason Reason { get; set; } = SalesReturnReason.Other;
 
     /// <summary>ملاحظات إضافية</summary>
@@ -50,5 +56,6 @@ public class CreateSalesReturnDto
 
     /// <summary>قائمة البنود المرتجعة</summary>
     [MinLength(1, ErrorMessage = "يجب إضافة بند واحد على الأقل للمرتجع")]
+    [NoNullItems]
     public List<SalesReturnItemDto> Items { get; set; } = new();
 }

@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
 
@@ -19,10 +20,12 @@ public class CreateStockAdjustmentDto
 
     /// <summary>معرف المستودع أو الصالة الخاضعة للتسوية</summary>
     [Required(ErrorMessage = "معرف المستودع أو الصالة مطلوب")]
+    [NotEmptyGuid]
     public Guid WarehouseId { get; set; }
 
     /// <summary>السبب العام للتسوية الجردية (جرد دوري، بضاعة تالفة، منتهية، رصيد افتتاحي)</summary>
-    public StockAdjustmentReason Reason { get; set; }
+    [EnumDataType(typeof(StockAdjustmentReason))]
+    public StockAdjustmentReason Reason { get; set; } = StockAdjustmentReason.InventoryCount;
 
     /// <summary>ملاحظات إضافية حول عملية الجرد</summary>
     [MaxLength(500, ErrorMessage = "الملاحظات يجب أن لا تتجاوز 500 حرف")]
@@ -30,5 +33,6 @@ public class CreateStockAdjustmentDto
 
     /// <summary>قائمة بنود الأصناف الخاضعة للتسوية</summary>
     [MinLength(1, ErrorMessage = "يجب إضافة بند واحد على الأقل للتسوية")]
+    [NoNullItems]
     public List<StockAdjustmentItemDto> Items { get; set; } = new();
 }

@@ -1,3 +1,4 @@
+using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetalSystemAPI.Models.DTOs.Warehouses.StockTransfer;
@@ -17,10 +18,12 @@ public class CreateStockTransferDto
 
     /// <summary>معرف المستودع أو الفرع المصدر (المحوَّل منه)</summary>
     [Required(ErrorMessage = "المستودع المصدر مطلوب")]
+    [NotEmptyGuid]
     public Guid FromWarehouseId { get; set; }
 
     /// <summary>معرف المستودع أو الصالة الوجهة (المحوَّل إليه)</summary>
     [Required(ErrorMessage = "المستودع الوجهة مطلوب")]
+    [NotEmptyGuid]
     public Guid ToWarehouseId { get; set; }
 
     /// <summary>ملاحظات إضافية على أمر التحويل</summary>
@@ -29,5 +32,6 @@ public class CreateStockTransferDto
 
     /// <summary>قائمة بنود الأصناف المراد تحويلها</summary>
     [MinLength(1, ErrorMessage = "يجب إضافة بند واحد على الأقل للتحويل")]
+    [NoNullItems]
     public List<StockTransferItemDto> Items { get; set; } = new();
 }

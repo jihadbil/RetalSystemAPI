@@ -136,11 +136,11 @@ public static class DbInitializer
                     throw new InvalidOperationException($"فشل إنشاء مسؤول المنصة الأولي: {errors}");
                 }
 
-                await userManager.AddToRoleAsync(user, "SuperAdmin");
+                EnsureSucceeded(await userManager.AddToRoleAsync(user, "SuperAdmin"), "ربط مسؤول المنصة بدوره");
             }
             else if (!await userManager.IsInRoleAsync(existingUser, "SuperAdmin"))
             {
-                await userManager.AddToRoleAsync(existingUser, "SuperAdmin");
+                EnsureSucceeded(await userManager.AddToRoleAsync(existingUser, "SuperAdmin"), "ربط مسؤول المنصة بدوره");
             }
         }
     }
@@ -160,7 +160,7 @@ public static class DbInitializer
             if (!await roleManager.RoleExistsAsync(r))
             {
                 // إنشاء الدور الجديد وتخزينه في جدول الأدوار
-                await roleManager.CreateAsync(new IdentityRole(r));
+                EnsureSucceeded(await roleManager.CreateAsync(new IdentityRole(r)), $"إنشاء الدور {r}");
             }
         }
 
@@ -289,8 +289,14 @@ public static class DbInitializer
             if (!existingPerms.Contains(p))
             {
                 // إنشاء مطالبة جديدة وإضافتها للدور
-                await roleManager.AddClaimAsync(role, new Claim(Permissions.ClaimType, p));
+                EnsureSucceeded(await roleManager.AddClaimAsync(role, new Claim(Permissions.ClaimType, p)), $"إضافة الصلاحية {p} للدور {role.Name}");
             }
         }
+    }
+
+    private static void EnsureSucceeded(IdentityResult result, string operation)
+    {
+        if (!result.Succeeded)
+            throw new InvalidOperationException($"فشل {operation}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
     }
 }

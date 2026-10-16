@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using RetalSystemAPI.Models.DTOs.Common;
+using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
@@ -11,11 +8,9 @@ using RetalSystemAPI.Models.DTOs.Customers;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Customers.Interfaces;
-using RetalSystemAPI.Services.Customers.Specifications;
 using RetalSystemAPI.Services.Accounting.Interfaces;
 
 namespace RetalSystemAPI.Services.Customers.Implementations;
-
 /// <summary>
 /// تنفيذ خدمة إدارة العملاء وسجل هواتفهم وحدود الائتمان وتدقيق الكود وحالات النشاط.
 /// </summary>
@@ -23,32 +18,28 @@ public class CustomerService : ICustomerService
 {
     // وحدة العمل للتعامل مع مستودعات العملاء وهواتفهم وحفظ التغييرات
     private readonly IUnitOfWork _unitOfWork;
-
     // محول النماذج للتحويل بين الكيانات وDTOs
     private readonly IMapper _mapper;
     private readonly IPosCashService _posCashService;
-
     /// <summary>
     /// تهيئة خدمة العملاء مع حقن وحدة العمل وAutoMapper.
     /// </summary>
-    /// <param name="unitOfWork">وحدة العمل للمستودعات</param>
-    /// <param name="mapper">محول الكيانات</param>
+    /// <param name = "unitOfWork">وحدة العمل للمستودعات</param>
+    /// <param name = "mapper">محول الكيانات</param>
     public CustomerService(IUnitOfWork unitOfWork, IMapper mapper, IPosCashService posCashService)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
-
         // تعيين مرجع المحول
         _mapper = mapper;
         _posCashService = posCashService;
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // البحث عن العميل بالمعرف وتضمين هواتفه عبر المواصفة المخصصة
-        var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
-
+        var customer = await _unitOfWork.Customers.GetDetailsAsync(id, ct);
         // التحقق من وجود العميل
         if (customer is null)
         {
@@ -58,55 +49,47 @@ public class CustomerService : ICustomerService
 
         // تحويل الكيان إلى كائن الاستجابة DTO
         var dto = _mapper.Map<CustomerResponseDto>(customer);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<CustomerResponseDto>.Success(dto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<CustomerSummaryDto>>> GetAllAsync(CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة الفلترة حسب النوع وحالة النشاط والبحث
-        var spec = new CustomerWithDetailsSpec(type, isActive, search);
-
         // استرجاع قائمة العملاء المطابقين للمواصفة
-        var customers = await _unitOfWork.Customers.FindAsync(spec, ct);
-
+        var customers = await _unitOfWork.Customers.ListAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search }, ct);
         // تحويل الكيانات إلى قائمة ملخصات العملاء
         var dtos = _mapper.Map<IReadOnlyList<CustomerSummaryDto>>(customers);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<IReadOnlyList<CustomerSummaryDto>>.Success(dtos);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المخصصة بالترقيم والفلترة
-        var spec = new CustomerWithDetailsSpec(type, isActive, search);
-
         // جلب عناصر الصفحة المحددة وإجمالي عدد السجلات
-        var (items, totalCount) = await _unitOfWork.Customers.GetPagedAsync(spec, pageNumber, pageSize, ct);
-
+        var(items, totalCount) = await _unitOfWork.Customers.SearchAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل قائمة الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<CustomerSummaryDto>>(items);
-
         // بناء كائن الصفحة الموحد
         var pagedResult = PagedResult<CustomerSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<PagedResult<CustomerSummaryDto>>.Success(pagedResult);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> CreateAsync(CreateCustomerDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CustomerResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         // التحقق من كود العميل إن وجد لضمان عدم تكراره
         if (!string.IsNullOrWhiteSpace(dto.Code))
         {
             // فحص وجود عميل آخر مسجل بنفس الكود
-            bool codeExists = await _unitOfWork.Customers.ExistsAsync(c => c.Code == dto.Code, ct);
-
+            bool codeExists = await _unitOfWork.Customers.CodeExistsAsync(dto.Code, ct);
             // في حالة وجود تطابق للكود
             if (codeExists)
             {
@@ -118,44 +101,36 @@ public class CustomerService : ICustomerService
         // تحويل كائن DTO إلى كيان العميل
         var customer = _mapper.Map<Customer>(dto);
         customer.CurrentBalance = dto.OpeningBalance;
-
         // التحقق من وجود أرقام هواتف مرفقة
         if (dto.Phones != null && dto.Phones.Any())
         {
             // بناء كيانات هواتف العميل وربطها به
-            customer.CustomerPhones = dto.Phones.Select(p => new CustomerPhone
-            {
-                // تعيين رقم الهاتف
-                PhoneNumber = p.PhoneNumber,
-                // تعيين اسم جهة الاتصال
-                ContactName = p.ContactName,
-                // تعيين حالة الرقم الافتراضي
-                IsDefault = p.IsDefault
-            }).ToList();
+            customer.CustomerPhones = dto.Phones.Select(p => new CustomerPhone { // تعيين رقم الهاتف
+ PhoneNumber = p.PhoneNumber, // تعيين اسم جهة الاتصال
+ ContactName = p.ContactName, // تعيين حالة الرقم الافتراضي
+ IsDefault = p.IsDefault }).ToList();
         }
 
         // إضافة كيان العميل وهواتفه للمستودع
         await _unitOfWork.Customers.AddAsync(customer, ct);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب العميل المحفوظ مع هواتفه للتأكد من اكتمال البيانات
-        var created = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(customer.Id), ct) ?? customer;
-
+        var created = await _unitOfWork.Customers.GetDetailsAsync(customer.Id, ct) ?? customer;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<CustomerResponseDto>(created);
-
         // إرجاع نتيجة النجاح
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> UpdateAsync(Guid id, UpdateCustomerDto dto, CancellationToken ct = default)
     {
-        // البحث عن العميل الحالي مع هواتفه
-        var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CustomerResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // البحث عن العميل الحالي مع هواتفه
+        var customer = await _unitOfWork.Customers.GetDetailsAsync(id, ct);
         // التحقق من وجود العميل
         if (customer is null)
         {
@@ -167,8 +142,7 @@ public class CustomerService : ICustomerService
         if (!string.IsNullOrWhiteSpace(dto.Code) && dto.Code != customer.Code)
         {
             // فحص تطابق الكود لعميل آخر
-            bool codeExists = await _unitOfWork.Customers.ExistsAsync(c => c.Code == dto.Code && c.Id != id, ct);
-
+            bool codeExists = await _unitOfWork.Customers.CodeExistsAsync(dto.Code, id, ct);
             // في حال وجود تعارض
             if (codeExists)
             {
@@ -179,25 +153,18 @@ public class CustomerService : ICustomerService
 
         // تحديث اسم العميل
         customer.Name = dto.Name;
-
         // تحديث كود العميل
         customer.Code = dto.Code;
-
         // تحديث البريد الإلكتروني
         customer.Email = dto.Email;
-
         // تحديث العنوان
         customer.Address = dto.Address;
-
         // تحديث تصنيف ونوع العميل
         customer.Type = dto.Type;
-
         // تحديث الحد الائتماني
         customer.CreditLimit = dto.CreditLimit;
-
         // تحديث حالة النشاط
         customer.IsActive = dto.IsActive;
-
         // التحقق من تقديم قائمة أرقام هواتف جديدة
         if (dto.Phones != null && dto.Phones.Any())
         {
@@ -213,41 +180,30 @@ public class CustomerService : ICustomerService
             }
 
             // إنشاء قائمة أرقام الهواتف الجديدة
-            customer.CustomerPhones = dto.Phones.Select(p => new CustomerPhone
-            {
-                // تعيين معرف العميل
-                CustomerId = id,
-                // تعيين رقم الهاتف
-                PhoneNumber = p.PhoneNumber,
-                // تعيين اسم جهة الاتصال
-                ContactName = p.ContactName,
-                // تعيين حالة الرقم الافتراضي
-                IsDefault = p.IsDefault
-            }).ToList();
+            customer.CustomerPhones = dto.Phones.Select(p => new CustomerPhone { // تعيين معرف العميل
+ CustomerId = id, // تعيين رقم الهاتف
+ PhoneNumber = p.PhoneNumber, // تعيين اسم جهة الاتصال
+ ContactName = p.ContactName, // تعيين حالة الرقم الافتراضي
+ IsDefault = p.IsDefault }).ToList();
         }
 
         // وسم كيان العميل للتحديث في المستودع
         _unitOfWork.Customers.Update(customer);
-
         // حفظ التعديلات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب العميل المحدث مع بيانات الهواتف
-        var updated = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct) ?? customer;
-
+        var updated = await _unitOfWork.Customers.GetDetailsAsync(id, ct) ?? customer;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<CustomerResponseDto>(updated);
-
         // إرجاع نتيجة التعديل بنجاح
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // جلب سجل العميل بالمعرف
-        var customer = await _unitOfWork.Customers.GetByIdAsync(id, ct);
-
+        var customer = await _unitOfWork.Customers.GetByIdForUpdateAsync(id, ct);
         // التحقق من وجود العميل
         if (customer is null)
         {
@@ -257,20 +213,17 @@ public class CustomerService : ICustomerService
 
         // تطبيق الحذف المنطقي للعميل
         _unitOfWork.Customers.SoftDelete(customer);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> ToggleActiveStatusAsync(Guid id, CancellationToken ct = default)
     {
         // استعلام العميل مع هواتفه
-        var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(id), ct);
-
+        var customer = await _unitOfWork.Customers.GetDetailsAsync(id, ct);
         // التحقق من وجود العميل
         if (customer is null)
         {
@@ -280,26 +233,24 @@ public class CustomerService : ICustomerService
 
         // تبديل حالة النشاط الحالية
         customer.IsActive = !customer.IsActive;
-
         // وسم الكيان للتحديث
         _unitOfWork.Customers.Update(customer);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // تحويل الكيان المحدث إلى DTO
         var responseDto = _mapper.Map<CustomerResponseDto>(customer);
-
         // إرجاع نتيجة النجاح
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> AddPhoneAsync(Guid customerId, CustomerPhoneDto dto, CancellationToken ct = default)
     {
-        // استعلام العميل وهوائفه بالمعرف
-        var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(customerId), ct);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CustomerResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        // استعلام العميل وهوائفه بالمعرف
+        var customer = await _unitOfWork.Customers.GetDetailsAsync(customerId, ct);
         // التحقق من وجود العميل
         if (customer is null)
         {
@@ -332,29 +283,23 @@ public class CustomerService : ICustomerService
             // تعيين حالة الرقم الافتراضي
             IsDefault = dto.IsDefault
         };
-
         // إضافة الهاتف للمستودع
         await _unitOfWork.Customers.AddPhoneAsync(phone, ct);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إعادة جلب العميل مع قائمة الهواتف المحدثة
-        var updated = await _unitOfWork.Customers.FirstOrDefaultAsync(new CustomerWithDetailsSpec(customerId), ct) ?? customer;
-
+        var updated = await _unitOfWork.Customers.GetDetailsAsync(customerId, ct) ?? customer;
         // تحويل الكيان إلى DTO
         var responseDto = _mapper.Map<CustomerResponseDto>(updated);
-
         // إرجاع النتيجة بنجاح
         return ServiceResult<CustomerResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult> DeletePhoneAsync(Guid customerId, Guid phoneId, CancellationToken ct = default)
     {
         // جلب سجل الهاتف بالمعرف
         var phone = await _unitOfWork.Customers.GetPhoneByIdAsync(phoneId, ct);
-
         // التحقق من وجود الهاتف وارتباطه بنفس العميل المحدد
         if (phone is null || phone.CustomerId != customerId)
         {
@@ -364,35 +309,25 @@ public class CustomerService : ICustomerService
 
         // تطبيق الحذف المنطقي لرقم الهاتف
         _unitOfWork.Customers.SoftDeletePhone(phone);
-
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerStatementDto>> GetStatementAsync(CustomerStatementFilterDto filter, CancellationToken ct = default)
     {
-        var customer = await _unitOfWork.Customers.GetByIdAsync(filter.CustomerId, ct);
+        var customer = await _unitOfWork.Customers.GetByIdForUpdateAsync(filter.CustomerId, ct);
         if (customer == null)
             return ServiceResult<CustomerStatementDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
-
         // حساب الرصيد قبل بداية الفترة
-        decimal balanceBeforePeriod = filter.FromDate.HasValue
-            ? await _unitOfWork.Customers.GetBalanceBeforeDateAsync(customer.Id, filter.FromDate.Value, ct)
-            : customer.OpeningBalance;
-
+        decimal balanceBeforePeriod = filter.FromDate.HasValue ? await _unitOfWork.Customers.GetBalanceBeforeDateAsync(customer.Id, filter.FromDate.Value, ct) : customer.OpeningBalance;
         // جلب الحركات خلال الفترة
-        var transactions = await _unitOfWork.Customers.GetTransactionsByDateRangeAsync(
-            customer.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
-
+        var transactions = await _unitOfWork.Customers.GetTransactionsByDateRangeAsync(customer.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
         var transactionDtos = _mapper.Map<List<CustomerTransactionResponseDto>>(transactions);
-
         var totalDebit = transactionDtos.Sum(t => t.DebitAmount);
         var totalCredit = transactionDtos.Sum(t => t.CreditAmount);
-
         var statement = new CustomerStatementDto
         {
             CustomerId = customer.Id,
@@ -408,27 +343,25 @@ public class CustomerService : ICustomerService
             ToDate = filter.ToDate,
             Transactions = transactionDtos
         };
-
         return ServiceResult<CustomerStatementDto>.Success(statement);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerTransactionResponseDto>> AddPaymentAsync(CreateCustomerPaymentDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         if (!Enum.IsDefined(dto.PaymentMethod) || dto.PaymentMethod == PaymentMethod.Credit)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("طريقة السداد غير صالحة", ErrorCodes.ValidationError);
-
         if (!dto.SafeId.HasValue)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("يجب تحديد الخزينة المستلمة للمبلغ", ErrorCodes.ValidationError);
-
-        var customer = await _unitOfWork.Customers.GetByIdAsync(dto.CustomerId, ct);
+        var customer = await _unitOfWork.Customers.GetByIdForUpdateAsync(dto.CustomerId, ct);
         if (customer == null)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
-
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         if (!branchExists)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
-
         Safe? safe = null;
         Guid? cashSessionId = null;
         if (dto.SafeId.HasValue)
@@ -436,13 +369,10 @@ public class CustomerService : ICustomerService
             safe = await _unitOfWork.Accounting.GetSafeByIdAsync(dto.SafeId.Value, ct);
             if (safe == null)
                 return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة المحددة غير موجودة", ErrorCodes.SafeNotFound);
-
             if (!safe.IsActive)
                 return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة معطلة حالياً", ErrorCodes.SafeInactive);
-
             if (safe.BranchId != dto.BranchId)
                 return ServiceResult<CustomerTransactionResponseDto>.Failure("الخزينة المحددة لا تتبع فرع عملية السداد", ErrorCodes.ValidationError);
-
             var sessionResult = await _posCashService.ResolveDrawerPostingSessionAsync(safe.Id, ct);
             if (!sessionResult.IsSuccess)
                 return ServiceResult<CustomerTransactionResponseDto>.Failure(sessionResult.ErrorMessage!, sessionResult.ErrorCode);
@@ -453,7 +383,6 @@ public class CustomerService : ICustomerService
         try
         {
             customer.CurrentBalance -= dto.Amount;
-
             var transaction = new CustomerTransaction
             {
                 CustomerId = customer.Id,
@@ -468,10 +397,8 @@ public class CustomerService : ICustomerService
                 Description = dto.Description ?? "سند قبض / سداد من العميل",
                 Notes = dto.Notes
             };
-
             await _unitOfWork.Customers.AddTransactionAsync(transaction, ct);
             _unitOfWork.Customers.Update(customer);
-
             if (safe != null)
             {
                 safe.CurrentBalance += dto.Amount;
@@ -490,18 +417,15 @@ public class CustomerService : ICustomerService
                     Notes = dto.Notes
                 };
                 safeTx.CashSessionId = cashSessionId;
-
                 await _unitOfWork.Accounting.AddSafeTransactionAsync(safeTx, ct);
                 _unitOfWork.Accounting.UpdateSafe(safe);
             }
 
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitTransactionAsync(ct);
-
-            var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+            var branch = await _unitOfWork.Branches.GetByIdForUpdateAsync(dto.BranchId, ct);
             transaction.Branch = branch!;
             transaction.Customer = customer;
-
             return ServiceResult<CustomerTransactionResponseDto>.Success(_mapper.Map<CustomerTransactionResponseDto>(transaction));
         }
         catch
@@ -511,20 +435,20 @@ public class CustomerService : ICustomerService
         }
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public async Task<ServiceResult<CustomerTransactionResponseDto>> AddAdjustmentAsync(CreateCustomerAdjustmentDto dto, CancellationToken ct = default)
     {
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<CustomerTransactionResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+
         if (!Enum.IsDefined(dto.Direction))
             return ServiceResult<CustomerTransactionResponseDto>.Failure("اتجاه التسوية غير صالح", ErrorCodes.ValidationError);
-
-        var customer = await _unitOfWork.Customers.GetByIdAsync(dto.CustomerId, ct);
+        var customer = await _unitOfWork.Customers.GetByIdForUpdateAsync(dto.CustomerId, ct);
         if (customer == null)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("العميل غير موجود", ErrorCodes.CustomerNotFound);
-
-        bool branchExists = await _unitOfWork.Branches.ExistsAsync(b => b.Id == dto.BranchId, ct);
+        bool branchExists = await _unitOfWork.Branches.ExistsByIdAsync(dto.BranchId, ct);
         if (!branchExists)
             return ServiceResult<CustomerTransactionResponseDto>.Failure("الفرع المحدد غير موجود", ErrorCodes.BranchNotFound);
-
         decimal debit = 0;
         decimal credit = 0;
         if (dto.Direction == TransactionDirection.Inbound)
@@ -551,15 +475,12 @@ public class CustomerService : ICustomerService
             Description = dto.Reason,
             Notes = dto.Notes
         };
-
         await _unitOfWork.Customers.AddTransactionAsync(transaction, ct);
         _unitOfWork.Customers.Update(customer);
         await _unitOfWork.SaveChangesAsync(ct);
-
-        var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId, ct);
+        var branch = await _unitOfWork.Branches.GetByIdForUpdateAsync(dto.BranchId, ct);
         transaction.Branch = branch!;
         transaction.Customer = customer;
-
         return ServiceResult<CustomerTransactionResponseDto>.Success(_mapper.Map<CustomerTransactionResponseDto>(transaction));
     }
 }

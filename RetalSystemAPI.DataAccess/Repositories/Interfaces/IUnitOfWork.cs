@@ -1,18 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Interfaces;
-
 /// <summary>
 /// واجهة نمط وحدة العمل (Unit of Work Pattern) لتنسيق وحفظ التعديلات كـ Transaction واحدة مؤمنة عبر جميع المستودعات المتخصصة.
 /// </summary>
 public interface IUnitOfWork : IAsyncDisposable
 {
     // ── Specialized Repositories ──────────────────────────────
-
     /// <summary>مستودع بيانات المستأجرين (Tenants)</summary>
     ITenantRepository Tenants { get; }
 
@@ -65,35 +59,31 @@ public interface IUnitOfWork : IAsyncDisposable
     IAccountingRepository Accounting { get; }
 
     // ── Transaction Control ───────────────────────────────────
-
     /// <summary>
     /// حفظ جميع التغييرات المعلقة في سياق قاعدة البيانات بصورة غير متزامنة.
     /// </summary>
-    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <param name = "ct">رمز إلغاء العملية</param>
     /// <returns>عدد السجلات المتأثرة بعملية الحفظ</returns>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
-
     /// <summary>
     /// جلب قائمة بالكيانات المتتبعة حالياً في ChangeTracker الخاص بـ DbContext.
     /// </summary>
     /// <returns>مجموعة مدخلات الكيانات المتتبعة</returns>
     IEnumerable<EntityEntry> ChangeTrackerEntries();
-
     /// <summary>
     /// بدء معاملة ذرية صريحة (Database Transaction) لضمان تنفيذ عدة عمليات كوحدة واحدة.
     /// </summary>
-    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <param name = "ct">رمز إلغاء العملية</param>
     Task BeginTransactionAsync(CancellationToken ct = default);
-
     /// <summary>
     /// تثبيت وتأكيد التغييرات المنفذة داخل المعاملة الحالية في قاعدة البيانات.
     /// </summary>
-    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <param name = "ct">رمز إلغاء العملية</param>
     Task CommitTransactionAsync(CancellationToken ct = default);
-
     /// <summary>
     /// التراجع عن جميع التغييرات المنفذة داخل المعاملة الحالية في حال حدوث أي خطأ.
+    /// يُلغى التتبع ويُمنع الحفظ وبدء المعاملات بهذا السياق بعد التراجع؛ يجب إنشاء نطاق جديد.
     /// </summary>
-    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <param name = "ct">رمز إلغاء العملية</param>
     Task RollbackTransactionAsync(CancellationToken ct = default);
 }

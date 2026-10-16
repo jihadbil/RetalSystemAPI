@@ -67,9 +67,7 @@ public static class DataAccessServiceExtensions
                     }
                 )
                 // إضافة معترض التدقيق لسياق البيانات
-                .AddInterceptors(interceptor)
-                // تجاهل تحذيرات التغييرات المعلقة في النموذج لتفادي تعطيل التشغيل
-                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+                .AddInterceptors(interceptor);
         });
 
         // ── Identity ──────────────────────────────────────────
@@ -93,10 +91,6 @@ public static class DataAccessServiceExtensions
         .AddEntityFrameworkStores<AppDbContext>()
         // إضافة مزودي الرموز الافتراضية لاستعادة كلمات المرور وتأكيد الحسابات
         .AddDefaultTokenProviders();
-
-        // ── Generic Repository ────────────────────────────────
-        // تسجيل واجهة المستودع العام المفتوح IRepository<> مع تنفيذه Repository<>
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
         // ── Specialized Repositories ──────────────────────────
         services.AddScoped<ITenantRepository, TenantRepository>();
