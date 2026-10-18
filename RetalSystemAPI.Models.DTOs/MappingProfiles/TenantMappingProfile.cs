@@ -26,6 +26,7 @@ public class TenantMappingProfile : Profile
 
         // تكوين تحويل ناقل بيانات تعديل المستأجر إلى كيان المستأجر
         CreateMap<UpdateTenantDto, TenantEntity>(MemberList.None)
+            .ForMember(dest => dest.LogoUrl, opt => opt.Ignore())
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للمستأجر
             .ForMember(dest => dest.Id, opt => opt.Ignore());
     }

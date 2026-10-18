@@ -167,9 +167,14 @@ public class FileUploadService : IFileUploadService
             // تكوين المسار الفيزيائي الكامل للملف
             var uploadsRoot = Path.GetFullPath(Path.Combine(webRootPath, "uploads")) + Path.DirectorySeparatorChar;
             var fullPath = Path.GetFullPath(Path.Combine(webRootPath, normalizedUrl));
-            if (!fullPath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase))
+            var tenantId = _tenantService.TenantId;
+            var ownedDirectory = tenantId != Guid.Empty && AllowedSubfolders.Any(folder =>
+                string.Equals(Path.GetDirectoryName(fullPath),
+                    Path.GetFullPath(Path.Combine(uploadsRoot, folder.Replace('/', Path.DirectorySeparatorChar), tenantId.ToString())),
+                    StringComparison.OrdinalIgnoreCase));
+            if (!fullPath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase) || !ownedDirectory)
             {
-                return Task.FromResult(ServiceResult.Failure("مسار الملف غير صالح", ErrorCodes.ValidationError));
+                return Task.FromResult(ServiceResult.Failure("الملف لا يتبع المستأجر الحالي", ErrorCodes.Forbidden));
             }
 
             // التحقق من وجود الملف فيزيائياً على القرص
