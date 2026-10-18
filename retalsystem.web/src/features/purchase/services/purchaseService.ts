@@ -7,6 +7,12 @@ import type {
 import type { PagedResult } from '../../../shared/types/api.types';
 
 export const purchaseService = {
+  async prepareOrder(id: string, data: { supplierId: string; warehouseId: string; expectedDate?: string }): Promise<PurchaseOrderDto> {
+    return apiClient.put<PurchaseOrderDto>(`purchase-orders/${id}`, { id, ...data });
+  },
+  async receiveOrder(id: string): Promise<PurchaseOrderDto> {
+    return apiClient.patch<PurchaseOrderDto>(`purchase-orders/${id}/status`, 4);
+  },
   // فواتير المشتريات
   async getInvoices(params?: {
     pageNumber?: number;

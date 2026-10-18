@@ -168,6 +168,8 @@ export interface CreatePurchaseOrderRequest {
 }
 
 export interface PurchaseOrderDto {
+  warehouseId?: string;
+  expectedDate?: string;
   id: string;
   orderNumber: string;
   supplierId: string;
@@ -176,7 +178,7 @@ export interface PurchaseOrderDto {
   branchName?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
-  status: string;
+  status: number;
   totalAmount: number;
   notes?: string;
   items: {

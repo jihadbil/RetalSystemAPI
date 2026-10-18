@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { purchaseService } from './services/purchaseService';
 import type {
   PurchaseInvoiceDto,
@@ -8,6 +8,7 @@ import type {
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
 import { PurchaseInvoiceDetailsModal } from './components/PurchaseInvoiceDetailsModal';
 import { PurchaseOrderModal } from './components/PurchaseOrderModal';
+import { PurchaseOrderPreparationModal } from './components/PurchaseOrderPreparationModal';
 import { PurchaseReturnModal } from './components/PurchaseReturnModal';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
@@ -36,14 +37,19 @@ import { PurchaseStatusLabels, PurchaseInvoiceStatus } from './types/purchase.ty
 
 export const PurchaseView: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, currentBranchId } = useAuth();
+  const canViewInvoices = hasPermission(Permissions.PurchaseInvoices.View);
+  const canApproveOrder = hasPermission(Permissions.PurchaseOrders.Approve);
+  const canPrepareOrder = hasPermission('Permissions.PurchaseOrders.Edit');
   const canCreateInvoice = hasPermission(Permissions.PurchaseInvoices.Create);
   const canEditInvoice = hasPermission(Permissions.PurchaseInvoices.Edit);
   const canViewOrders = hasPermission(Permissions.PurchaseOrders.View);
   const canCreateOrder = hasPermission(Permissions.PurchaseOrders.Create);
   const canViewReturns = hasPermission(Permissions.PurchaseReturns.View);
   const canCreateReturn = hasPermission(Permissions.PurchaseReturns.Create);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'orders' | 'returns'>('invoices');
+  const [selectedTab, setActiveTab] = useState<'invoices' | 'orders' | 'returns'>('invoices');
+  const allowedTabs = { invoices: canViewInvoices, orders: canViewOrders, returns: canViewReturns };
+  const activeTab = allowedTabs[selectedTab] ? selectedTab : canViewInvoices ? 'invoices' : canViewOrders ? 'orders' : 'returns';
 
   const [invoices, setInvoices] = useState<PurchaseInvoiceDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
@@ -53,12 +59,16 @@ export const PurchaseView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const pagination = usePagination({ initialPageSize: 10 });
-  const { page, pageSize, setTotalCount } = pagination;
+  const { page, pageSize, setTotalCount, resetPage } = pagination;
+  const loadVersion = useRef(0);
+  useEffect(() => { resetPage(); }, [currentBranchId, debouncedSearch, activeTab, resetPage]);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoiceDto | null>(null);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [receivingId, setReceivingId] = useState<string | null>(null);
+  const [preparingOrderId, setPreparingOrderId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
@@ -79,6 +89,7 @@ export const PurchaseView: React.FC = () => {
   };
 
   const loadPurchaseData = useCallback(async () => {
+    const version = ++loadVersion.current;
     setIsLoading(true);
     setLoadError(null);
     try {
@@ -87,31 +98,36 @@ export const PurchaseView: React.FC = () => {
           pageNumber: page,
           pageSize,
           search: debouncedSearch,
+          branchId: currentBranchId || undefined,
         });
+        if (version !== loadVersion.current) return;
         setInvoices(res.items);
         setTotalCount(res.totalCount);
       } else if (activeTab === 'orders') {
-        const ords = await purchaseService.getOrders();
+        const ords = await purchaseService.getOrders({ branchId: currentBranchId || undefined });
+        if (version !== loadVersion.current) return;
         setOrders(ords);
       } else {
-        const rets = await purchaseService.getReturns();
+        const rets = await purchaseService.getReturns({ branchId: currentBranchId || undefined });
+        if (version !== loadVersion.current) return;
         setReturns(rets);
       }
     } catch (err: unknown) {
+      if (version !== loadVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات المشتريات';
       setLoadError(msg);
       showError('خطأ في تحميل المشتريات', msg);
     } finally {
-      setIsLoading(false);
+      if (version === loadVersion.current) setIsLoading(false);
     }
-  }, [activeTab, page, pageSize, setTotalCount, debouncedSearch, showError]);
+  }, [activeTab, page, pageSize, setTotalCount, debouncedSearch, showError, currentBranchId]);
 
   useEffect(() => {
     loadPurchaseData();
   }, [loadPurchaseData]);
 
   const tabs = [
-    { id: 'invoices', label: 'فواتير المشتريات', icon: <IconFileInvoice className="w-4 h-4" />, badge: pagination.totalCount },
+    ...(canViewInvoices ? [{ id: 'invoices', label: 'فواتير المشتريات', icon: <IconFileInvoice className="w-4 h-4" />, badge: pagination.totalCount }] : []),
     ...(canViewOrders
       ? [{ id: 'orders', label: 'أوامر الشراء', icon: <IconShoppingCart className="w-4 h-4" />, badge: orders.length }]
       : []),
@@ -342,8 +358,23 @@ export const PurchaseView: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge variant="info" size="sm">
-                          {ord.status}
+                          {({ 1: 'مسودة', 2: 'مؤكد', 3: 'مستلم جزئياً', 4: 'مستلم', 5: 'ملغى' }[ord.status] || '-')}
                         </Badge>
+                        {canPrepareOrder && [1, 2, 3].includes(ord.status) && (
+                          <Button size="sm" variant="secondary" onClick={() => setPreparingOrderId(ord.id)}>بيانات الاستلام</Button>
+                        )}
+                        {canApproveOrder && [1, 2, 3].includes(Number(ord.status)) && (
+                          <Button size="sm" variant="secondary" disabled={receivingId !== null} onClick={async () => {
+                            setReceivingId(ord.id);
+                            try {
+                              await purchaseService.receiveOrder(ord.id);
+                              showSuccess('تم الاستلام', 'تم استلام أمر الشراء وترحيل فاتورته');
+                              await loadPurchaseData();
+                            } catch (err) {
+                              showError('تعذر الاستلام', err instanceof Error ? err.message : 'فشل استلام أمر الشراء');
+                            } finally { setReceivingId(null); }
+                          }}>استلام وترحيل</Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -437,11 +468,17 @@ export const PurchaseView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل إنشاء أمر الشراء';
             showError('خطأ أثناء إنشاء أمر الشراء', msg);
+            throw err;
           }
         }}
       />
 
       {/* نافذة تفاصيل فاتورة مشتريات */}
+      <PurchaseOrderPreparationModal orderId={preparingOrderId} onClose={() => setPreparingOrderId(null)} onSaved={() => {
+        showSuccess('حُفظت البيانات', 'يمكن الآن استلام أمر الشراء');
+        void loadPurchaseData();
+      }} />
+
       <PurchaseInvoiceDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => {
