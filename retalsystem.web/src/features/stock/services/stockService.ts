@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/services/apiClient';
+import { apiClient, ApiError } from '../../../shared/services/apiClient';
 import type { PagedResult } from '../../../shared/types/api.types';
 import type {
   WarehouseDto,
@@ -48,6 +48,17 @@ interface StockTransferApiItem extends Partial<StockTransferDto> {
 }
 
 export const stockService = {
+  async getQuantity(warehouseId: string, productId: string, barcodeId?: string): Promise<number> {
+    try {
+      const result = await apiClient.get<{ quantity: number }>(barcodeId
+        ? `stock/storge/${warehouseId}/barcode/${barcodeId}`
+        : `stock/showroom/${warehouseId}/product/${productId}`);
+      return result.quantity;
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) return 0;
+      throw error;
+    }
+  },
   async completeTransfer(id: string): Promise<StockTransferDto> {
     return apiClient.patch<StockTransferDto>(`stock-transfers/${id}/status`, 3);
   },

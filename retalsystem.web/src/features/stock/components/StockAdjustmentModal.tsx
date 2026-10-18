@@ -7,6 +7,8 @@ import type { WarehouseDto } from '../types/stock.types';
 import { AdjustmentType } from '../types/stock.types';
 import { catalogService } from '../../catalog/services/catalogService';
 import type { ProductDto } from '../../catalog/types/catalog.types';
+import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
+import { stockService } from '../services/stockService';
 
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 
@@ -33,6 +35,25 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const [actualQty, setActualQty] = useState<number>(0);
   const [reason, setReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { product, barcodeId, setBarcodeId, error: barcodeError } = useProductBarcodes(selectedProductId, isOpen);
+  const needsBarcode = warehouses.find((w) => w.id === warehouseId)?.type === 1;
+  const [stockError, setStockError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [loadingQuantity, setLoadingQuantity] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setCurrentQty(0);
+    setStockError('');
+    setLoadingQuantity(false);
+    if (isOpen && warehouseId && selectedProductId && (!needsBarcode || barcodeId)) {
+      setLoadingQuantity(true);
+      void stockService.getQuantity(warehouseId, selectedProductId, needsBarcode ? barcodeId : undefined)
+        .then((quantity) => { if (!cancelled) setCurrentQty(quantity); })
+        .catch(() => { if (!cancelled) setStockError('تعذر تحميل رصيد المخزون الحالي'); })
+        .finally(() => { if (!cancelled) setLoadingQuantity(false); });
+    }
+    return () => { cancelled = true; };
+  }, [isOpen, warehouseId, selectedProductId, needsBarcode, barcodeId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,8 +79,13 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductId) return;
+    if (loadingQuantity || stockError || !warehouseId || !Number.isInteger(actualQty) || actualQty < 0 || needsBarcode && !barcodeId) {
+      setSubmitError('انتظر تحميل الرصيد، وحدد الباركود وأدخل كمية جرد صحيحة غير سالبة');
+      return;
+    }
 
     setIsLoading(true);
+    setSubmitError('');
     try {
       const adjustmentNumber = `ADJ-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
         100 + Math.random() * 900
@@ -68,19 +94,22 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
         adjustmentNumber,
         adjustmentDate: new Date().toISOString(),
         warehouseId: warehouseId || warehouses[0]?.id,
-        reason: Number(type),
+        reason: type === AdjustmentType.Damage ? 2 : 1,
         notes: reason.trim() || undefined,
         items: [
           {
             productId: selectedProductId,
+            productBarCodeId: needsBarcode ? barcodeId : undefined,
             systemQuantity: currentQty,
             actualQuantity: actualQty,
-            unitCost: selectedProduct?.costPrice || 0,
-            reason: Number(type),
+            unitCost: product?.averagePrice || selectedProduct?.costPrice || 0,
+            reason: type === AdjustmentType.Damage ? 2 : 1,
           },
         ],
       });
       onClose();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'تعذر حفظ التسوية');
     } finally {
       setIsLoading(false);
     }
@@ -98,13 +127,14 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           <Button variant="secondary" size="md" onClick={onClose} disabled={isLoading}>
             إلغاء
           </Button>
-          <Button variant="primary" size="md" onClick={handleSubmit} isLoading={isLoading}>
+          <Button variant="primary" size="md" onClick={handleSubmit} isLoading={isLoading} disabled={loadingQuantity || !!stockError || !!barcodeError}>
             اعتماد التسوية
           </Button>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1">
+        {(submitError || stockError || barcodeError) && <p className="text-xs text-rose-600">{submitError || stockError || barcodeError}</p>}
         <Select
           label="المستودع *"
           value={warehouseId}
@@ -150,12 +180,16 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           )}
         </Select>
 
+        {needsBarcode && <Select label="الباركود / البديل *" value={barcodeId} onChange={(e) => setBarcodeId(e.target.value)}>
+          <option value="">اختر الباركود</option>
+          {product?.barCodes?.map((barcode) => <option key={barcode.id} value={barcode.id}>{barcode.title || barcode.barCode} — {barcode.barCode}</option>)}
+        </Select>}
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="الكمية الدفترية الحالية"
             type="number"
             value={currentQty}
-            onChange={(e) => setCurrentQty(Number(e.target.value))}
+            readOnly
             isLtr
           />
 

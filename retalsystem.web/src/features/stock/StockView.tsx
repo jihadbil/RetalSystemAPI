@@ -536,6 +536,7 @@ export const StockView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ التسوية الجردية';
             showError('خطأ أثناء حفظ التسوية', msg);
+            throw err;
           }
         }}
       />
