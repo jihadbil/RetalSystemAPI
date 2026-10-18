@@ -1,0 +1,390 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using ClosedXML.Excel;
+using System.Text.Json;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
+using RetalSystemAPI.Models.Branchs;
+using RetalSystemAPI.Models.Customers;
+using RetalSystemAPI.Models.Suppliers;
+using RetalSystemAPI.Models.DTOs.Sales;
+using RetalSystemAPI.Models.Enums;
+using RetalSystemAPI.Services.Customers.Implementations;
+using RetalSystemAPI.Services.Suppliers.Implementations;
+using RetalSystemAPI.Services.Warehouses.Implementations;
+using RetalSystemAPI.Services.Catalog.Implementations;
+using RetalSystemAPI.Services.FileUpload.Implementations;
+using RetalSystemAPI.Services.Tenant.Implementations;
+using RetalSystemAPI.Controllers.Tenants;
+using Xunit;
+using Fixture = RetalSystemAPI.SecurityTests.ServiceLayerRegressionTests.Fixture;
+
+namespace RetalSystemAPI.SecurityTests;
+
+// Regression coverage for the feature audit of 2026-10-18.
+public sealed class FeatureAuditRegressionTests
+{
+    [SqlServerFact]
+    public async Task Sales_return_must_reject_an_unposted_draft()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var draft = f.MakeSale(1, 100, 100);
+        draft.Status = InvoiceStatus.Draft;
+        draft.PaidAmount = 0;
+        draft.PaymentSafeId = null;
+        draft.RemainingAmount = 100;
+        f.Db.Add(draft);
+        await f.Db.SaveChangesAsync();
+        var result = await f.Returns.CreateAsync(f.SalesReturn(draft.Id, 1));
+        Assert.False(result.IsSuccess, $"Accepted draft return; showroom stock={await f.Db.ShowroomStocks.Select(s => s.Quantity).SingleAsync()}, customer balance={await f.Db.Customers.Select(c => c.CurrentBalance).SingleAsync()}");
+    }
+
+    [SqlServerFact]
+    public async Task Purchase_return_must_reject_an_unposted_draft()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var draft = f.MakePurchase();
+        draft.Status = InvoiceStatus.Draft;
+        f.Db.Add(draft);
+        await f.Db.SaveChangesAsync();
+        var result = await f.PurchaseReturns.CreateAsync(f.PurchaseReturn(draft.Id, 1));
+        Assert.False(result.IsSuccess, $"Accepted draft return; storage stock={await f.Db.StorgeStocks.Select(s => s.Quantity).SingleAsync()}, supplier balance={await f.Db.Suppliers.Select(s => s.CurrentBalance).SingleAsync()}");
+    }
+
+    [SqlServerFact]
+    public async Task Sales_invoice_must_use_a_warehouse_in_its_own_branch()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var otherBranch = new Branch { Name = "Other", IsActive = true };
+        f.Db.Add(otherBranch);
+        await f.Db.SaveChangesAsync();
+        var result = await f.Sales.CreateAsync(new CreateSalesInvoiceDto
+        {
+            InvoiceNumber = "MISMATCH", BranchId = otherBranch.Id, WarehouseId = f.Storage.Id,
+            CustomerId = f.Customer.Id, PaymentMethod = PaymentMethod.Credit,
+            Items = [new() { ProductId = f.Product.Id, ProductBarCodeId = f.Barcode.Id, Quantity = 1, UnitPrice = 100 }]
+        });
+        Assert.False(result.IsSuccess, "Sale posted to Other branch using original branch storage");
+    }
+
+    [SqlServerFact]
+    public async Task Purchase_invoice_must_use_a_warehouse_in_its_own_branch()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var otherBranch = new Branch { Name = "Other", IsActive = true };
+        f.Db.Add(otherBranch);
+        await f.Db.SaveChangesAsync();
+        var request = f.Purchase(1, 10);
+        request.BranchId = otherBranch.Id;
+        var result = await f.Purchases.CreateAsync(request);
+        Assert.False(result.IsSuccess, "Purchase posted to Other branch using original branch storage");
+    }
+
+    [SqlServerFact]
+    public async Task Storage_read_must_not_create_storage_records_in_a_showroom()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var result = await new StockService(f.Uow, f.Mapper).GetStorgeStocksByWarehouseAsync(f.Show.Id);
+        Assert.False(result.IsSuccess, $"GET created {await f.Db.StorgeStocks.CountAsync(s => s.WarehouseId == f.Show.Id)} storage rows in a showroom");
+    }
+
+    [SqlServerFact]
+    public async Task Showroom_read_must_not_create_showroom_records_in_storage()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var result = await new StockService(f.Uow, f.Mapper).GetShowroomStocksByWarehouseAsync(f.Storage.Id);
+        Assert.False(result.IsSuccess, $"GET created {await f.Db.ShowroomStocks.CountAsync(s => s.WarehouseId == f.Storage.Id)} showroom rows in storage");
+    }
+
+    [SqlServerFact]
+    public async Task Customer_with_outstanding_balance_must_remain_collectable()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var customer = await f.Db.Customers.SingleAsync();
+        customer.OpeningBalance = customer.CurrentBalance = 100;
+        await f.Db.SaveChangesAsync();
+        var service = new CustomerService(f.Uow, f.Mapper, f.Pos);
+        Assert.False((await service.DeleteAsync(customer.Id)).IsSuccess, "Indebted customer was hidden from collection and global receivables");
+    }
+
+    [SqlServerFact]
+    public async Task Supplier_with_outstanding_balance_must_remain_payable()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var supplier = await f.Db.Suppliers.SingleAsync();
+        supplier.OpeningBalance = supplier.CurrentBalance = 100;
+        await f.Db.SaveChangesAsync();
+        var service = new SupplierService(f.Uow, f.Mapper, f.Pos);
+        Assert.False((await service.DeleteAsync(supplier.Id)).IsSuccess, "Indebted supplier was hidden from payments and global payables");
+    }
+
+    [SqlServerFact]
+    public async Task Supplier_update_must_persist_the_phone_list()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        f.Db.SupplierPhones.Add(new SupplierPhone { SupplierId = f.Supplier.Id, Name = "Main", PhoneNumber = "0911111111" });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var result = await new SupplierService(f.Uow, f.Mapper, f.Pos).UpdateAsync(f.Supplier.Id, new()
+        {
+            Id = f.Supplier.Id, Name = "Supplier",
+            Phones = [new() { Name = "Main", PhoneNumber = "0922222222" }]
+        });
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+        Assert.Equal("0922222222", await f.Db.SupplierPhones.Select(p => p.PhoneNumber).SingleAsync());
+    }
+
+    [SqlServerFact]
+    public async Task Customer_update_with_empty_phone_list_must_clear_existing_phones()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        f.Db.CustomerPhones.Add(new CustomerPhone { CustomerId = f.Customer.Id, PhoneNumber = "0911111111", IsDefault = true });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var result = await new CustomerService(f.Uow, f.Mapper, f.Pos).UpdateAsync(f.Customer.Id, new()
+        { Id = f.Customer.Id, Name = "Customer", Phones = [] });
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+        Assert.Empty(await f.Db.CustomerPhones.ToListAsync());
+    }
+
+    [SqlServerFact]
+    public async Task Customer_statement_must_compute_historical_balance_for_backdated_payments()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var today = DateTime.UtcNow.Date;
+        var customer = await f.Db.Customers.SingleAsync();
+        customer.CurrentBalance = 100;
+        f.Db.CustomerTransactions.Add(new CustomerTransaction
+        {
+            CustomerId = customer.Id, BranchId = f.Branch.Id, TransactionType = CustomerTransactionType.Adjustment,
+            DocumentType = FinancialDocumentType.Adjustment, TransactionDate = today.AddDays(-1), DebitAmount = 100, BalanceAfter = 100
+        });
+        await f.Db.SaveChangesAsync();
+        var service = new CustomerService(f.Uow, f.Mapper, f.Pos);
+        var payment = await service.AddPaymentAsync(new()
+        { CustomerId = customer.Id, BranchId = f.Branch.Id, SafeId = f.Safe.Id, Amount = 20, PaymentMethod = PaymentMethod.Cash, PaymentDate = today.AddDays(-5) });
+        Assert.True(payment.IsSuccess, payment.ErrorMessage);
+        var statement = await service.GetStatementAsync(new() { CustomerId = customer.Id, FromDate = today.AddDays(-3) });
+        Assert.True(statement.IsSuccess, statement.ErrorMessage);
+        Assert.Equal(-20m, statement.Data!.BalanceBeforePeriod);
+    }
+
+    [SqlServerFact]
+    public async Task Supplier_statement_must_compute_historical_balance_for_backdated_payments()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var today = DateTime.UtcNow.Date;
+        var supplier = await f.Db.Suppliers.SingleAsync();
+        supplier.CurrentBalance = 100;
+        f.Db.SupplierTransactions.Add(new SupplierTransaction
+        {
+            SupplierId = supplier.Id, BranchId = f.Branch.Id, TransactionType = SupplierTransactionType.Adjustment,
+            DocumentType = FinancialDocumentType.Adjustment, TransactionDate = today.AddDays(-1), CreditAmount = 100, BalanceAfter = 100
+        });
+        await f.Db.SaveChangesAsync();
+        var service = new SupplierService(f.Uow, f.Mapper, f.Pos);
+        var payment = await service.AddPaymentAsync(new()
+        { SupplierId = supplier.Id, BranchId = f.Branch.Id, SafeId = f.Safe.Id, Amount = 20, PaymentMethod = PaymentMethod.Cash, PaymentDate = today.AddDays(-5) });
+        Assert.True(payment.IsSuccess, payment.ErrorMessage);
+        var statement = await service.GetStatementAsync(new() { SupplierId = supplier.Id, FromDate = today.AddDays(-3) });
+        Assert.True(statement.IsSuccess, statement.ErrorMessage);
+        Assert.Equal(-20m, statement.Data!.BalanceBeforePeriod);
+    }
+
+    [Fact]
+    public async Task Supplier_list_must_expose_activity_used_by_purchase_forms()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var list = await new SupplierService(f.Uow, f.Mapper, f.Pos).GetAllAsync();
+        var json = JsonSerializer.SerializeToElement(list.Data!, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.True(json[0].TryGetProperty("isActive", out var active) && active.GetBoolean(),
+            "Purchase forms use suppliers.filter(s => s.isActive), but supplier responses omit isActive");
+    }
+
+    [SqlServerFact]
+    public async Task Invalid_excel_price_must_not_overwrite_existing_cost_with_zero()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var service = new ProductExcelService(f.Uow, new ConfigurationBuilder().Build(), NullLogger<ProductExcelService>.Instance);
+        using var input = ExcelRow("Product", "BARCODE", "not-a-price", 0, 0);
+        var preview = await service.ValidateExcelAsync(input);
+        Assert.True(preview.IsSuccess, preview.ErrorMessage);
+        Assert.Equal(1, preview.Data!.InvalidRows);
+        input.Position = 0;
+        var imported = await service.ImportProductsFromExcelAsync(input);
+        Assert.True(imported.IsSuccess, imported.ErrorMessage);
+        Assert.Single(imported.Data!.FailedRows);
+        var cost = await f.Db.Products.Where(p => p.Id == f.Product.Id).Select(p => p.CostPrice).SingleAsync();
+        Assert.True(cost == 10m, $"InvalidRows={preview.Data!.InvalidRows}; invalid price changed cost from 10 to {cost}");
+    }
+
+    [SqlServerFact]
+    public async Task Excel_import_without_storage_must_not_create_storage_stock_in_showroom()
+    {
+        await CheckImportWarehouseType(missingStorage: true);
+    }
+
+    [SqlServerFact]
+    public async Task Excel_import_without_showroom_must_not_create_showroom_stock_in_storage()
+    {
+        await CheckImportWarehouseType(missingStorage: false);
+    }
+
+    private static async Task CheckImportWarehouseType(bool missingStorage)
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var missing = await f.Db.Warehouses.SingleAsync(w => w.Id == (missingStorage ? f.Storage.Id : f.Show.Id));
+        missing.IsDeleted = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        using var input = ExcelRow("Imported", "IMPORTED", "10", missingStorage ? 0 : 3, missingStorage ? 3 : 0);
+        var service = new ProductExcelService(f.Uow, new ConfigurationBuilder().Build(), NullLogger<ProductExcelService>.Instance);
+        var result = await service.ImportProductsFromExcelAsync(input);
+        Assert.False(result.IsSuccess);
+        var wrongRows = missingStorage
+            ? await f.Db.StorgeStocks.CountAsync(s => s.Warehouse.Type != WarehouseType.Storge)
+            : await f.Db.ShowroomStocks.CountAsync(s => s.Warehouse.Type != WarehouseType.Show);
+        Assert.Equal(0, wrongRows);
+    }
+
+    private static MemoryStream ExcelRow(string name, string barcode, string cost, int showQuantity, int storageQuantity)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Import");
+        var headers = new[] { "كود الصنف", "اسم الصنف *", "الباركود *", "التصنيف", "الوحدة", "معامل التحويل", "سعر التكلفة *", "سعر البيع *", "كمية الصالة", "كمية المخزن", "حد الطلب", "الوصف" };
+        for (var index = 0; index < headers.Length; index++) sheet.Cell(1, index + 1).Value = headers[index];
+        sheet.Cell(2, 1).Value = barcode;
+        sheet.Cell(2, 2).Value = name;
+        sheet.Cell(2, 3).Value = barcode;
+        sheet.Cell(2, 4).Value = "Category";
+        sheet.Cell(2, 5).Value = "Piece";
+        sheet.Cell(2, 6).Value = 1;
+        sheet.Cell(2, 7).Value = cost;
+        sheet.Cell(2, 8).Value = 100;
+        sheet.Cell(2, 9).Value = showQuantity;
+        sheet.Cell(2, 10).Value = storageQuantity;
+        var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+        return stream;
+    }
+
+    [SqlServerFact]
+    public async Task Tenant_logo_replacement_must_not_delete_another_tenants_file()
+    {
+        await using var database = await ModelIntegritySqlServerTests.TestDatabase.CreateAsync();
+        var tenant = Guid.NewGuid();
+        await using var f = await Fixture.CreateAsync(database.Context(tenant), tenant);
+        var foreignTenant = Guid.NewGuid();
+        f.Db.Tenants.Add(new() { Id = foreignTenant, Name = "Foreign", PhoneNumber = "0922222222" });
+        await f.Db.SaveChangesAsync();
+        var temporaryRoot = Directory.CreateTempSubdirectory("retal-feature-audit-").FullName;
+        try
+        {
+            var relativeUrl = $"/uploads/tenants/logos/{foreignTenant}/foreign.png";
+            var foreignFile = Path.Combine(temporaryRoot, "uploads", "tenants", "logos", foreignTenant.ToString(), "foreign.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(foreignFile)!);
+            await File.WriteAllBytesAsync(foreignFile, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+            var tenantService = new TenantService(f.Uow, f.Db, f.Mapper);
+            var edited = await tenantService.UpdateAsync(tenant, new()
+            { Id = tenant, Name = "Tenant", PhoneNumber = "0912345678", LogoUrl = relativeUrl });
+            Assert.True(edited.IsSuccess, edited.ErrorMessage);
+            var uploadService = new FileUploadService(new AuditEnvironment(temporaryRoot),
+                new ModelIntegrityTests.TestTenant(tenant), NullLogger<FileUploadService>.Instance);
+            var controller = new TenantsController(tenantService, uploadService)
+            {
+                ControllerContext = new ControllerContext
+                {
+                    HttpContext = new DefaultHttpContext
+                    { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("TenantId", tenant.ToString())], "test")) }
+                }
+            };
+            using var content = new MemoryStream([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+            await controller.UploadLogo(new FormFile(content, 0, content.Length, "file", "new.png"), CancellationToken.None);
+            Assert.True(File.Exists(foreignFile), "Replacing our logo deleted a file under another tenant's upload directory");
+        }
+        finally
+        {
+            var verifiedRoot = Path.GetFullPath(temporaryRoot);
+            if (!verifiedRoot.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase)
+                || !Path.GetFileName(verifiedRoot).StartsWith("retal-feature-audit-", StringComparison.Ordinal))
+                throw new InvalidOperationException("Unexpected audit temporary directory");
+            Directory.Delete(verifiedRoot, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("products")]
+    [InlineData("tenants/logos")]
+    public async Task File_deletion_checks_tenant_ownership_even_when_called_directly(string folder)
+    {
+        var tenant = Guid.NewGuid();
+        var root = Directory.CreateTempSubdirectory("retal-feature-audit-").FullName;
+        try
+        {
+            var ownUrl = $"/uploads/{folder}/{tenant}/own.png";
+            var foreignUrl = $"/uploads/{folder}/{Guid.NewGuid()}/foreign.png";
+            foreach (var url in new[] { ownUrl, foreignUrl })
+            {
+                var path = Path.Combine(root, url.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await File.WriteAllTextAsync(path, "test file");
+            }
+            var service = new FileUploadService(new AuditEnvironment(root), new ModelIntegrityTests.TestTenant(tenant), NullLogger<FileUploadService>.Instance);
+            Assert.False((await service.DeleteAsync(foreignUrl)).IsSuccess);
+            Assert.True(File.Exists(Path.Combine(root, foreignUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))));
+            Assert.True((await service.DeleteAsync(ownUrl)).IsSuccess);
+            Assert.False(File.Exists(Path.Combine(root, ownUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))));
+        }
+        finally
+        {
+            var verifiedRoot = Path.GetFullPath(root);
+            if (!verifiedRoot.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase)
+                || !Path.GetFileName(verifiedRoot).StartsWith("retal-feature-audit-", StringComparison.Ordinal))
+                throw new InvalidOperationException("Unexpected test temporary directory");
+            Directory.Delete(verifiedRoot, recursive: true);
+        }
+    }
+
+    private sealed class AuditEnvironment(string root) : IWebHostEnvironment
+    {
+        public string WebRootPath { get; set; } = root;
+        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
+        public string ApplicationName { get; set; } = "FeatureAudit";
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+        public string ContentRootPath { get; set; } = root;
+        public string EnvironmentName { get; set; } = "Testing";
+    }
+}
