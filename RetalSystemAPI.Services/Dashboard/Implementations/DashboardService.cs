@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,20 +24,21 @@ public class DashboardService : IDashboardService
     // خدمة التخزين المؤقت في الذاكرة لتفادي تكرار مسح الجداول الكبيرة للعدادات الثابتة نسبياً
     private readonly IMemoryCache _cache;
 
-    // ثقافة اللغة العربية لتنسيق أسماء الأيام والتواريخ
-    private static readonly CultureInfo ArabicCulture = new CultureInfo("ar-SA");
+    // مؤشرات المبيعات بعد الخصومات والمرتجعات وبتوقيت المستأجر.
+    private readonly DashboardSalesMetrics _metrics;
 
     /// <summary>
     /// تهيئة خدمة لوحة التحكم مع حقن سياق قاعدة البيانات والتخزين المؤقت.
     /// </summary>
     /// <param name="dbContext">سياق قاعدة البيانات الرئيسي</param>
     /// <param name="cache">خدمة التخزين المؤقت في الذاكرة</param>
-    public DashboardService(AppDbContext dbContext, IMemoryCache cache)
+    public DashboardService(AppDbContext dbContext, IMemoryCache cache, TimeProvider? timeProvider = null)
     {
         // تعيين مرجع سياق قاعدة البيانات
         _dbContext = dbContext;
         // تعيين مرجع التخزين المؤقت
         _cache = cache;
+        _metrics = new DashboardSalesMetrics(dbContext, timeProvider ?? TimeProvider.System);
     }
 
     /// <inheritdoc />
@@ -47,21 +47,12 @@ public class DashboardService : IDashboardService
         // إنشاء كائن نتيجة الملخص الشامل للوحة التحكم
         var summary = new DashboardSummaryDto();
 
-        // تحديد التوقيت الحالي
-        var localNow = DateTime.Now;
-
-        // بداية اليوم الحالي (منتصف الليل)
-        var todayStart = localNow.Date;
-
-        // بداية الغد لتحديد نطاق نهاية اليوم الحالي
-        var tomorrowStart = todayStart.AddDays(1);
-
-        // بداية الأمس لحساب نسب المقارنة والنمو
-        var yesterdayStart = todayStart.AddDays(-1);
-
-        // بداية الشهر الحالي لحساب مبيعات ومشتريات الشهر
-        var monthStart = new DateTime(localNow.Year, localNow.Month, 1, 0, 0, 0);
-
+        var calendar = await _metrics.GetCalendarAsync(ct);
+        var todayStart = calendar.Utc(calendar.Today);
+        var tomorrowStart = calendar.Utc(calendar.Today.AddDays(1));
+        var localMonthStart = new DateTime(calendar.Today.Year, calendar.Today.Month, 1);
+        var monthStart = calendar.Utc(localMonthStart);
+        var nextMonthStart = calendar.Utc(localMonthStart.AddMonths(1));
         // 1. إعداد استعلام فواتير المبيعات الأساسي مع استبعاد الملغاة والمردودة
         var salesQuery = _dbContext.SalesInvoices
             .AsNoTracking()
@@ -82,47 +73,17 @@ public class DashboardService : IDashboardService
             purchasesQuery = purchasesQuery.Where(p => p.BranchId == branchId.Value);
         }
 
-        // 2. مؤشرات مبيعات وأرباح اليوم — تجميع داخل SQL دون تحميل الفواتير وبنودها في الذاكرة
-        var todayQuery = salesQuery
-            .Where(i => i.InvoiceDate >= todayStart && i.InvoiceDate < tomorrowStart);
-
-        // حساب إجمالي مبيعات اليوم
-        decimal todaySales = await todayQuery.SumAsync(i => i.TotalAmount, ct);
-
-        // حساب عدد طلبات وفواتير اليوم
-        int todayOrdersCount = await todayQuery.CountAsync(ct);
-
-        // حساب صافي أرباح مبيعات اليوم من بنود الفواتير (إجمالي السطر - تكلفة البند)
-        decimal todayProfit = await todayQuery
-            .SelectMany(i => i.Items)
-            .SumAsync(item => item.LineTotal - (item.Quantity * item.UnitCost), ct);
-
-        // حساب متوسط قيمة الطلب لليوم
+        var trend = await _metrics.DaysAsync(7, branchId, calendar, ct);
+        var today = trend[^1];
+        decimal todaySales = today.SalesAmount;
+        decimal todayProfit = today.ProfitAmount;
+        int todayOrdersCount = today.OrdersCount;
+        decimal yesterdaySales = trend[^2].SalesAmount;
         decimal averageOrderValue = todayOrdersCount > 0 ? Math.Round(todaySales / todayOrdersCount, 2) : 0;
-
-        // حساب مبيعات الأمس للمقارنة
-        decimal yesterdaySales = await salesQuery
-            .Where(i => i.InvoiceDate >= yesterdayStart && i.InvoiceDate < todayStart)
-            .SumAsync(i => i.TotalAmount, ct);
-
-        // حساب نسبة النمو في المبيعات مقارنة بالأمس
-        decimal growthPercentage = 0;
-        if (yesterdaySales > 0)
-        {
-            // معادلة نسبة النمو المئوية
-            growthPercentage = Math.Round(((todaySales - yesterdaySales) / yesterdaySales) * 100, 1);
-        }
-        else if (todaySales > 0)
-        {
-            // في حال عدم وجود مبيعات أمس ووجود مبيعات اليوم تكون نسبة النمو 100%
-            growthPercentage = 100;
-        }
-
-        // حساب إجمالي مبيعات الشهر الحالي
-        decimal thisMonthSales = await salesQuery
-            .Where(i => i.InvoiceDate >= monthStart)
-            .SumAsync(i => i.TotalAmount, ct);
-
+        decimal growthPercentage = yesterdaySales > 0
+            ? Math.Round((todaySales - yesterdaySales) / yesterdaySales * 100, 1)
+            : todaySales > 0 ? 100 : 0;
+        decimal thisMonthSales = await _metrics.NetSalesAsync(monthStart, nextMonthStart, branchId, ct);
         // الحساب الموحد يشمل الرصيد الافتتاحي والسداد والمرتجعات.
         // على مستوى الفرع نحسب صافي قيوده؛ الأرصدة الافتتاحية غير المنسوبة لفرع تظهر في الإجمالي فقط.
         decimal totalReceivables = branchId.HasValue && branchId.Value != Guid.Empty
@@ -137,7 +98,7 @@ public class DashboardService : IDashboardService
 
         // حساب إجمالي مشتريات الشهر الحالي
         decimal thisMonthPurchases = await purchasesQuery
-            .Where(p => p.InvoiceDate >= monthStart)
+            .Where(p => p.InvoiceDate >= monthStart && p.InvoiceDate < nextMonthStart)
             .SumAsync(p => p.TotalAmount, ct);
 
         decimal totalPayables = branchId.HasValue && branchId.Value != Guid.Empty
@@ -188,7 +149,7 @@ public class DashboardService : IDashboardService
         summary.Counts = cachedCounts;
 
         // 4. استخراج مسار حركة المبيعات لآخر 7 أيام
-        var trendResult = await GetSalesTrendInternalAsync(7, branchId, ct);
+        var trendResult = trend;
         summary.DailySalesTrend = trendResult;
 
         // 5. استخراج المنتجات الأكثر مبيعاً
@@ -291,89 +252,7 @@ public class DashboardService : IDashboardService
     /// <param name="ct">رمز الإلغاء</param>
     private async Task<List<DailySalesPointDto>> GetSalesTrendInternalAsync(int days, Guid? branchId, CancellationToken ct)
     {
-        // تحديد الوقت الحالي
-        var localNow = DateTime.Now;
-
-        // حساب تاريخ بداية النطاق الزمني
-        var startDate = localNow.Date.AddDays(-(days - 1));
-
-        // بناء استعلام الفواتير الصالحة ضمن النطاق
-        var query = _dbContext.SalesInvoices
-            .AsNoTracking()
-            .Where(i => i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Voided && i.InvoiceDate >= startDate);
-
-        // تطبيق فلترة الفرع إن وجدت
-        if (branchId.HasValue && branchId.Value != Guid.Empty)
-        {
-            // تقييد الاستعلام بالفرع المحدد
-            query = query.Where(i => i.BranchId == branchId.Value);
-        }
-
-        // تجميع المبيعات وعدد الفواتير لكل يوم داخل SQL
-        var salesByDay = await query
-            .GroupBy(i => EF.Functions.DateDiffDay(startDate, i.InvoiceDate))
-            .Select(g => new
-            {
-                DayIndex = g.Key,
-                Sales = g.Sum(x => x.TotalAmount),
-                Orders = g.Count()
-            })
-            .ToListAsync(ct);
-
-        // تجميع الأرباح من بنود الفواتير لكل يوم داخل SQL (JOIN داخلي ثم SUM)
-        var profitByDay = await query
-            .SelectMany(i => i.Items, (inv, item) => new
-            {
-                DayIndex = EF.Functions.DateDiffDay(startDate, inv.InvoiceDate),
-                Profit = item.LineTotal - (item.Quantity * item.UnitCost)
-            })
-            .GroupBy(x => x.DayIndex)
-            .Select(g => new
-            {
-                DayIndex = g.Key,
-                Profit = g.Sum(x => x.Profit)
-            })
-            .ToListAsync(ct);
-
-        // بناء قواميس بحث للوصول السريع بنتائج الأيام
-        var salesDict = salesByDay.ToDictionary(x => x.DayIndex);
-        var ordersDict = salesByDay.ToDictionary(x => x.DayIndex, x => x.Orders);
-        var profitDict = profitByDay.ToDictionary(x => x.DayIndex, x => x.Profit);
-
-        // تهيئة قائمة نقاط الرسم البياني
-        var result = new List<DailySalesPointDto>();
-
-        // المرور على عدد الأيام المطلوبة لملء كافة النقاط حتى الأيام ذات الصفر مبيعات
-        for (int i = 0; i < days; i++)
-        {
-            // حساب تاريخ اليوم المقابل
-            var currentDay = startDate.AddDays(i);
-
-            // استخراج مبيعات اليوم إن وجدت
-            salesDict.TryGetValue(i, out var daySales);
-
-            // استخراج عدد طلبات اليوم إن وجد
-            ordersDict.TryGetValue(i, out var dayOrders);
-
-            // استخراج ربح اليوم إن وجد
-            profitDict.TryGetValue(i, out var dayProfit);
-
-            // استخراج اسم اليوم باللغة العربية
-            string arabicDayName = currentDay.ToString("dddd", ArabicCulture);
-
-            // إضافة نقطة اليوم إلى القائمة
-            result.Add(new DailySalesPointDto
-            {
-                Date = currentDay,
-                DayName = arabicDayName,
-                SalesAmount = daySales?.Sales ?? 0,
-                ProfitAmount = dayProfit,
-                OrdersCount = dayOrders
-            });
-        }
-
-        // إرجاع قائمة المسار اليومي المكتملة
-        return result;
+        return await _metrics.DaysAsync(days, branchId, await _metrics.GetCalendarAsync(ct), ct);
     }
 
     /// <summary>
@@ -384,53 +263,7 @@ public class DashboardService : IDashboardService
     /// <param name="ct">رمز الإلغاء</param>
     private async Task<List<TopSellingProductDto>> GetTopSellingProductsInternalAsync(int count, Guid? branchId, CancellationToken ct)
     {
-        // استعلام بنود فواتير المبيعات الصالحة
-        var itemsQuery = _dbContext.SalesInvoiceItems
-            .AsNoTracking()
-            .Where(item => item.SalesInvoice.Status != InvoiceStatus.Draft && item.SalesInvoice.Status != InvoiceStatus.Cancelled && item.SalesInvoice.Status != InvoiceStatus.Voided);
-
-        // تطبيق فلترة الفرع على البنود إن تم تحديده
-        if (branchId.HasValue && branchId.Value != Guid.Empty)
-        {
-            // تقييد البنود بالفرع
-            itemsQuery = itemsQuery.Where(item => item.SalesInvoice.BranchId == branchId.Value);
-        }
-
-        // تجميع البنود حسب المنتج وحساب الكميات والمبيعات والأرباح
-        var topGrouped = await itemsQuery
-            .GroupBy(item => new
-            {
-                item.ProductId,
-                ProductName = item.Product.Name,
-                CategoryName = item.Product.Category != null ? item.Product.Category.Name : "عام"
-            })
-            .Select(g => new
-            {
-                g.Key.ProductId,
-                g.Key.ProductName,
-                g.Key.CategoryName,
-                QuantitySold = g.Sum(x => x.Quantity),
-                TotalSales = g.Sum(x => x.LineTotal),
-                TotalProfit = g.Sum(x => x.LineTotal - (x.Quantity * x.UnitCost))
-            })
-            .OrderByDescending(x => x.TotalSales)
-            .Take(count)
-            .ToListAsync(ct);
-
-        // حساب إجمالي مبيعات أعلى الأصناف لحساب نسب المساهمة
-        decimal overallSales = topGrouped.Sum(x => x.TotalSales);
-
-        // تحويل المجموعات إلى كائنات DTO
-        return topGrouped.Select(x => new TopSellingProductDto
-        {
-            ProductId = x.ProductId,
-            ProductName = x.ProductName,
-            CategoryName = x.CategoryName,
-            QuantitySold = x.QuantitySold,
-            TotalSales = x.TotalSales,
-            TotalProfit = x.TotalProfit,
-            PercentageOfTotalSales = overallSales > 0 ? Math.Round((x.TotalSales / overallSales) * 100, 1) : 0
-        }).ToList();
+        return await _metrics.ProductsAsync(count, branchId, ct);
     }
 
     /// <summary>

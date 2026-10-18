@@ -45,10 +45,10 @@ public class DashboardSummaryDto
 /// </summary>
 public class DashboardKpiDto
 {
-    /// <summary>إجمالي مبيعات اليوم</summary>
+    /// <summary>صافي مبيعات اليوم بعد المرتجعات، شاملاً الضريبة، بتوقيت المستأجر</summary>
     public decimal TodaySales { get; set; }
 
-    /// <summary>إجمالي مبيعات الأمس (للمقارنة وحساب النمو)</summary>
+    /// <summary>صافي مبيعات الأمس بعد المرتجعات (للمقارنة وحساب النمو)</summary>
     public decimal YesterdaySales { get; set; }
 
     /// <summary>نسبة النمو في المبيعات مقارنة بالأمس</summary>
@@ -60,13 +60,13 @@ public class DashboardKpiDto
     /// <summary>متوسط قيمة الفاتورة اليوم</summary>
     public decimal AverageOrderValue { get; set; }
 
-    /// <summary>صافي أرباح مبيعات اليوم التقديرية (الإيراد - التكلفة)</summary>
+    /// <summary>ربح اليوم بعد الخصومات والمرتجعات وتكلفة البضاعة، دون احتساب الضريبة إيراداً</summary>
     public decimal TodayProfit { get; set; }
 
     /// <summary>إجمالي فواتير المشتريات المباشرة اليوم</summary>
     public decimal TodayPurchases { get; set; }
 
-    /// <summary>إجمالي مبيعات الشهر الحالي</summary>
+    /// <summary>صافي مبيعات الشهر الحالي بعد المرتجعات، شاملاً الضريبة، بتوقيت المستأجر</summary>
     public decimal ThisMonthSales { get; set; }
 
     /// <summary>إجمالي مشتريات الشهر الحالي</summary>
@@ -117,7 +117,7 @@ public class DailySalesPointDto
     /// <summary>اسم اليوم (مثال: السبت، الأحد)</summary>
     public string DayName { get; set; } = string.Empty;
 
-    /// <summary>إجمالي المبيعات المحققة في هذا اليوم</summary>
+    /// <summary>صافي مبيعات اليوم بعد المرتجعات، شاملاً الضريبة</summary>
     public decimal SalesAmount { get; set; }
 
     /// <summary>إجمالي صافي الأرباح المحققة في هذا اليوم</summary>
@@ -141,10 +141,10 @@ public class TopSellingProductDto
     /// <summary>اسم الفئة أو التصنيف</summary>
     public string CategoryName { get; set; } = string.Empty;
 
-    /// <summary>الكمية الإجمالية المباعة</summary>
+    /// <summary>صافي الكمية المباعة بعد المرتجعات</summary>
     public int QuantitySold { get; set; }
 
-    /// <summary>إجمالي قيمة مبيعات هذا الصنف</summary>
+    /// <summary>صافي إيراد الصنف بعد خصومات الفاتورة والمرتجعات، دون الضريبة</summary>
     public decimal TotalSales { get; set; }
 
     /// <summary>إجمالي صافي الأرباح المحققة من الصنف</summary>
