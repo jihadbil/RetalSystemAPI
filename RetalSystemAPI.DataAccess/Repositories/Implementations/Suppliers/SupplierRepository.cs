@@ -91,10 +91,10 @@ public partial class SupplierRepository : Repository<Supplier>, ISupplierReposit
     /// <inheritdoc/>
     public async Task<decimal> GetBalanceBeforeDateAsync(Guid supplierId, DateTime fromDate, CancellationToken ct = default)
     {
-        var lastTx = await _context.Set<SupplierTransaction>().AsNoTracking().Where(t => t.SupplierId == supplierId && t.TransactionDate < fromDate).OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAt).FirstOrDefaultAsync(ct);
-        if (lastTx != null)
-            return lastTx.BalanceAfter;
         var supplier = await _context.Set<Supplier>().AsNoTracking().Where(s => s.Id == supplierId).Select(s => new { s.OpeningBalance }).FirstOrDefaultAsync(ct);
-        return supplier?.OpeningBalance ?? 0m;
+        var delta = await _context.Set<SupplierTransaction>().AsNoTracking()
+            .Where(t => t.SupplierId == supplierId && t.TransactionDate < fromDate)
+            .SumAsync(t => (decimal?)(t.CreditAmount - t.DebitAmount), ct) ?? 0m;
+        return (supplier?.OpeningBalance ?? 0m) + delta;
     }
 }
