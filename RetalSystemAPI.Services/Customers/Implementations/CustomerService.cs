@@ -212,6 +212,9 @@ public class CustomerService : ICustomerService
         }
 
         // تطبيق الحذف المنطقي للعميل
+        if (customer.CurrentBalance != 0)
+            return ServiceResult.Failure("لا يمكن حذف عميل لديه رصيد قائم؛ استخدم التعطيل حتى تسوية حسابه", ErrorCodes.ValidationError);
+
         _unitOfWork.Customers.SoftDelete(customer);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);

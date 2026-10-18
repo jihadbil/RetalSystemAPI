@@ -170,6 +170,9 @@ public class SupplierService : ISupplierService
         }
 
         // تطبيق الحذف المنطقي للمورد
+        if (supplier.CurrentBalance != 0)
+            return ServiceResult.Failure("لا يمكن حذف مورد لديه رصيد قائم؛ استخدم التعطيل حتى تسوية حسابه", ErrorCodes.ValidationError);
+
         _unitOfWork.Suppliers.SoftDelete(supplier);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
