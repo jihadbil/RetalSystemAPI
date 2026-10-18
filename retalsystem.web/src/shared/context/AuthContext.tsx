@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isPrivileged = isPrivilegedUser(user);
   const hasPermission = (permission: string) => userHasPermission(user, permission);
   const isCashier = Boolean(normalizedRoles.includes('cashier') || user?.isCashier);
-  const canAccessAdmin = isPrivileged || hasPermission('Permissions.Users.View') || hasPermission('Permissions.Branches.View');
+  const canAccessAdmin = isPrivileged || ['Permissions.Users.View', 'Permissions.Roles.View', 'Permissions.Branches.View', 'Permissions.Tenants.View'].some(hasPermission);
 
   return (
     <AuthContext.Provider

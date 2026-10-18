@@ -85,7 +85,7 @@ public class SalesInvoicesController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>قائمة صفحية تحتوي على ملخص فواتير المبيعات وإجمالي السجلات.</returns>
     [HttpGet("paged")]
-    [HasPermission(Permissions.SalesInvoices.View)]
+    [HasAnyPermission(Permissions.SalesInvoices.View, Permissions.SalesReturns.Create)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -113,7 +113,7 @@ public class SalesInvoicesController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات فاتورة المبيعات التفصيلية الشاملة أو كود 404.</returns>
     [HttpGet("{id:guid}")]
-    [HasPermission(Permissions.SalesInvoices.View)]
+    [HasAnyPermission(Permissions.SalesInvoices.View, Permissions.SalesReturns.Create)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
         // استدعاء خدمة فواتير المبيعات للبحث عن تفاصيل الفاتورة بالمعرف المحدد

@@ -15,6 +15,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
+import { canOpenView } from '../../auth/viewAccess';
 
 export type NavigationItem =
   | 'dashboard'
@@ -163,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const visibleGroups = navGroups
-    .map((group) => ({ ...group, items: group.items.filter((item) => hasPermission(item.permission)) }))
+    .map((group) => ({ ...group, items: group.items.filter((item) => canOpenView(item.id, hasPermission)) }))
     .filter((group) => group.items.length > 0);
 
   return (

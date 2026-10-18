@@ -3,6 +3,7 @@ import { useAuth } from './shared/context/AuthContext';
 import { Shell } from './shared/components/layout/Shell';
 import { NavigationItem } from './shared/components/layout/Sidebar';
 import { LoginView } from './features/auth/LoginView';
+import { VIEW_ACCESS, canOpenView } from './shared/auth/viewAccess';
 
 const DashboardView = lazy(() => import('./features/dashboard/DashboardView').then((module) => ({ default: module.DashboardView })));
 const PosView = lazy(() => import('./features/pos/PosView').then((module) => ({ default: module.PosView })));
@@ -16,22 +17,7 @@ const AccountingView = lazy(() => import('./features/accounting/AccountingView')
 const OrganizationView = lazy(() => import('./features/organization/OrganizationView').then((module) => ({ default: module.OrganizationView })));
 const UsersView = lazy(() => import('./features/users/UsersView').then((module) => ({ default: module.UsersView })));
 
-const VIEW_PERMISSIONS: Record<NavigationItem, string> = {
-  dashboard: 'Permissions.Dashboard.View',
-  pos: 'Permissions.Pos.View',
-  sales: 'Permissions.SalesInvoices.View',
-  purchases: 'Permissions.PurchaseInvoices.View',
-  catalog: 'Permissions.Products.View',
-  stock: 'Permissions.Stock.View',
-  customers: 'Permissions.Customers.View',
-  suppliers: 'Permissions.Suppliers.View',
-  accounting: 'Permissions.Safes.View',
-  branches: 'Permissions.Branches.View',
-  users: 'Permissions.Users.View',
-  settings: 'Permissions.Tenants.View',
-};
-
-const VIEW_ORDER = Object.keys(VIEW_PERMISSIONS) as NavigationItem[];
+const VIEW_ORDER = Object.keys(VIEW_ACCESS) as NavigationItem[];
 
 export function App() {
   const { isAuthenticated, hasPermission } = useAuth();
@@ -41,9 +27,9 @@ export function App() {
     return <LoginView />;
   }
 
-  const effectiveView = hasPermission(VIEW_PERMISSIONS[currentView])
+  const effectiveView = canOpenView(currentView, hasPermission)
     ? currentView
-    : VIEW_ORDER.find((view) => hasPermission(VIEW_PERMISSIONS[view]));
+    : VIEW_ORDER.find((view) => canOpenView(view, hasPermission));
 
   if (!effectiveView) {
     return (
@@ -57,7 +43,7 @@ export function App() {
   }
 
   const navigate = (view: NavigationItem) => {
-    if (hasPermission(VIEW_PERMISSIONS[view])) setCurrentView(view);
+    if (canOpenView(view, hasPermission)) setCurrentView(view);
   };
 
   const renderCurrentView = () => {

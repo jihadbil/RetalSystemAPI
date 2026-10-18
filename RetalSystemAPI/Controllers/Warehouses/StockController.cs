@@ -89,7 +89,7 @@ public class StockController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات الرصيد الفعلي والحد الأدنى للباركود أو خطأ 404.</returns>
     [HttpGet("storge/{warehouseId:guid}/barcode/{productBarcodeId:guid}")]
-    [HasPermission(Permissions.Stock.View)]
+    [HasAnyPermission(Permissions.Stock.View, Permissions.StockAdjustments.Create)]
     public async Task<IActionResult> GetStorgeStock([FromRoute] Guid warehouseId, [FromRoute] Guid productBarcodeId, CancellationToken ct)
     {
         // استدعاء خدمة المخزون للبحث عن رصيد باركود محدد داخل المخزن المعني
@@ -187,7 +187,7 @@ public class StockController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات الرصيد الفعلي والحد الأدنى للمنتج في الصالة المحددة.</returns>
     [HttpGet("showroom/{warehouseId:guid}/product/{productId:guid}")]
-    [HasPermission(Permissions.Stock.View)]
+    [HasAnyPermission(Permissions.Stock.View, Permissions.StockAdjustments.Create)]
     public async Task<IActionResult> GetShowroomStock([FromRoute] Guid warehouseId, [FromRoute] Guid productId, CancellationToken ct)
     {
         // استدعاء خدمة المخزون للبحث عن رصيد منتج محدد داخل صالة العرض المعنية

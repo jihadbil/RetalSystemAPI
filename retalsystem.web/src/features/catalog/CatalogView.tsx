@@ -34,11 +34,16 @@ import {
 export const CatalogView: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { hasPermission } = useAuth();
+  const canViewProducts = hasPermission(Permissions.Products.View);
+  const canViewCategories = hasPermission(Permissions.Categories.View);
+  const canViewUnits = hasPermission(Permissions.Units.View);
   const canCreateProduct = hasPermission(Permissions.Products.Create);
   const canEditProduct = hasPermission(Permissions.Products.Edit);
   const canDeleteProduct = hasPermission(Permissions.Products.Delete);
   const canImportExport = hasPermission(Permissions.Products.ExportImport);
-  const [activeMainTab, setActiveMainTab] = useState<'products' | 'categories' | 'units'>('products');
+  const [selectedTab, setActiveMainTab] = useState<'products' | 'categories' | 'units'>('products');
+  const allowedTabs = { products: canViewProducts, categories: canViewCategories, units: canViewUnits };
+  const activeMainTab = allowedTabs[selectedTab] ? selectedTab : canViewProducts ? 'products' : canViewCategories ? 'categories' : 'units';
 
   // بيانات المنتجات
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -63,13 +68,16 @@ export const CatalogView: React.FC = () => {
   // جلب التصنيفات والوحدات
   const loadMetadata = useCallback(async () => {
     try {
-      const [cats, uns] = await Promise.all([catalogService.getCategories(), catalogService.getUnits()]);
+      const [cats, uns] = await Promise.all([
+        canViewCategories ? catalogService.getCategories() : Promise.resolve([]),
+        canViewUnits ? catalogService.getUnits() : Promise.resolve([]),
+      ]);
       setCategories(cats);
       setUnits(uns);
     } catch (err: unknown) {
       console.error('Failed to load categories or units:', err);
     }
-  }, []);
+  }, [canViewCategories, canViewUnits]);
 
   useEffect(() => {
     loadMetadata();
@@ -98,8 +106,8 @@ export const CatalogView: React.FC = () => {
   }, [page, pageSize, setTotalCount, debouncedSearch, selectedCategory, showError]);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    if (canViewProducts) loadProducts();
+  }, [canViewProducts, loadProducts]);
 
   const handleSaveProduct = async (data: CreateProductRequest) => {
     try {
@@ -152,7 +160,7 @@ export const CatalogView: React.FC = () => {
   };
 
   const mainTabs = [
-    { id: 'products', label: 'دليل الأصناف والمنتجات', icon: <IconPackage className="w-4 h-4" />, badge: pagination.totalCount },
+    ...(canViewProducts ? [{ id: 'products', label: 'دليل الأصناف والمنتجات', icon: <IconPackage className="w-4 h-4" />, badge: pagination.totalCount }] : []),
     ...(hasPermission(Permissions.Categories.View)
       ? [{ id: 'categories', label: 'التصنيفات', icon: <IconCategory className="w-4 h-4" /> }]
       : []),

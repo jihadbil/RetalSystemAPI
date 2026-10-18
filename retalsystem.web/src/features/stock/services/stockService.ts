@@ -48,10 +48,24 @@ interface StockTransferApiItem extends Partial<StockTransferDto> {
 }
 
 export const stockService = {
-  // المستودعات
-  async getWarehouses(): Promise<WarehouseDto[]> {
+  async completeTransfer(id: string): Promise<StockTransferDto> {
+    return apiClient.patch<StockTransferDto>(`stock-transfers/${id}/status`, 3);
+  },
+  async getQuantity(warehouseId: string, productId: string, barcodeId?: string): Promise<number> {
     try {
-      const res = await apiClient.get<WarehouseDto[] | WarehouseListResponse>('warehouses');
+      const result = await apiClient.get<{ quantity: number }>(barcodeId
+        ? `stock/storge/${warehouseId}/barcode/${barcodeId}`
+        : `stock/showroom/${warehouseId}/product/${productId}`);
+      return result.quantity;
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) return 0;
+      throw error;
+    }
+  },
+  // المستودعات
+  async getWarehouses(branchId?: string): Promise<WarehouseDto[]> {
+    try {
+      const res = await apiClient.get<WarehouseDto[] | WarehouseListResponse>('warehouses/lookup', { branchId });
       const list = Array.isArray(res) ? res : res.items || [];
       return list.map((w) => ({
         id: w.id,

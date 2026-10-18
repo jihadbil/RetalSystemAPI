@@ -1,5 +1,6 @@
 export const Permissions = {
   Pos: {
+    View: 'Permissions.Pos.View',
     CreateSale: 'Permissions.Pos.CreateSale',
     ApplyDiscount: 'Permissions.Pos.ApplyDiscount',
     Reprint: 'Permissions.Pos.Reprint',
@@ -7,6 +8,7 @@ export const Permissions = {
     CloseSession: 'Permissions.Pos.CloseSession',
   },
   Products: {
+    View: 'Permissions.Products.View',
     Create: 'Permissions.Products.Create',
     Edit: 'Permissions.Products.Edit',
     Delete: 'Permissions.Products.Delete',
@@ -19,10 +21,10 @@ export const Permissions = {
     Delete: 'Permissions.Categories.Delete',
   },
   Units: { View: 'Permissions.Units.View', Create: 'Permissions.Units.Create' },
-  SalesInvoices: { Create: 'Permissions.SalesInvoices.Create', Edit: 'Permissions.SalesInvoices.Edit', Print: 'Permissions.SalesInvoices.Print' },
+  SalesInvoices: { View: 'Permissions.SalesInvoices.View', Create: 'Permissions.SalesInvoices.Create', Edit: 'Permissions.SalesInvoices.Edit', Print: 'Permissions.SalesInvoices.Print' },
   SalesReturns: { View: 'Permissions.SalesReturns.View', Create: 'Permissions.SalesReturns.Create' },
-  PurchaseInvoices: { Create: 'Permissions.PurchaseInvoices.Create', Edit: 'Permissions.PurchaseInvoices.Edit' },
-  PurchaseOrders: { View: 'Permissions.PurchaseOrders.View', Create: 'Permissions.PurchaseOrders.Create' },
+  PurchaseInvoices: { View: 'Permissions.PurchaseInvoices.View', Create: 'Permissions.PurchaseInvoices.Create', Edit: 'Permissions.PurchaseInvoices.Edit' },
+  PurchaseOrders: { View: 'Permissions.PurchaseOrders.View', Create: 'Permissions.PurchaseOrders.Create', Approve: 'Permissions.PurchaseOrders.Approve' },
   PurchaseReturns: { View: 'Permissions.PurchaseReturns.View', Create: 'Permissions.PurchaseReturns.Create' },
   Customers: {
     Create: 'Permissions.Customers.Create',
@@ -36,7 +38,7 @@ export const Permissions = {
   },
   Warehouses: { View: 'Permissions.Warehouses.View', Create: 'Permissions.Warehouses.Create' },
   StockAdjustments: { View: 'Permissions.StockAdjustments.View', Create: 'Permissions.StockAdjustments.Create' },
-  StockTransfers: { View: 'Permissions.StockTransfers.View', Create: 'Permissions.StockTransfers.Create' },
+  StockTransfers: { View: 'Permissions.StockTransfers.View', Create: 'Permissions.StockTransfers.Create', Approve: 'Permissions.StockTransfers.Approve' },
   Branches: {
     View: 'Permissions.Branches.View',
     Create: 'Permissions.Branches.Create',

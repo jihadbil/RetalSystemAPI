@@ -26,6 +26,15 @@ public class WarehousesController : BaseApiController
     /// </summary>
     private readonly IWarehouseService _warehouseService;
 
+    [HttpGet("lookup")]
+    [HasAnyPermission(Permissions.Warehouses.View, Permissions.Stock.View, Permissions.StockTransfers.View,
+        Permissions.StockAdjustments.View, Permissions.Pos.View, Permissions.SalesInvoices.Create,
+        Permissions.PurchaseInvoices.Create, Permissions.PurchaseOrders.Create, Permissions.SalesReturns.Create,
+        Permissions.PurchaseReturns.Create, Permissions.Products.Create, Permissions.Products.Edit,
+        Permissions.StockTransfers.Create, Permissions.StockAdjustments.Create, Permissions.PurchaseOrders.Edit)]
+    public async Task<IActionResult> Lookup([FromQuery] Guid? branchId, CancellationToken ct) =>
+        ToActionResult(await _warehouseService.GetAllAsync(branchId, null, ct));
+
     /// <summary>
     /// تهيئة نسخة جديدة من متحكم المستودعات مع حقن خدمة المستودعات.
     /// </summary>

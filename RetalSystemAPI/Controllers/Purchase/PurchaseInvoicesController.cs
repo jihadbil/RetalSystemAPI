@@ -52,7 +52,7 @@ public class PurchaseInvoicesController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>قائمة صفحية تحتوي على ملخص فواتير المشتريات وإجمالي السجلات.</returns>
     [HttpGet]
-    [HasPermission(Permissions.PurchaseInvoices.View)]
+    [HasAnyPermission(Permissions.PurchaseInvoices.View, Permissions.PurchaseReturns.Create)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -81,7 +81,7 @@ public class PurchaseInvoicesController : BaseApiController
     /// <param name="ct">رمز إلغاء العملية لمراقبة مقاطعة الطلب.</param>
     /// <returns>بيانات فاتورة المشتريات التفصيلية أو كود 404 في حال عدم العثور عليها.</returns>
     [HttpGet("{id:guid}")]
-    [HasPermission(Permissions.PurchaseInvoices.View)]
+    [HasAnyPermission(Permissions.PurchaseInvoices.View, Permissions.PurchaseReturns.Create)]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct = default)
     {
         // استدعاء خدمة فواتير المشتريات للبحث عن تفاصيل الفاتورة بالمعرف المحدد
