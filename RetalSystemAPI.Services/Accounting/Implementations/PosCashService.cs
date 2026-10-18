@@ -361,8 +361,22 @@ public class PosCashService : IPosCashService
 
         // إضافة الوردية إلى سياق البيانات
         _db.CashSessions.Add(session);
-        // حفظ التغييرات في قاعدة البيانات
-        await _db.SaveChangesAsync(ct);
+        // فتح الوردية والحركات النقدية يشتركان في نسخة تزامن الدرج.
+        _db.Entry(terminal.DefaultCashDrawer).Property(s => s.CurrentBalance).IsModified = true;
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return ServiceResult<CashSessionResponseDto>.Failure("تغير رصيد الدرج أثناء فتح الوردية؛ أعد عد النقدية وحاول مجدداً", ErrorCodes.ConcurrencyError);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+        {
+            _db.ChangeTracker.Clear();
+            return ServiceResult<CashSessionResponseDto>.Failure("فُتحت وردية أخرى لهذا الدرج أو الكاشير؛ أعد تحميل بيانات الوردية", ErrorCodes.ConcurrencyError);
+        }
         // تعيين مراجع الكائنات المحملة لخرائط DTO
         session.PosTerminal = terminal;
         // تعيين مرجع درج النقدية
