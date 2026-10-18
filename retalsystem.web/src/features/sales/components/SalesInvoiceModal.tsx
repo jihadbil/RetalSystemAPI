@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
@@ -70,6 +70,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
   const [isSearchingBarcode, setIsSearchingBarcode] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<ProductDto | null>(null);
+  const [selectedBarcodeId, setSelectedBarcodeId] = useState<string | undefined>();
   const [quantityToAdd, setQuantityToAdd] = useState<number>(1);
   const [unitPriceToAdd, setUnitPriceToAdd] = useState<number>(0);
   const [discountToAdd, setDiscountToAdd] = useState<number>(0);
@@ -161,6 +162,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
 
   // ── 3. Reset Item Entry ──
   function resetItemEntry() {
+    setSelectedBarcodeId(undefined);
     setSelectedProduct(null);
     setSelectedProductId('');
     setSearchBarcode('');
@@ -171,12 +173,27 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
   }
 
   // ── 4. On Product Selected ──
-  const handleSelectProduct = useCallback((product: ProductDto) => {
-    setSelectedProduct(product);
-    setSelectedProductId(product.id);
-    setUnitPriceToAdd(Number(product.salePrice) || 0);
-    setSearchBarcode(product.barCodes?.[0]?.barCode || product.code || '');
-    setSearchErrorMessage(null);
+  const selectionVersion = useRef(0);
+  const handleSelectProduct = useCallback(async (summary: ProductDto, scannedBarcode?: string) => {
+    const version = ++selectionVersion.current;
+    setSelectedProduct(null);
+    setSelectedBarcodeId(undefined);
+    setSelectedProductId(summary.id);
+    try {
+      const product = summary.barCodes?.length ? summary : await catalogService.getProductById(summary.id);
+      if (version !== selectionVersion.current) return;
+      const barcode = scannedBarcode
+        ? product.barCodes?.find((b) => b.barCode.toLowerCase() === scannedBarcode.toLowerCase())
+        : product.barCodes?.[0];
+      setSelectedProduct(product);
+      setSelectedBarcodeId(barcode?.id);
+      setUnitPriceToAdd(Number(product.salePrice) || 0);
+      setSearchBarcode(barcode?.barCode || scannedBarcode || product.code || '');
+      setSearchErrorMessage(null);
+    } catch (err) {
+      if (version === selectionVersion.current)
+        setSearchErrorMessage(err instanceof Error ? err.message : 'تعذر تحميل تفاصيل الصنف وباركوداته');
+    }
   }, []);
 
   // ── 5. Lookup Barcode ──
@@ -189,7 +206,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
       const trimmed = searchBarcode.trim();
       const product = await catalogService.getByBarCode(trimmed);
       if (product && product.id) {
-        handleSelectProduct(product);
+        await handleSelectProduct(product, trimmed);
       } else {
         // Fallback: check in loaded products list
         const local = products.find(
@@ -198,7 +215,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             p.barCodes?.some((b) => b.barCode.toLowerCase() === trimmed.toLowerCase())
         );
         if (local) {
-          handleSelectProduct(local);
+          await handleSelectProduct(local, trimmed);
         } else {
           setSearchErrorMessage(`لم يتم العثور على صنف بالباركود: ${trimmed}`);
         }
@@ -210,7 +227,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
           p.barCodes?.some((b) => b.barCode.toLowerCase() === searchBarcode.trim().toLowerCase())
       );
       if (local) {
-        handleSelectProduct(local);
+        await handleSelectProduct(local, searchBarcode.trim());
       } else {
         setSearchErrorMessage(`لم يتم العثور على صنف بالباركود: ${searchBarcode.trim()}`);
       }
@@ -241,8 +258,8 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
       productId: selectedProduct.id,
       productName: selectedProduct.name,
       productCode: selectedProduct.code,
-      productBarCodeId: selectedProduct.barCodes?.[0]?.id,
-      barCode: selectedProduct.barCodes?.[0]?.barCode || searchBarcode,
+      productBarCodeId: selectedBarcodeId,
+      barCode: searchBarcode,
       quantity: quantityToAdd,
       unitPrice: unitPriceToAdd,
       unitCost: selectedProduct.costPrice,

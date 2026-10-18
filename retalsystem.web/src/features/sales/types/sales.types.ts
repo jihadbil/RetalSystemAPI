@@ -64,6 +64,7 @@ export interface CreateSalesInvoiceRequest {
 }
 
 export interface SalesInvoiceItemDto {
+  productBarCodeId?: string;
   id?: string;
   productId: string;
   productName: string;
