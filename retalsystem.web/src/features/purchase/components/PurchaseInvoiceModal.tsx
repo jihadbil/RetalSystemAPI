@@ -219,7 +219,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         setBranchId(initialBranchId);
 
         if (activeSuppliers.length > 0) setSupplierId(activeSuppliers[0].id);
-        if (activeWarehouses.length > 0) setWarehouseId(activeWarehouses[0].id);
+        setWarehouseId(activeWarehouses.find((w) => w.branchId === initialBranchId)?.id || '');
 
         // Filter safes for this branch
         const branchSafes = sfList.filter((s) => s.isActive && (!initialBranchId || s.branchId === initialBranchId));
@@ -277,6 +277,13 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   }, [isOpen, invoiceToEdit, currentBranchId]);
 
   // ── Reload safes when selected branch changes ──
+  const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+  useEffect(() => {
+    if (!isOpen || !warehouses.length) return;
+    const available = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+    setWarehouseId((previous) => available.some((warehouse) => warehouse.id === previous) ? previous : available[0]?.id || '');
+  }, [isOpen, branchId, warehouses]);
+
   useEffect(() => {
     if (!isOpen || !branchId) return;
     accountingService
@@ -775,7 +782,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 disabled={Boolean(invoiceToEdit)}
                 required
               >
-                {warehouses.map((w) => (
+                {branchWarehouses.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.name}
                   </option>

@@ -178,6 +178,9 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المستودع أو الصالة المحددة غير موجودة", ErrorCodes.WarehouseNotFound);
         }
 
+        if (!warehouse.IsActive || warehouse.BranchId != dto.BranchId || !Enum.IsDefined(warehouse.Type))
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("يجب اختيار مستودع نشط تابع لفرع الفاتورة", ErrorCodes.ValidationError);
+
         var barcodeError = await ResolveStorageBarcodesAsync(dto.Items, warehouse, ct);
         if (barcodeError is not null)
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure(barcodeError, ErrorCodes.ValidationError);

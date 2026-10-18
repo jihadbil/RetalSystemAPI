@@ -98,7 +98,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
         const initialBranchId = currentBranchId || (bList.length > 0 ? bList[0].id : '');
         setBranchId(initialBranchId);
 
-        if (activeWarehouses.length > 0) setWarehouseId(activeWarehouses[0].id);
+        setWarehouseId(activeWarehouses.find((w) => w.branchId === initialBranchId)?.id || '');
         if (activeSuppliers.length > 0) setSupplierId(activeSuppliers[0].id);
       })
       .catch((err) => {
@@ -107,6 +107,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
       })
       .finally(() => setIsLoadingData(false));
   }, [isOpen, currentBranchId]);
+
+  const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+  useEffect(() => {
+    if (!isOpen || !warehouses.length) return;
+    const available = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+    setWarehouseId((previous) => available.some((warehouse) => warehouse.id === previous) ? previous : available[0]?.id || '');
+  }, [isOpen, branchId, warehouses]);
 
   // Product selection handler
   const handleSelectProduct = async (prodId: string) => {
@@ -338,7 +345,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
             onChange={(e) => setWarehouseId(e.target.value)}
             options={[
               { value: '', label: 'بدون تحديد مستودع' },
-              ...warehouses.map((w) => ({ value: w.id, label: w.name })),
+              ...branchWarehouses.map((w) => ({ value: w.id, label: w.name })),
             ]}
             disabled={isLoadingData}
           />

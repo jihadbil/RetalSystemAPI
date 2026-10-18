@@ -126,6 +126,9 @@ public class SalesInvoiceService : ISalesInvoiceService
             return ServiceResult<SalesInvoiceResponseDto>.Failure("المستودع أو صالة العرض غير موجودة", ErrorCodes.WarehouseNotFound);
         }
 
+        if (!warehouse.IsActive || warehouse.BranchId != dto.BranchId || !Enum.IsDefined(warehouse.Type))
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("يجب اختيار مستودع نشط تابع لفرع الفاتورة", ErrorCodes.ValidationError);
+
         Customer? customer = null;
         // التحقق من وجود العميل إن تم تحديده
         if (dto.CustomerId.HasValue)

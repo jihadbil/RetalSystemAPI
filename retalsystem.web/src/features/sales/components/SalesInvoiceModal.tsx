@@ -125,7 +125,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
         if (!initialBranchId && bList.length > 0) initialBranchId = bList[0].id;
         setBranchId(initialBranchId);
 
-        if (activeWarehouses.length > 0) setWarehouseId(activeWarehouses[0].id);
+        setWarehouseId(activeWarehouses.find((w) => w.branchId === initialBranchId)?.id || '');
 
         const branchSafes = sfList.filter((s) => s.isActive && (!initialBranchId || s.branchId === initialBranchId));
         setSafes(branchSafes);
@@ -137,6 +137,13 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
       })
       .finally(() => setIsLoadingData(false));
   }, [isOpen, currentBranchId]);
+
+  const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+  useEffect(() => {
+    if (!isOpen || !warehouses.length) return;
+    const available = warehouses.filter((warehouse) => warehouse.branchId === branchId);
+    setWarehouseId((previous) => available.some((warehouse) => warehouse.id === previous) ? previous : available[0]?.id || '');
+  }, [isOpen, branchId, warehouses]);
 
   // ── 2. Reload Safes on Branch Change ──
   useEffect(() => {
@@ -418,7 +425,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
               onChange={(e) => setWarehouseId(e.target.value)}
               required
             >
-              {warehouses.map((w) => (
+              {branchWarehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
