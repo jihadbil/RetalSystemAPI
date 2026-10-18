@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { stockService } from './services/stockService';
 import type {
   StockLevelDto,
@@ -32,14 +32,18 @@ import {
 
 export const StockView: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, currentBranchId } = useAuth();
+  const canViewLevels = hasPermission('Permissions.Stock.View');
+  const canApproveTransfer = hasPermission(Permissions.StockTransfers.Approve);
   const canViewAdjustments = hasPermission(Permissions.StockAdjustments.View);
   const canCreateAdjustment = hasPermission(Permissions.StockAdjustments.Create);
   const canViewTransfers = hasPermission(Permissions.StockTransfers.View);
   const canCreateTransfer = hasPermission(Permissions.StockTransfers.Create);
   const canViewWarehouses = hasPermission(Permissions.Warehouses.View);
   const canCreateWarehouse = hasPermission(Permissions.Warehouses.Create);
-  const [activeTab, setActiveTab] = useState<'levels' | 'adjustments' | 'transfers' | 'warehouses'>('levels');
+  const [selectedTab, setActiveTab] = useState<'levels' | 'adjustments' | 'transfers' | 'warehouses'>('levels');
+  const allowedTabs = { levels: canViewLevels, adjustments: canViewAdjustments, transfers: canViewTransfers, warehouses: canViewWarehouses };
+  const activeTab = allowedTabs[selectedTab] ? selectedTab : canViewLevels ? 'levels' : canViewAdjustments ? 'adjustments' : canViewTransfers ? 'transfers' : 'warehouses';
 
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
@@ -78,20 +82,23 @@ export const StockView: React.FC = () => {
   const [isAdjModalOpen, setIsAdjModalOpen] = useState(false);
   const [isTrfModalOpen, setIsTrfModalOpen] = useState(false);
   const [isWhModalOpen, setIsWhModalOpen] = useState(false);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const [stockError, setStockError] = useState<string | null>(null);
 
+  const warehouseVersion = useRef(0);
   const loadWarehouses = useCallback(async () => {
+    const version = ++warehouseVersion.current;
+    setWarehouses([]);
     try {
-      const whs = await stockService.getWarehouses();
+      const whs = await stockService.getWarehouses(currentBranchId || undefined);
+      if (version !== warehouseVersion.current) return;
       setWarehouses(whs);
-      if (whs.length > 0) {
-        setSelectedWarehouseId((prev) => (!prev || prev === 'all' ? whs[0].id : prev));
-      }
+      setSelectedWarehouseId((prev) => whs.some((w) => w.id === prev) ? prev : whs[0]?.id || '');
     } catch (err: unknown) {
       console.error('Failed to load warehouses:', err);
     }
-  }, []);
+  }, [currentBranchId]);
 
   // إعادة الترقيم للصفحة الأولى عند البحث أو تغيير المستودع
   useEffect(() => {
@@ -107,6 +114,11 @@ export const StockView: React.FC = () => {
     setIsLoading(true);
     setStockError(null);
     try {
+      if (!warehouses.length || !selectedWarehouseId || !warehouses.some((warehouse) => warehouse.id === selectedWarehouseId)) {
+        setStockLevels([]); setAdjustments([]); setTransfers([]);
+        setStockTotalCount(0); setAdjustmentTotalCount(0); setTransferTotalCount(0);
+        return;
+      }
       if (activeTab === 'levels') {
         if (!selectedWarehouseId || selectedWarehouseId === 'all') {
           if (warehouses.length > 0) {
@@ -179,7 +191,7 @@ export const StockView: React.FC = () => {
   }, [loadStockData]);
 
   const tabs = [
-    { id: 'levels', label: 'أرصدة المخزون والجرد', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: stockPagination.totalCount },
+    ...(canViewLevels ? [{ id: 'levels', label: 'أرصدة المخزون والجرد', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: stockPagination.totalCount }] : []),
     ...(canViewAdjustments
       ? [{ id: 'adjustments', label: 'التسويات الجردية', icon: <IconAdjustments className="w-4 h-4" />, badge: adjPagination.totalCount }]
       : []),
@@ -468,9 +480,21 @@ export const StockView: React.FC = () => {
                           {trf.itemCount ?? 0}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Badge variant="success" size="sm">
-                            {trf.statusName || 'مكتمل ومستلم'}
+                          <Badge variant={Number(trf.status) === 3 ? 'success' : 'info'} size="sm">
+                            {trf.statusName || ({ 1: 'مسودة', 2: 'مؤكد', 3: 'مكتمل', 4: 'ملغى' }[Number(trf.status)] ?? '-')}
                           </Badge>
+                          {canApproveTransfer && [1, 2].includes(Number(trf.status)) && (
+                            <Button size="sm" variant="secondary" disabled={completingId !== null} onClick={async () => {
+                              setCompletingId(trf.id);
+                              try {
+                                await stockService.completeTransfer(trf.id);
+                                showSuccess('اكتمل التحويل', 'تم نقل الكميات وترحيل التحويل');
+                                await loadStockData();
+                              } catch (err) {
+                                showError('تعذر إكمال التحويل', err instanceof Error ? err.message : 'فشل التحويل');
+                              } finally { setCompletingId(null); }
+                            }}>إكمال التحويل</Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -548,12 +572,13 @@ export const StockView: React.FC = () => {
         onSave={async (data) => {
           try {
             await stockService.createTransfer(data);
-            showSuccess('تم التحويل', 'تم إصدار أمر التحويل المخزني بنجاح');
+            showSuccess('حُفظ التحويل', 'حُفظ كمسودة؛ أكمل التحويل من القائمة لترحيل الكميات');
             loadStockData();
             setIsTrfModalOpen(false);
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل تنفيذ أمر التحويل';
             showError('خطأ أثناء التحويل', msg);
+            throw err;
           }
         }}
       />

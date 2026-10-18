@@ -6,6 +6,8 @@ import { Select } from '../../../shared/components/ui/Select';
 import type { WarehouseDto } from '../types/stock.types';
 import { catalogService } from '../../catalog/services/catalogService';
 import type { ProductDto } from '../../catalog/types/catalog.types';
+import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
+import { stockService } from '../services/stockService';
 
 interface StockTransferModalProps {
   isOpen: boolean;
@@ -27,6 +29,26 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { product, barcodeId, setBarcodeId, error: barcodeError } = useProductBarcodes(selectedProductId, isOpen);
+  const [error, setError] = useState('');
+  const [destWarehouses, setDestWarehouses] = useState<WarehouseDto[]>([]);
+  const needsBarcode = [...warehouses, ...destWarehouses].some((w) => (w.id === sourceWarehouseId || w.id === destWarehouseId) && w.type === 1);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void stockService.getWarehouses().then((all) => {
+      if (cancelled) return;
+      const active = all.filter((warehouse) => warehouse.isActive);
+      setDestWarehouses(active);
+    }).catch(() => { if (!cancelled) setError('تعذر تحميل المستودعات الوجهة'); });
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const choices = destWarehouses.filter((warehouse) => warehouse.id !== sourceWarehouseId);
+    setDestWarehouseId((previous) => choices.some((warehouse) => warehouse.id === previous) ? previous : choices[0]?.id || '');
+  }, [destWarehouses, sourceWarehouseId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,8 +73,12 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProductId || quantity <= 0) return;
+    if (!selectedProductId || !sourceWarehouseId || !destWarehouseId || quantity <= 0 || isLoading) return;
     if (sourceWarehouseId === destWarehouseId) return;
+    if (!Number.isInteger(quantity) || (needsBarcode && !barcodeId)) {
+      setError('اختر باركود الصنف وأدخل كمية صحيحة موجبة');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -65,9 +91,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         fromWarehouseId: sourceWarehouseId,
         toWarehouseId: destWarehouseId,
         notes: notes.trim() || undefined,
-        items: [{ productId: selectedProductId, quantity: Number(quantity) }],
+        items: [{ productId: selectedProductId, productBarCodeId: barcodeId || undefined, quantity: Number(quantity) }],
       });
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر حفظ التحويل');
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +120,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1">
+        {(error || barcodeError) && <p className="text-xs text-rose-600">{error || barcodeError}</p>}
         <div className="grid grid-cols-2 gap-3">
           <Select
             label="المستودع المصدر (من) *"
@@ -110,7 +139,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             value={destWarehouseId}
             onChange={(e) => setDestWarehouseId(e.target.value)}
           >
-            {warehouses
+            {destWarehouses
               .filter((w) => w.id !== sourceWarehouseId)
               .map((w) => (
                 <option key={w.id} value={w.id}>
@@ -131,6 +160,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             </option>
           ))}
         </Select>
+
+        {needsBarcode && <Select label="الباركود / البديل *" value={barcodeId} onChange={(e) => setBarcodeId(e.target.value)}>
+          <option value="">اختر الباركود</option>
+          {product?.barCodes?.map((barcode) => <option key={barcode.id} value={barcode.id}>{barcode.title || barcode.barCode} — {barcode.barCode}</option>)}
+        </Select>}
 
         <Input
           label="الكمية المحولة *"
