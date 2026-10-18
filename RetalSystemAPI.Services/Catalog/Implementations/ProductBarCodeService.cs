@@ -174,8 +174,25 @@ public class ProductBarCodeService : IProductBarCodeService
             return ServiceResult.Failure("الباركود غير موجود", ErrorCodes.BarCodeNotFound);
         }
 
-        // إجراء الحذف الصلب للباركود
-        _unitOfWork.Products.HardDeleteBarCode(barCodeEntity);
+        Guid[] barcodeIds = [barCodeId];
+        if (await _unitOfWork.SalesInvoices.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.SalesReturns.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.PurchaseInvoices.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.PurchaseReturns.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.StockTransfers.HasBarcodeReferencesAsync(barcodeIds, ct) ||
+            await _unitOfWork.StockAdjustments.HasBarcodeReferencesAsync(barcodeIds, ct))
+            return ServiceResult.Failure("لا يمكن حذف باركود له مستندات أو حركات مخزنية مرتبطة", ErrorCodes.BarCodeInUse);
+
+        var stocks = await _unitOfWork.Stock.GetStorageByBarcodesForUpdateAsync(barcodeIds, ct);
+        if (stocks.Any(s => s.Quantity != 0))
+            return ServiceResult.Failure("لا يمكن حذف باركود له رصيد مخزني", ErrorCodes.BarCodeInUse);
+
+        foreach (var image in await _unitOfWork.Products.GetImagesByBarcodesForUpdateAsync(barcodeIds, ct))
+            _unitOfWork.Products.SoftDeleteImage(image);
+        foreach (var stock in stocks)
+            _unitOfWork.Stock.SoftDeleteStorgeStock(stock);
+        _unitOfWork.Products.SoftDeleteBarCode(barCodeEntity);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
         // إرجاع نتيجة النجاح

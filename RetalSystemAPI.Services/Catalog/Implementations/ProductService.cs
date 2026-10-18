@@ -441,9 +441,11 @@ public class ProductService : IProductService
                 bool usedInPurchases = await _unitOfWork.PurchaseInvoices.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
                 bool usedInPurchaseReturns = await _unitOfWork.PurchaseReturns.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
                 bool usedInOrders = await _unitOfWork.PurchaseOrders.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInTransfers = await _unitOfWork.StockTransfers.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
+                bool usedInAdjustments = await _unitOfWork.StockAdjustments.HasBarcodeReferencesAsync(removedBarcodeIds, ct);
                 bool hasStock = await _unitOfWork.Stock.HasNonzeroStorageByBarcodesAsync(removedBarcodeIds, ct);
                 // في حال وجود أي استخدام سابق
-                if (usedInSales || usedInSalesReturns || usedInPurchases || usedInPurchaseReturns || usedInOrders || hasStock)
+                if (usedInSales || usedInSalesReturns || usedInPurchases || usedInPurchaseReturns || usedInOrders || usedInTransfers || usedInAdjustments || hasStock)
                 {
                     // إرجاع خطأ يمنع حذف الباركود المرتبط
                     return ServiceResult<ProductResponseDto>.Failure("لا يمكن حذف الباركود '" + string.Join("', '", barcodesToRemove.Select(b => b.BarCode)) + "' لوجود حركة مخزنية أو فواتير مرتبطة به. يرجى الاحتفاظ به أو حذف الأصناف المرتبطة أولاً.", ErrorCodes.BarCodeInUse);

@@ -9,7 +9,9 @@ public partial class PurchaseInvoiceRepository
 {
     public async Task<bool> HasBarcodeReferencesAsync(IEnumerable<Guid> removedBarcodeIds, CancellationToken ct = default)
     {
-        return await _context.Set<PurchaseInvoiceItem>().AsNoTracking().AnyAsync(e => removedBarcodeIds.Contains(e.ProductBarCodeId!.Value), ct);
+        var ids = removedBarcodeIds.Distinct().ToArray();
+        return await _context.Set<PurchaseInvoiceItem>().AsNoTracking().AnyAsync(e => e.ProductBarCodeId.HasValue && ids.Contains(e.ProductBarCodeId.Value), ct)
+            || await _context.Set<PurchaseInvoiceItemBreakdown>().AsNoTracking().AnyAsync(e => ids.Contains(e.ProductBarCodeId), ct);
     }
 
     public async Task<bool> HasProductReferencesAsync(Guid id, CancellationToken ct = default)

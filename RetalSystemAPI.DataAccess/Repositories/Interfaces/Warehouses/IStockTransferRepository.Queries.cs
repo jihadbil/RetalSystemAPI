@@ -5,6 +5,7 @@ using RetalSystemAPI.Models.Warehouses;
 namespace RetalSystemAPI.DataAccess.Repositories.Interfaces;
 public partial interface IStockTransferRepository
 {
+    Task<bool> HasBarcodeReferencesAsync(IEnumerable<Guid> barcodeIds, CancellationToken ct = default);
     Task<bool> HasProductReferencesAsync(Guid id, CancellationToken ct = default);
     Task<StockTransfer?> GetDetailsAsync(Guid id, CancellationToken ct = default);
     Task<StockTransfer?> GetByNumberAsync(string transferNumber, CancellationToken ct = default);
