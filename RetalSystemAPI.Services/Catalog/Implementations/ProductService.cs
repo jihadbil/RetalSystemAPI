@@ -124,13 +124,20 @@ public class ProductService : IProductService
             dto.StorageInitialQuantities?.Select(q => (q.WarehouseId, q.BarCode.Trim().ToUpperInvariant())).Distinct().Count() != dto.StorageInitialQuantities?.Count)
             return ServiceResult<ProductResponseDto>.Failure("الأرصدة الافتتاحية تحتوي مفاتيح مخازن أو باركودات مكررة", ErrorCodes.ValidationError);
         var requestedWarehouses = (dto.ShowroomInitialQuantities ?? []).Select(q => (q.WarehouseId, WarehouseType.Show))
-            .Concat((dto.StorageInitialQuantities ?? []).Select(q => (q.WarehouseId, WarehouseType.Storge)));
+            .Concat((dto.StorageInitialQuantities ?? []).Select(q => (q.WarehouseId, WarehouseType.Storge)))
+            .Concat(dto.ShowroomWarehouseId.HasValue ? [(dto.ShowroomWarehouseId.Value, WarehouseType.Show)] : [])
+            .Concat(dto.StorageWarehouseId.HasValue ? [(dto.StorageWarehouseId.Value, WarehouseType.Storge)] : []);
         foreach (var (warehouseId, type) in requestedWarehouses.Distinct())
         {
             var warehouse = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(warehouseId, ct);
-            if (warehouse is null || warehouse.Type != type)
+            if (warehouse is null || !warehouse.IsActive || warehouse.Type != type)
                 return ServiceResult<ProductResponseDto>.Failure("مخزن الرصيد الافتتاحي غير موجود أو نوعه غير صحيح", ErrorCodes.ValidationError);
         }
+        var showrooms = (await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Show, ct)).Where(w => w.IsActive).ToList();
+        var storgeWarehouses = (await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct)).Where(w => w.IsActive).ToList();
+        if (dto.InitialShowroomQuantity > 0 && showrooms.Count == 0 ||
+            dto.BarCodes?.Any(b => b.InitialQuantity > 0) == true && storgeWarehouses.Count == 0)
+            return ServiceResult<ProductResponseDto>.Failure("يجب توفير مخزن نشط من النوع المناسب للأرصدة الافتتاحية", ErrorCodes.ValidationError);
         var suppliedBarcodes = (dto.BarCodes ?? []).Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (dto.StorageInitialQuantities?.Any(q => !suppliedBarcodes.Contains(q.BarCode.Trim())) == true)
             return ServiceResult<ProductResponseDto>.Failure("باركود الرصيد الافتتاحي غير موجود ضمن باركودات الصنف", ErrorCodes.ValidationError);
@@ -200,14 +207,7 @@ public class ProductService : IProductService
         await _unitOfWork.Products.AddAsync(product, ct);
         // حفظ التغييرات في قاعدة البيانات لتوليد المعرفات
         await _unitOfWork.SaveChangesAsync(ct);
-        // 1. توليد سجل مخزون الصالة لكل صالة عرض قائمة (مع التراجع لجلب كافة المخازن إن لم تتوفر صالات مصنفة)
-        var showrooms = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Show, ct);
-        // في حال عدم وجود صالات عرض مصنفة
-        if (showrooms.Count == 0)
-        {
-            // التراجع لجلب كافة المستودعات
-            showrooms = await _unitOfWork.Warehouses.ListLookupAsync(ct);
-        }
+        // توليد رصيد صالة العرض في صالات العرض النشطة فقط.
 
         // بناء خريطة الأرصدة الافتتاحية لصالات العرض المتعددة
         var showroomQtyMap = dto.ShowroomInitialQuantities?.ToDictionary(s => s.WarehouseId, s => s.Quantity) ?? new Dictionary<Guid, int>();
@@ -252,14 +252,7 @@ public class ProductService : IProductService
             await _unitOfWork.Stock.AddShowroomStockAsync(showStock, ct);
         }
 
-        // 2. توليد سجلات مخزون التخزين لكل باركود/نكهة في كل مخزن تخزين قائم (مع التراجع لجلب كافة المخازن)
-        var storgeWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
-        // في حال عدم وجود مخازن تخزين مصنفة
-        if (storgeWarehouses.Count == 0)
-        {
-            // التراجع لجلب كافة المستودعات
-            storgeWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
-        }
+        // توليد رصيد الباركود في مخازن التخزين النشطة فقط.
 
         // تأسيس أرصدة المخازن للباركودات
         if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
@@ -515,11 +508,6 @@ public class ProductService : IProductService
             {
                 // جلب مخازن التخزين
                 var storgeWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
-                // التراجع لجلب كافة المستودعات إن لم تتوفر مخازن
-                if (storgeWarehouses.Count == 0)
-                {
-                    storgeWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
-                }
 
                 // إنشاء رصيد صفري في كل مخزن للباركود الجديد
                 foreach (var storgeWh in storgeWarehouses)
