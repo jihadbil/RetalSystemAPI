@@ -55,25 +55,9 @@ public class StockService : IStockService
     /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<StorgeStockResponseDto>>> GetStorgeStocksByWarehouseAsync(Guid warehouseId, CancellationToken ct = default)
     {
-        // 1. استخراج معرفات الباركودات والمستأجر فقط لتحسين الأداء وتجنب تحميل الكيانات الثقيلة
-        var allBarCodeIdsWithTenants = await _unitOfWork.Products.GetBarcodeOwnershipAsync(ct);
-        // استخراج معرفات الباركودات المسجلة فعلياً في مخزون هذا المستودع
-        var existingBarcodeIds = (await _unitOfWork.Stock.GetStorageKeysAsync(warehouseId, ct)).Select(s => s.ProductBarcodeId).ToHashSet();
-        // تحديد الباركودات التي لم ينشأ لها سجل رصيد بعد
-        var missingBarcodes = allBarCodeIdsWithTenants.Where(bc => !existingBarcodeIds.Contains(bc.Id)).ToList();
-        // في حال وجود باركودات ناقصة، يتم إنشاؤها تلقائياً برصيد صفري
-        if (missingBarcodes.Count > 0)
-        {
-            // بناء سجلات الأرصدة الجديدة
-            var newStocks = missingBarcodes.Select(bc => new StorgeStock { TenantId = bc.TenantId, WarehouseId = warehouseId, ProductBarcodeId = bc.Id, Quantity = 0, MinStockLevel = 0 }).ToList();
-            // إدراج السجلات الجديدة دفعة واحدة
-            await _unitOfWork.Stock.AddStorgeStocksAsync(newStocks, ct);
-            // حفظ التغييرات في قاعدة البيانات
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-
-        // استعلام كافة أرصدة المستودع مع تفاصيل الباركود والمنتج والصور
-        // جلب قائمة الأرصدة
+        var warehouse = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(warehouseId, ct);
+        if (warehouse is null || warehouse.Type != WarehouseType.Storge)
+            return ServiceResult<IReadOnlyList<StorgeStockResponseDto>>.Failure("المخزن المحدد غير موجود أو نوعه غير صحيح", ErrorCodes.WarehouseNotFound);
         var stocks = await _unitOfWork.Stock.ListStorageAsync(new StorageStockQuery { WarehouseId = warehouseId }, ct);
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<StorgeStockResponseDto>>(stocks);
@@ -202,25 +186,9 @@ public class StockService : IStockService
     /// <inheritdoc/>
     public async Task<ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>> GetShowroomStocksByWarehouseAsync(Guid warehouseId, CancellationToken ct = default)
     {
-        // 1. استخراج معرفات المنتجات والمستأجر بأعمدة نحيفة لتحسين الأداء
-        var allProductIdsWithTenants = await _unitOfWork.Products.GetOwnershipAsync(ct);
-        // استخراج معرفات المنتجات المسجلة في صالة العرض حالياً
-        var existingProductIds = (await _unitOfWork.Stock.GetShowroomKeysAsync(warehouseId, ct)).Select(s => s.ProductId).ToHashSet();
-        // تحديد المنتجات غير المسجلة في الصالة
-        var missingProducts = allProductIdsWithTenants.Where(p => !existingProductIds.Contains(p.Id)).ToList();
-        // إضافة سجلات صفرية للمنتجات غير المسجلة
-        if (missingProducts.Count > 0)
-        {
-            // إنشاء سجلات الرصيد الافتتاحي
-            var newStocks = missingProducts.Select(p => new ShowroomStock { TenantId = p.TenantId, WarehouseId = warehouseId, ProductId = p.Id, Quantity = 0, MinStockLevel = 0 }).ToList();
-            // إدراج السجلات الجديدة دفعة واحدة
-            await _unitOfWork.Stock.AddShowroomStocksAsync(newStocks, ct);
-            // حفظ التغييرات
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-
-        // استعلام أرصدة صالة العرض مع بيانات المنتجات والصور
-        // جلب الأرصدة
+        var warehouse = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(warehouseId, ct);
+        if (warehouse is null || warehouse.Type != WarehouseType.Show)
+            return ServiceResult<IReadOnlyList<ShowroomStockResponseDto>>.Failure("الصالة المحددة غير موجودة أو نوعها غير صحيح", ErrorCodes.WarehouseNotFound);
         var stocks = await _unitOfWork.Stock.ListShowroomAsync(new ShowroomStockQuery { WarehouseId = warehouseId }, ct);
         // تحويل الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<ShowroomStockResponseDto>>(stocks);
