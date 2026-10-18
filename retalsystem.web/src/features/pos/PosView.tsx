@@ -25,7 +25,7 @@ import {
 } from '@tabler/icons-react';
 
 const PosContent: React.FC = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isLocked } = useAuth();
   const canCreateSale = hasPermission(Permissions.Pos.CreateSale);
   const canApplyDiscount = hasPermission(Permissions.Pos.ApplyDiscount);
   const canOpenSession = hasPermission(Permissions.Pos.OpenSession);
@@ -128,7 +128,7 @@ const PosContent: React.FC = () => {
       setIsClearCartConfirmOpen(false);
       focusBarcode();
     },
-  });
+  }, !isLocked);
 
   // معالجة إدخال الباركود بالضغط على Enter
   const handleBarcodeSubmit = async (e: React.FormEvent) => {

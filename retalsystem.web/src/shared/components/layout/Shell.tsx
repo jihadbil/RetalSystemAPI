@@ -41,7 +41,7 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
         handleToggleSidebar();
       }
     },
-  });
+  }, !isLocked);
 
   const handleUnlock = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -70,12 +70,12 @@ export const Shell: React.FC<ShellProps> = ({ currentView, onNavigate, children 
     <div className="min-h-screen bg-[#F6F8F7] text-slate-900 flex flex-col font-sans">
       {/* وضع الكاشير الكامل (Kiosk Mode) */}
       {isPosKiosk ? (
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col h-screen overflow-hidden" inert={isLocked}>
           <KioskHeader onExitKiosk={() => setIsKioskMode(false)} />
           <main className="flex-1 overflow-hidden">{children}</main>
         </div>
       ) : (
-        <div className="flex min-h-screen relative">
+        <div className="flex min-h-screen relative" inert={isLocked}>
           {/* طبقة التعتيم الخلفية عند فتح القائمة على الهواتف والشاشات الصغيرة */}
           {isMobileMenuOpen && (
             <div

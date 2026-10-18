@@ -65,7 +65,7 @@ interface PosContextType {
 const PosContext = createContext<PosContextType | null>(null);
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, currentBranchId, currentTenantId, hasPermission } = useAuth();
+  const { user, currentBranchId, currentTenantId, hasPermission, isLocked } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
   const { printDocument } = useThermalPrint();
   const draftScope = `${currentTenantId || 'no-tenant'}:${currentBranchId || 'no-branch'}:${user?.id || 'anonymous'}`;
@@ -416,6 +416,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // إتمام البيع والطباعة (F10)
   const completeSale = useCallback(async (): Promise<boolean> => {
+    if (isLocked || isCheckingOut) return false;
     if (!hasPermission(Permissions.Pos.CreateSale)) {
       showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إتمام المبيعات من نقطة البيع');
       return false;
@@ -531,6 +532,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [
     cartItems,
+    isLocked,
+    isCheckingOut,
     paymentMethod,
     paidAmount,
     grandTotal,
