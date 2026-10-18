@@ -50,6 +50,9 @@ const PosContent: React.FC = () => {
     discount,
     setDiscount,
     deviceContext,
+    paymentAccounts,
+    paymentSafeId,
+    setPaymentSafeId,
     pairDevice,
     openCashSession,
     closeCashSession,
@@ -180,6 +183,13 @@ const PosContent: React.FC = () => {
             <Button size="sm" variant="primary" onClick={() => void pairDevice(pairingCode)}>ربط الجهاز</Button>
           </>
         )}
+        <label className="flex items-center gap-2 font-semibold text-slate-600">
+          <span>حساب تحصيل البطاقة:</span>
+          <select value={paymentSafeId} onChange={(e) => setPaymentSafeId(e.target.value)} className="h-8 rounded-lg border border-slate-200 px-2">
+            <option value="">اختر الحساب المصرفي</option>
+            {paymentAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+          </select>
+        </label>
         {deviceContext && (
           <label className="mr-auto flex items-center gap-2 font-semibold text-slate-600">
             <span>مستودع البيع:</span>

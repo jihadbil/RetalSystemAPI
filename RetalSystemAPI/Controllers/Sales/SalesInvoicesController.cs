@@ -150,6 +150,8 @@ public class SalesInvoicesController : BaseApiController
     [HasPermission(Permissions.SalesInvoices.Create)]
     public async Task<IActionResult> Create([FromBody] CreateSalesInvoiceDto dto, CancellationToken ct)
     {
+        if (User.IsInRole("Cashier"))
+            return StatusCode(403, ApiResponse.Fail("حساب الكاشير ينفذ المبيعات من مسار نقطة البيع", "FORBIDDEN"));
         // استدعاء خدمة فواتير المبيعات لإصدار الفاتورة وتنفيذ عمليات الحساب المالي وخصم المخزون
         var result = await _salesInvoiceService.CreateAsync(dto, ct);
 

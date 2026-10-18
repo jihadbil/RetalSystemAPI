@@ -12,6 +12,8 @@ using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Accounting.Interfaces;
 using RetalSystemAPI.Services.Sales.Interfaces;
+using RetalSystemAPI.Models.Constants;
+using RetalSystemAPI.Services.Common.Interfaces;
 
 namespace RetalSystemAPI.Services.Sales.Implementations;
 /// <summary>
@@ -25,12 +27,13 @@ public class SalesInvoiceService : ISalesInvoiceService
     private readonly IMapper _mapper;
     private readonly IFinancialPostingService _financialPosting;
     private readonly IPosCashService _posCashService;
+    private readonly ICurrentPermissionService? _permissions;
     /// <summary>
     /// تهيئة خدمة فواتير المبيعات مع حقن وحدة العمل والمحول.
     /// </summary>
     /// <param name = "unitOfWork">وحدة العمل للمستودعات</param>
     /// <param name = "mapper">محول الكيانات</param>
-    public SalesInvoiceService(IUnitOfWork unitOfWork, IMapper mapper, IFinancialPostingService financialPosting, IPosCashService posCashService)
+    public SalesInvoiceService(IUnitOfWork unitOfWork, IMapper mapper, IFinancialPostingService financialPosting, IPosCashService posCashService, ICurrentPermissionService? permissions = null)
     {
         // تعيين مرجع وحدة العمل
         _unitOfWork = unitOfWork;
@@ -38,6 +41,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         _mapper = mapper;
         _financialPosting = financialPosting;
         _posCashService = posCashService;
+        _permissions = permissions;
     }
 
     /// <inheritdoc/>
@@ -103,6 +107,28 @@ public class SalesInvoiceService : ISalesInvoiceService
     }
 
     /// <inheritdoc/>
+    public async Task<ServiceResult<SalesInvoiceResponseDto>> CreatePosAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default)
+    {
+        if (_permissions?.HasPermission(Permissions.Pos.CreateSale) != true)
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("لا تملك صلاحية إتمام بيع نقطة البيع", ErrorCodes.Forbidden);
+        if (DtoValidation.GetError(dto) is { } validationError)
+            return ServiceResult<SalesInvoiceResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
+        if ((dto.DiscountAmount > 0 || dto.Items.Any(i => i.DiscountAmount > 0)) &&
+            !_permissions.HasPermission(Permissions.Pos.ApplyDiscount))
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("لا تملك صلاحية منح خصم في نقطة البيع", ErrorCodes.Forbidden);
+        var products = (await _unitOfWork.Products.GetByIdsAsync(dto.Items.Select(i => i.ProductId).Distinct().ToList(), ct)).ToDictionary(p => p.Id);
+        if (dto.Items.Any(i => !products.TryGetValue(i.ProductId, out var product) || i.UnitPrice != product.SalePrice))
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("تغيرت أسعار الأصناف أو حالتها؛ أعد تحميلها قبل إتمام البيع", ErrorCodes.ValidationError);
+        if (dto.PaymentMethod != PaymentMethod.Cash && dto.PaidAmount > 0)
+        {
+            var account = dto.PaymentSafeId.HasValue ? await _unitOfWork.Accounting.GetSafeByIdAsync(dto.PaymentSafeId.Value, ct) : null;
+            if (account is null || account.Type != SafeType.Bank || !account.IsActive || account.BranchId != dto.BranchId)
+                return ServiceResult<SalesInvoiceResponseDto>.Failure("اختر حساب تحصيل مصرفي نشطاً تابعاً لفرع نقطة البيع", ErrorCodes.ValidationError);
+        }
+        dto.InvoiceNumber = $"POS-{Guid.NewGuid():N}";
+        return await CreateAsync(dto, ct);
+    }
+
     public async Task<ServiceResult<SalesInvoiceResponseDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default)
     {
         if (DtoValidation.GetError(dto) is { } validationError)

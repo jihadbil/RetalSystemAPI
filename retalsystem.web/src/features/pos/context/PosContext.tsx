@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { CartItem, PosDraft, QuickProductItem, ReceiptData } from '../types/pos.types';
 import { PaymentMethod } from '../types/pos.types';
 import { posService } from '../services/posService';
-import type { PosDeviceContext } from '../services/posService';
+import type { PosDeviceContext, PosPaymentAccount } from '../services/posService';
 import { soundService } from '../../../shared/services/soundService';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
@@ -26,6 +26,9 @@ interface PosContextType {
   deviceContext: PosDeviceContext | null;
   warehouses: WarehouseDto[];
   selectedWarehouseId: string;
+  paymentAccounts: PosPaymentAccount[];
+  paymentSafeId: string;
+  setPaymentSafeId: (id: string) => void;
   setSelectedWarehouseId: (warehouseId: string) => void;
   pairDevice: (pairingCode: string) => Promise<boolean>;
   openCashSession: (openingFloat: number) => Promise<boolean>;
@@ -88,6 +91,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [deviceContext, setDeviceContext] = useState<PosDeviceContext | null>(null);
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
+  const [paymentAccounts, setPaymentAccounts] = useState<PosPaymentAccount[]>([]);
+  const [paymentSafeId, setPaymentSafeId] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    const branchId = deviceContext?.terminal.branchId || currentBranchId;
+    setPaymentAccounts([]);
+    setPaymentSafeId('');
+    if (branchId) void posService.getPaymentAccounts(branchId).then((accounts) => {
+      if (cancelled) return;
+      setPaymentAccounts(accounts);
+      if (accounts.length === 1) setPaymentSafeId(accounts[0].id);
+    }).catch(() => { if (!cancelled) showError('تعذر تحميل حسابات التحصيل المصرفي'); });
+    return () => { cancelled = true; };
+  }, [currentBranchId, deviceContext?.terminal.branchId, showError]);
 
   const refreshDeviceContext = useCallback(async () => {
     try { setDeviceContext(await posService.getDeviceContext()); }
@@ -445,6 +462,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const effectiveBranchId = deviceContext?.terminal.branchId || currentBranchId;
+    if (paymentMethod !== PaymentMethod.Cash && grandTotal > 0 && !paymentAccounts.some((account) => account.id === paymentSafeId)) {
+      showWarning('حساب التحصيل غير محدد', 'اختر الحساب المصرفي الذي سيستقبل مبلغ البيع');
+      return false;
+    }
     if (!effectiveBranchId) {
       showWarning('الفرع غير محدد', 'حدد فرع نقطة البيع قبل إتمام العملية');
       return false;
@@ -471,6 +492,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         totalAmount: grandTotal,
         paidAmount: invoicePaidAmount,
         cashSessionId: paymentMethod === PaymentMethod.Cash ? deviceContext?.currentSession?.id : undefined,
+        paymentSafeId: paymentMethod !== PaymentMethod.Cash ? paymentSafeId : undefined,
         notes,
         items: cartItems.map((item) => ({
           productId: item.productId,
@@ -534,6 +556,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     cartItems,
     isLocked,
     isCheckingOut,
+    paymentSafeId,
+    paymentAccounts,
     paymentMethod,
     paidAmount,
     grandTotal,
@@ -583,6 +607,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deviceContext,
         warehouses,
         selectedWarehouseId,
+        paymentAccounts,
+        paymentSafeId,
+        setPaymentSafeId,
         setSelectedWarehouseId,
         pairDevice,
         openCashSession,

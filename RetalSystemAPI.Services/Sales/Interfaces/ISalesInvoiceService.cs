@@ -13,6 +13,7 @@ namespace RetalSystemAPI.Services.Sales.Interfaces;
 /// </summary>
 public interface ISalesInvoiceService
 {
+    Task<ServiceResult<SalesInvoiceResponseDto>> CreatePosAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default);
     /// <summary>
     /// جلب تفاصيل فاتورة مبيعات محددة بالمعرف مع بنودها وتفاصيل العميل والفرع والصالة.
     /// </summary>

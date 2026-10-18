@@ -17,6 +17,8 @@ export interface CashSessionInfo {
   status: number;
 }
 
+export interface PosPaymentAccount { id: string; name: string; branchId: string }
+
 export interface PosDeviceContext {
   terminal: { id: string; name: string; code: string; branchId: string; defaultCashDrawerName: string };
   currentSession?: CashSessionInfo;
@@ -35,6 +37,9 @@ interface CheckoutResponse {
 }
 
 export const posService = {
+  getPaymentAccounts(branchId: string): Promise<PosPaymentAccount[]> {
+    return apiClient.get<PosPaymentAccount[]>('pos-sales/payment-accounts', { branchId });
+  },
   claimDevice(tenantId: string, pairingCode: string) {
     return apiClient.post('pos-device/claim', { tenantId, pairingCode });
   },
@@ -137,7 +142,7 @@ export const posService = {
         throw new ApiError('يجب تحديد المستودع الذي ستُخصم منه مبيعات نقطة البيع', 400, 'WAREHOUSE_REQUIRED');
       }
 
-      const res = await apiClient.post<CheckoutResponse>('sales-invoices', payload);
+      const res = await apiClient.post<CheckoutResponse>('pos-sales', payload);
       return {
         invoiceNumber: res?.invoiceNumber || payload.invoiceNumber,
         id: res?.id || res?.invoiceId || '',
