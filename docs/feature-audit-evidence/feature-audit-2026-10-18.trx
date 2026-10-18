@@ -1,0 +1,458 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="31b29b25-251b-4a87-8f11-618d4478b8d2" name="Masoud@DESKTOP-8LNAG9S 2026-10-18 09:26:52" runUser="DESKTOP-8LNAG9S\Masoud" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-18T09:26:52.3487308+02:00" queuing="2026-10-18T09:26:52.3487312+02:00" start="2026-10-18T09:26:43.7219677+02:00" finish="2026-10-18T09:27:25.9595458+02:00" />
+  <TestSettings name="default" id="1f4e7d1f-46fa-49e8-8208-7e016e0f5fd0">
+    <Deployment runDeploymentRoot="Masoud_DESKTOP-8LNAG9S_2026-10-18_09_26_52" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="643ccea3-a586-43cd-9271-dcb9f4facf81" testId="c1de72ce-e6a6-94d0-fe24-80fa4a4c4fdc" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones" computerName="DESKTOP-8LNAG9S" duration="00:00:01.8559654" startTime="2026-10-18T09:27:16.0550104+02:00" endTime="2026-10-18T09:27:17.9107440+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="643ccea3-a586-43cd-9271-dcb9f4facf81">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Empty() Failure: Collection was not empty&#xD;
+Collection: [CustomerPhone { ContactName = null, CreatedAt = 2026-10-18T07:27:17.7957796, CreatedByUserId = "test-user", Customer = Customer { Address = null, Code = null, CreatedAt = 2026-10-18T07:27:17.7306004, CreatedByUserId = "test-user", CreditLimit = 0, ··· }, CustomerId = 38c85caf-73e3-4650-5d2e-08df2ce92d39, ··· }]</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 164&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 164&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 164&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="9f19f056-f098-4323-9695-15da6636f2ba" testId="30c893fd-6dde-a9af-46e9-18ea39e47a2b" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch" computerName="DESKTOP-8LNAG9S" duration="00:00:02.0098164" startTime="2026-10-18T09:27:14.0462543+02:00" endTime="2026-10-18T09:27:16.0538388+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9f19f056-f098-4323-9695-15da6636f2ba">
+      <Output>
+        <ErrorInfo>
+          <Message>Sale posted to Other branch using original branch storage</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 70&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 70&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 70&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="f84b14dc-9c3e-4457-87ba-9e4a24745579" testId="9fad6233-d481-c604-8a6a-de9ffa969f32" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms" computerName="DESKTOP-8LNAG9S" duration="00:00:00.6947006" startTime="2026-10-18T09:27:08.2903873+02:00" endTime="2026-10-18T09:27:08.9843569+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f84b14dc-9c3e-4457-87ba-9e4a24745579">
+      <Output>
+        <ErrorInfo>
+          <Message>Purchase forms use suppliers.filter(s =&gt; s.isActive), but supplier responses omit isActive</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 221&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 221&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="7905c782-f867-4ad8-829c-a8e669813ff6" testId="c306dd9f-7647-f61f-29db-620493138c93" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft" computerName="DESKTOP-8LNAG9S" duration="00:00:02.7383204" startTime="2026-10-18T09:27:11.3057733+02:00" endTime="2026-10-18T09:27:14.0435795+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7905c782-f867-4ad8-829c-a8e669813ff6">
+      <Output>
+        <ErrorInfo>
+          <Message>Accepted draft return; showroom stock=1, customer balance=-100.0000</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 38&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 38&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 38&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="96d22582-5c3e-4696-a9f7-49aae154a105" testId="7f19a9da-cecb-65f2-d9db-efceb2a1bb72" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list" computerName="DESKTOP-8LNAG9S" duration="00:00:02.0686225" startTime="2026-10-18T09:27:02.1085820+02:00" endTime="2026-10-18T09:27:04.1764483+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="96d22582-5c3e-4696-a9f7-49aae154a105">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Strings differ&#xD;
+             ↓ (pos 2)&#xD;
+Expected: "0922222222"&#xD;
+Actual:   "0911111111"&#xD;
+             ↑ (pos 2)</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 149&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 149&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 149&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="2110a95e-61b5-4934-9655-96f4e9b6c61f" testId="adb706f1-b32a-9e1a-e4d5-8eb08f3e6930" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable" computerName="DESKTOP-8LNAG9S" duration="00:00:02.0806668" startTime="2026-10-18T09:27:04.1779487+02:00" endTime="2026-10-18T09:27:06.2578775+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2110a95e-61b5-4934-9655-96f4e9b6c61f">
+      <Output>
+        <ErrorInfo>
+          <Message>Indebted customer was hidden from collection and global receivables</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 118&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 118&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 118&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="81927d56-bc7d-4592-82b2-99d6af899b9e" testId="4f6438b0-d091-d706-15b2-184dfb440bd7" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_showroom_must_not_create_showroom_stock_in_storage" computerName="DESKTOP-8LNAG9S" duration="00:00:03.5180687" startTime="2026-10-18T09:26:58.5896434+02:00" endTime="2026-10-18T09:27:02.1070017+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="81927d56-bc7d-4592-82b2-99d6af899b9e">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ&#xD;
+Expected: 0&#xD;
+Actual:   1</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_showroom_must_not_create_showroom_stock_in_storage() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 250&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="89eeacc8-9423-4925-a3db-2adda4b7d179" testId="94a9ee04-e1b3-95fe-45ba-8e70ddb04a0d" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom" computerName="DESKTOP-8LNAG9S" duration="00:00:02.2915663" startTime="2026-10-18T09:26:56.2989114+02:00" endTime="2026-10-18T09:26:58.5880450+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="89eeacc8-9423-4925-a3db-2adda4b7d179">
+      <Output>
+        <ErrorInfo>
+          <Message>GET created 1 storage rows in a showroom</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 95&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 95&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 95&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="5cefd460-8298-4565-a985-4914927036d4" testId="eec8f04d-2770-6fc0-8e2b-bb024768cc6c" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable" computerName="DESKTOP-8LNAG9S" duration="00:00:01.7926924" startTime="2026-10-18T09:27:19.9402442+02:00" endTime="2026-10-18T09:27:21.7321966+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5cefd460-8298-4565-a985-4914927036d4">
+      <Output>
+        <ErrorInfo>
+          <Message>Indebted supplier was hidden from payments and global payables</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 131&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 131&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 131&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="b881bf46-3c65-41c5-ab8e-2d16da06dee2" testId="cf3b4415-e96c-fab3-0fc8-e3531d27ec3a" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments" computerName="DESKTOP-8LNAG9S" duration="00:00:02.0274197" startTime="2026-10-18T09:27:17.9118353+02:00" endTime="2026-10-18T09:27:19.9389175+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b881bf46-3c65-41c5-ab8e-2d16da06dee2">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ&#xD;
+Expected: -20&#xD;
+Actual:   80.0000</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 188&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 188&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 188&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="aa0efb7b-1cfc-4104-81cd-b4df02901518" testId="43191b97-4b86-35a8-3ef2-271ae6951701" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage" computerName="DESKTOP-8LNAG9S" duration="00:00:01.9693754" startTime="2026-10-18T09:27:21.7334211+02:00" endTime="2026-10-18T09:27:23.7023080+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="aa0efb7b-1cfc-4104-81cd-b4df02901518">
+      <Output>
+        <ErrorInfo>
+          <Message>GET created 1 showroom rows in storage</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 105&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 105&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 105&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="713c62c3-491f-4c50-969e-28d1a9a865df" testId="ce1afa62-9813-7c8e-7bdb-2249cb98593d" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch" computerName="DESKTOP-8LNAG9S" duration="00:00:02.1656529" startTime="2026-10-18T09:27:23.7033527+02:00" endTime="2026-10-18T09:27:25.8689413+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="713c62c3-491f-4c50-969e-28d1a9a865df">
+      <Output>
+        <ErrorInfo>
+          <Message>Purchase posted to Other branch using original branch storage</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 85&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 85&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 85&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="60d7a984-f068-4cd1-aa44-ffdb946746a0" testId="f6de1e3f-c298-8abe-27e6-3cfc7a9ac78a" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments" computerName="DESKTOP-8LNAG9S" duration="00:00:07.7700673" startTime="2026-10-18T09:26:44.5021802+02:00" endTime="2026-10-18T09:26:52.2930001+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="60d7a984-f068-4cd1-aa44-ffdb946746a0">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ&#xD;
+Expected: -20&#xD;
+Actual:   80.0000</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 212&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 212&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 212&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="f2d8ab1b-56fa-43cd-b866-c6ebf5c09ab6" testId="c5a2ae71-4bb9-2a20-1d93-61da280bb408" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft" computerName="DESKTOP-8LNAG9S" duration="00:00:03.9999977" startTime="2026-10-18T09:26:52.3289015+02:00" endTime="2026-10-18T09:26:56.2957689+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f2d8ab1b-56fa-43cd-b866-c6ebf5c09ab6">
+      <Output>
+        <ErrorInfo>
+          <Message>Accepted draft return; storage stock=9, supplier balance=-10.0000</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 52&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 52&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 52&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="07ae3c30-05c9-4328-855c-6dbd15fd5e9c" testId="39361cb4-5a9f-c9f7-0f0c-7bb340a0c4da" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero" computerName="DESKTOP-8LNAG9S" duration="00:00:02.3190767" startTime="2026-10-18T09:27:08.9852118+02:00" endTime="2026-10-18T09:27:11.3043242+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="07ae3c30-05c9-4328-855c-6dbd15fd5e9c">
+      <Output>
+        <ErrorInfo>
+          <Message>InvalidRows=0; invalid price changed cost from 10 to 0.0000</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 238&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 238&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 238&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="0ed2ee36-f73e-41aa-91ce-a5fcc17f6773" testId="83f12d23-0d23-a04e-8ca4-022fb1d2abcc" testName="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_storage_must_not_create_storage_stock_in_showroom" computerName="DESKTOP-8LNAG9S" duration="00:00:02.0303584" startTime="2026-10-18T09:27:06.2592680+02:00" endTime="2026-10-18T09:27:08.2890234+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0ed2ee36-f73e-41aa-91ce-a5fcc17f6773">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ&#xD;
+Expected: 0&#xD;
+Actual:   1</Message>
+          <StackTrace>   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage) in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 269&#xD;
+   at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_storage_must_not_create_storage_stock_in_showroom() in C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs:line 244&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="adb706f1-b32a-9e1a-e4d5-8eb08f3e6930">
+      <Execution id="2110a95e-61b5-4934-9655-96f4e9b6c61f" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Customer_with_outstanding_balance_must_remain_collectable" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="f6de1e3f-c298-8abe-27e6-3cfc7a9ac78a">
+      <Execution id="60d7a984-f068-4cd1-aa44-ffdb946746a0" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Supplier_statement_must_compute_historical_balance_for_backdated_payments" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_showroom_must_not_create_showroom_stock_in_storage" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="4f6438b0-d091-d706-15b2-184dfb440bd7">
+      <Execution id="81927d56-bc7d-4592-82b2-99d6af899b9e" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Excel_import_without_showroom_must_not_create_showroom_stock_in_storage" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="94a9ee04-e1b3-95fe-45ba-8e70ddb04a0d">
+      <Execution id="89eeacc8-9423-4925-a3db-2adda4b7d179" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Storage_read_must_not_create_storage_records_in_a_showroom" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="39361cb4-5a9f-c9f7-0f0c-7bb340a0c4da">
+      <Execution id="07ae3c30-05c9-4328-855c-6dbd15fd5e9c" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Invalid_excel_price_must_not_overwrite_existing_cost_with_zero" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="9fad6233-d481-c604-8a6a-de9ffa969f32">
+      <Execution id="f84b14dc-9c3e-4457-87ba-9e4a24745579" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Supplier_list_must_expose_activity_used_by_purchase_forms" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="c5a2ae71-4bb9-2a20-1d93-61da280bb408">
+      <Execution id="f2d8ab1b-56fa-43cd-b866-c6ebf5c09ab6" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Purchase_return_must_reject_an_unposted_draft" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_storage_must_not_create_storage_stock_in_showroom" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="83f12d23-0d23-a04e-8ca4-022fb1d2abcc">
+      <Execution id="0ed2ee36-f73e-41aa-91ce-a5fcc17f6773" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Excel_import_without_storage_must_not_create_storage_stock_in_showroom" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="cf3b4415-e96c-fab3-0fc8-e3531d27ec3a">
+      <Execution id="b881bf46-3c65-41c5-ab8e-2d16da06dee2" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Customer_statement_must_compute_historical_balance_for_backdated_payments" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="43191b97-4b86-35a8-3ef2-271ae6951701">
+      <Execution id="aa0efb7b-1cfc-4104-81cd-b4df02901518" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Showroom_read_must_not_create_showroom_records_in_storage" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="30c893fd-6dde-a9af-46e9-18ea39e47a2b">
+      <Execution id="9f19f056-f098-4323-9695-15da6636f2ba" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Sales_invoice_must_use_a_warehouse_in_its_own_branch" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="eec8f04d-2770-6fc0-8e2b-bb024768cc6c">
+      <Execution id="5cefd460-8298-4565-a985-4914927036d4" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Supplier_with_outstanding_balance_must_remain_payable" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="c1de72ce-e6a6-94d0-fe24-80fa4a4c4fdc">
+      <Execution id="643ccea3-a586-43cd-9271-dcb9f4facf81" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Customer_update_with_empty_phone_list_must_clear_existing_phones" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="7f19a9da-cecb-65f2-d9db-efceb2a1bb72">
+      <Execution id="96d22582-5c3e-4696-a9f7-49aae154a105" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Supplier_update_must_persist_the_phone_list" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="ce1afa62-9813-7c8e-7bdb-2249cb98593d">
+      <Execution id="713c62c3-491f-4c50-969e-28d1a9a865df" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Purchase_invoice_must_use_a_warehouse_in_its_own_branch" />
+    </UnitTest>
+    <UnitTest name="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft" storage="c:\users\masoud\source\repos\retalsystemapi\tests\retalsystemapi.securitytests\bin\debug\net10.0\retalsystemapi.securitytests.dll" id="c306dd9f-7647-f61f-29db-620493138c93">
+      <Execution id="7905c782-f867-4ad8-829c-a8e669813ff6" />
+      <TestMethod codeBase="C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\bin\Debug\net10.0\RetalSystemAPI.SecurityTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests" name="Sales_return_must_reject_an_unposted_draft" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="c1de72ce-e6a6-94d0-fe24-80fa4a4c4fdc" executionId="643ccea3-a586-43cd-9271-dcb9f4facf81" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="30c893fd-6dde-a9af-46e9-18ea39e47a2b" executionId="9f19f056-f098-4323-9695-15da6636f2ba" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9fad6233-d481-c604-8a6a-de9ffa969f32" executionId="f84b14dc-9c3e-4457-87ba-9e4a24745579" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c306dd9f-7647-f61f-29db-620493138c93" executionId="7905c782-f867-4ad8-829c-a8e669813ff6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7f19a9da-cecb-65f2-d9db-efceb2a1bb72" executionId="96d22582-5c3e-4696-a9f7-49aae154a105" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="adb706f1-b32a-9e1a-e4d5-8eb08f3e6930" executionId="2110a95e-61b5-4934-9655-96f4e9b6c61f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4f6438b0-d091-d706-15b2-184dfb440bd7" executionId="81927d56-bc7d-4592-82b2-99d6af899b9e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="94a9ee04-e1b3-95fe-45ba-8e70ddb04a0d" executionId="89eeacc8-9423-4925-a3db-2adda4b7d179" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eec8f04d-2770-6fc0-8e2b-bb024768cc6c" executionId="5cefd460-8298-4565-a985-4914927036d4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cf3b4415-e96c-fab3-0fc8-e3531d27ec3a" executionId="b881bf46-3c65-41c5-ab8e-2d16da06dee2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="43191b97-4b86-35a8-3ef2-271ae6951701" executionId="aa0efb7b-1cfc-4104-81cd-b4df02901518" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ce1afa62-9813-7c8e-7bdb-2249cb98593d" executionId="713c62c3-491f-4c50-969e-28d1a9a865df" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6de1e3f-c298-8abe-27e6-3cfc7a9ac78a" executionId="60d7a984-f068-4cd1-aa44-ffdb946746a0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c5a2ae71-4bb9-2a20-1d93-61da280bb408" executionId="f2d8ab1b-56fa-43cd-b866-c6ebf5c09ab6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="39361cb4-5a9f-c9f7-0f0c-7bb340a0c4da" executionId="07ae3c30-05c9-4328-855c-6dbd15fd5e9c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="83f12d23-0d23-a04e-8ca4-022fb1d2abcc" executionId="0ed2ee36-f73e-41aa-91ce-a5fcc17f6773" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="16" executed="16" passed="0" failed="16" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.12)&#xD;
+[xUnit.net 00:00:00.10]   Discovering: RetalSystemAPI.SecurityTests&#xD;
+[xUnit.net 00:00:00.17]   Discovered:  RetalSystemAPI.SecurityTests&#xD;
+[xUnit.net 00:00:00.20]   Starting:    RetalSystemAPI.SecurityTests&#xD;
+[xUnit.net 00:00:08.01]       Assert.Equal() Failure: Values differ&#xD;
+[xUnit.net 00:00:08.01]       Expected: -20&#xD;
+[xUnit.net 00:00:08.01]       Actual:   80.0000&#xD;
+[xUnit.net 00:00:08.01]       Stack Trace:&#xD;
+[xUnit.net 00:00:08.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(212,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:08.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(212,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:08.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(212,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:08.01]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:12.01]       Accepted draft return; storage stock=9, supplier balance=-10.0000&#xD;
+[xUnit.net 00:00:12.01]       Stack Trace:&#xD;
+[xUnit.net 00:00:12.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(52,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:12.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(52,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:12.01]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(52,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:12.01]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:14.30]       GET created 1 storage rows in a showroom&#xD;
+[xUnit.net 00:00:14.30]       Stack Trace:&#xD;
+[xUnit.net 00:00:14.30]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(95,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom()&#xD;
+[xUnit.net 00:00:14.30]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(95,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom()&#xD;
+[xUnit.net 00:00:14.30]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(95,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom()&#xD;
+[xUnit.net 00:00:14.30]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:17.82]       Assert.Equal() Failure: Values differ&#xD;
+[xUnit.net 00:00:17.82]       Expected: 0&#xD;
+[xUnit.net 00:00:17.82]       Actual:   1&#xD;
+[xUnit.net 00:00:17.82]       Stack Trace:&#xD;
+[xUnit.net 00:00:17.82]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:17.82]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:17.82]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:17.82]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(250,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_showroom_must_not_create_showroom_stock_in_storage()&#xD;
+[xUnit.net 00:00:17.82]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:19.89]       Assert.Equal() Failure: Strings differ&#xD;
+[xUnit.net 00:00:19.89]                    ↓ (pos 2)&#xD;
+[xUnit.net 00:00:19.89]       Expected: "0922222222"&#xD;
+[xUnit.net 00:00:19.89]       Actual:   "0911111111"&#xD;
+[xUnit.net 00:00:19.89]                    ↑ (pos 2)&#xD;
+[xUnit.net 00:00:19.89]       Stack Trace:&#xD;
+[xUnit.net 00:00:19.89]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(149,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list()&#xD;
+[xUnit.net 00:00:19.89]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(149,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list()&#xD;
+[xUnit.net 00:00:19.89]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(149,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list()&#xD;
+[xUnit.net 00:00:19.89]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:21.97]       Indebted customer was hidden from collection and global receivables&#xD;
+[xUnit.net 00:00:21.97]       Stack Trace:&#xD;
+[xUnit.net 00:00:21.97]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(118,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable()&#xD;
+[xUnit.net 00:00:21.97]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(118,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable()&#xD;
+[xUnit.net 00:00:21.97]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(118,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable()&#xD;
+[xUnit.net 00:00:21.97]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:24.00]       Assert.Equal() Failure: Values differ&#xD;
+[xUnit.net 00:00:24.00]       Expected: 0&#xD;
+[xUnit.net 00:00:24.00]       Actual:   1&#xD;
+[xUnit.net 00:00:24.00]       Stack Trace:&#xD;
+[xUnit.net 00:00:24.00]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:24.00]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:24.00]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(269,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.CheckImportWarehouseType(Boolean missingStorage)&#xD;
+[xUnit.net 00:00:24.00]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(244,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_storage_must_not_create_storage_stock_in_showroom()&#xD;
+[xUnit.net 00:00:24.00]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:24.70]       Purchase forms use suppliers.filter(s =&gt; s.isActive), but supplier responses omit isActive&#xD;
+[xUnit.net 00:00:24.70]       Stack Trace:&#xD;
+[xUnit.net 00:00:24.70]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(221,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms()&#xD;
+[xUnit.net 00:00:24.70]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(221,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms()&#xD;
+[xUnit.net 00:00:24.70]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:27.02]       InvalidRows=0; invalid price changed cost from 10 to 0.0000&#xD;
+[xUnit.net 00:00:27.02]       Stack Trace:&#xD;
+[xUnit.net 00:00:27.02]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(238,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero()&#xD;
+[xUnit.net 00:00:27.02]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(238,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero()&#xD;
+[xUnit.net 00:00:27.02]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(238,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero()&#xD;
+[xUnit.net 00:00:27.02]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:29.76]       Accepted draft return; showroom stock=1, customer balance=-100.0000&#xD;
+[xUnit.net 00:00:29.76]       Stack Trace:&#xD;
+[xUnit.net 00:00:29.76]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(38,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:29.76]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(38,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:29.76]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(38,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft()&#xD;
+[xUnit.net 00:00:29.76]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:31.77]       Sale posted to Other branch using original branch storage&#xD;
+[xUnit.net 00:00:31.77]       Stack Trace:&#xD;
+[xUnit.net 00:00:31.77]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(70,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:31.77]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(70,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:31.77]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(70,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:31.77]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:33.62]       Assert.Empty() Failure: Collection was not empty&#xD;
+[xUnit.net 00:00:33.62]       Collection: [CustomerPhone { ContactName = null, CreatedAt = 2026-10-18T07:27:17.7957796, CreatedByUserId = "test-user", Customer = Customer { Address = null, Code = null, CreatedAt = 2026-10-18T07:27:17.7306004, CreatedByUserId = "test-user", CreditLimit = 0, ··· }, CustomerId = 38c85caf-73e3-4650-5d2e-08df2ce92d39, ··· }]&#xD;
+[xUnit.net 00:00:33.62]       Stack Trace:&#xD;
+[xUnit.net 00:00:33.62]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(164,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones()&#xD;
+[xUnit.net 00:00:33.62]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(164,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones()&#xD;
+[xUnit.net 00:00:33.62]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(164,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones()&#xD;
+[xUnit.net 00:00:33.62]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:35.65]       Assert.Equal() Failure: Values differ&#xD;
+[xUnit.net 00:00:35.65]       Expected: -20&#xD;
+[xUnit.net 00:00:35.65]       Actual:   80.0000&#xD;
+[xUnit.net 00:00:35.65]       Stack Trace:&#xD;
+[xUnit.net 00:00:35.65]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(188,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:35.65]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(188,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:35.65]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(188,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments()&#xD;
+[xUnit.net 00:00:35.65]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:37.45]       Indebted supplier was hidden from payments and global payables&#xD;
+[xUnit.net 00:00:37.45]       Stack Trace:&#xD;
+[xUnit.net 00:00:37.45]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(131,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable()&#xD;
+[xUnit.net 00:00:37.45]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(131,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable()&#xD;
+[xUnit.net 00:00:37.45]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(131,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable()&#xD;
+[xUnit.net 00:00:37.45]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:39.42]       GET created 1 showroom rows in storage&#xD;
+[xUnit.net 00:00:39.42]       Stack Trace:&#xD;
+[xUnit.net 00:00:39.42]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(105,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage()&#xD;
+[xUnit.net 00:00:39.42]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(105,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage()&#xD;
+[xUnit.net 00:00:39.42]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(105,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage()&#xD;
+[xUnit.net 00:00:39.42]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:41.58]       Purchase posted to Other branch using original branch storage&#xD;
+[xUnit.net 00:00:41.58]       Stack Trace:&#xD;
+[xUnit.net 00:00:41.58]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(85,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:41.58]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(85,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:41.58]         C:\Users\Masoud\source\repos\RetalSystemAPI\tests\RetalSystemAPI.SecurityTests\FeatureAuditReproductionTests.cs(85,0): at RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch()&#xD;
+[xUnit.net 00:00:41.58]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:41.59]   Finished:    RetalSystemAPI.SecurityTests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:26:52.2974453+02:00">
+        <Text>[xUnit.net 00:00:08.01]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_statement_must_compute_historical_balance_for_backdated_payments [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:26:56.2966221+02:00">
+        <Text>[xUnit.net 00:00:12.01]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_return_must_reject_an_unposted_draft [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:26:58.5884754+02:00">
+        <Text>[xUnit.net 00:00:14.30]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Storage_read_must_not_create_storage_records_in_a_showroom [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:02.1073834+02:00">
+        <Text>[xUnit.net 00:00:17.82]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_showroom_must_not_create_showroom_stock_in_storage [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:04.1769465+02:00">
+        <Text>[xUnit.net 00:00:19.89]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_update_must_persist_the_phone_list [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:06.2586402+02:00">
+        <Text>[xUnit.net 00:00:21.97]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_with_outstanding_balance_must_remain_collectable [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:08.2893587+02:00">
+        <Text>[xUnit.net 00:00:24.00]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Excel_import_without_storage_must_not_create_storage_stock_in_showroom [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:08.9846260+02:00">
+        <Text>[xUnit.net 00:00:24.70]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_list_must_expose_activity_used_by_purchase_forms [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:11.3049610+02:00">
+        <Text>[xUnit.net 00:00:27.02]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Invalid_excel_price_must_not_overwrite_existing_cost_with_zero [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:14.0439892+02:00">
+        <Text>[xUnit.net 00:00:29.76]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_return_must_reject_an_unposted_draft [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:16.0543968+02:00">
+        <Text>[xUnit.net 00:00:31.77]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Sales_invoice_must_use_a_warehouse_in_its_own_branch [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:17.9109876+02:00">
+        <Text>[xUnit.net 00:00:33.62]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_update_with_empty_phone_list_must_clear_existing_phones [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:19.9391587+02:00">
+        <Text>[xUnit.net 00:00:35.65]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Customer_statement_must_compute_historical_balance_for_backdated_payments [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:21.7324512+02:00">
+        <Text>[xUnit.net 00:00:37.45]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Supplier_with_outstanding_balance_must_remain_payable [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:23.7025775+02:00">
+        <Text>[xUnit.net 00:00:39.42]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Showroom_read_must_not_create_showroom_records_in_storage [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-8LNAG9S" outcome="Error" timestamp="2026-10-18T09:27:25.8693484+02:00">
+        <Text>[xUnit.net 00:00:41.58]     RetalSystemAPI.SecurityTests.FeatureAuditReproductionTests.Purchase_invoice_must_use_a_warehouse_in_its_own_branch [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

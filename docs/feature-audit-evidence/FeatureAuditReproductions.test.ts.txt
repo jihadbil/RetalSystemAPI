@@ -1,0 +1,46 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const transport = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
+vi.mock('./shared/services/apiClient', () => ({ apiClient: transport }));
+
+import { customerService } from './features/customers/services/customerService';
+import { supplierService } from './features/suppliers/services/supplierService';
+import { organizationService } from './features/organization/services/organizationService';
+
+// Expected API contracts: these probes expose current defects. Archived after execution.
+describe('feature audit contract reproductions', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('sends a customer phone in the backend Phones collection', async () => {
+    transport.post.mockResolvedValue({ id: 'customer' });
+    await customerService.create({ name: 'Customer', phone: '0912345678', creditLimit: 0, discountRate: 0, isActive: true });
+    expect(transport.post.mock.calls[0][1]).toMatchObject({ phones: [{ phoneNumber: '0912345678' }] });
+  });
+
+  it('sends a supplier phone in the backend Phones collection', async () => {
+    transport.post.mockResolvedValue({ id: 'supplier' });
+    await supplierService.create({ name: 'Supplier', phone: '0912345678', isActive: true });
+    expect(transport.post.mock.calls[0][1]).toMatchObject({ phones: [{ phoneNumber: '0912345678' }] });
+  });
+
+  it('maps customer PrimaryPhone from real summary responses', async () => {
+    transport.get.mockResolvedValue({ items: [{ id: 'customer', name: 'Customer', primaryPhone: '0912345678', phoneCount: 1 }] });
+    const result = await customerService.getPaged();
+    expect(result.items[0].phone).toBe('0912345678');
+  });
+
+  it('maps edited tenant UI fields back to the backend names', async () => {
+    transport.put.mockResolvedValue({});
+    await organizationService.updateTenantProfile({
+      id: 'tenant', name: 'Tenant', companyName: 'New commercial name',
+      phone: '0922222222', email: 'new@example.test', currencySymbol: 'NEW',
+      defaultTaxRate: 0, receiptHeader: 'New header', receiptFooter: 'New footer',
+      ...({ commercialName: 'Old commercial name', phoneNumber: '0911111111', contactEmail: 'old@example.test',
+        defaultCurrencySymbol: 'OLD', invoiceHeaderNote: 'Old header', invoiceFooterNote: 'Old footer' }),
+    });
+    expect(transport.put.mock.calls[0][1]).toMatchObject({
+      commercialName: 'New commercial name', phoneNumber: '0922222222', contactEmail: 'new@example.test',
+      defaultCurrencySymbol: 'NEW', invoiceHeaderNote: 'New header', invoiceFooterNote: 'New footer',
+    });
+  });
+});
