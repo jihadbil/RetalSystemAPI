@@ -10,6 +10,7 @@ interface PermissionsMatrixModalProps {
   isOpen: boolean;
   onClose: () => void;
   roleName: string | null;
+  roleId: string | null;
   roleLabel: string;
 }
 
@@ -17,26 +18,31 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
   isOpen,
   onClose,
   roleName,
+  roleId,
   roleLabel,
 }) => {
   const { showSuccess, showError } = useToast();
   const [permissions, setPermissions] = useState<PermissionDefinition[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadedRoleId, setLoadedRoleId] = useState<string | null>(null);
+  const protectedRole = roleName === 'Admin' || roleName === 'SuperAdmin';
 
   const load = useCallback(async () => {
-    if (!roleName) return;
+    if (!roleId) return;
+    setLoadedRoleId(null);
     try {
       const [allPerms, assigned] = await Promise.all([
         userService.getAllPermissions(),
-        userService.getRolePermissions(roleName),
+        userService.getRolePermissions(roleId),
       ]);
       setPermissions(allPerms);
       setSelectedKeys(assigned);
+      setLoadedRoleId(roleId);
     } catch {
       showError('فشل تحميل الصلاحيات');
     }
-  }, [roleName, showError]);
+  }, [roleId, showError]);
 
   useEffect(() => {
     if (isOpen && roleName) {
@@ -47,16 +53,18 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
   if (!roleName) return null;
 
   const toggleKey = (key: string) => {
-    if (roleName === 'Admin') return; // Admin has all
+    if (protectedRole || loadedRoleId !== roleId) return;
     setSelectedKeys((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   };
 
   const handleSave = async () => {
+    if (protectedRole || !roleId || loadedRoleId !== roleId) return;
     try {
       setIsSaving(true);
-      await userService.updateRolePermissions(roleName, selectedKeys);
+      if (!roleId) return;
+      await userService.updateRolePermissions(roleId, selectedKeys);
       showSuccess(`تم تحديث صلاحيات الدور "${roleLabel}" بنجاح`);
       onClose();
     } catch {
@@ -78,10 +86,10 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
       size="lg"
     >
       <div className="flex flex-col gap-4">
-        {roleName === 'Admin' && (
+        {protectedRole && (
           <div className="p-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold flex items-center gap-2">
             <IconShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
-            دور المدير العام (Admin) يمتلك وصولاً كاملاً غير قابل للتقييد لكافة موارد النظام تلقائياً.
+            صلاحيات هذا الدور محمية ويحددها النظام.
           </div>
         )}
 
@@ -95,7 +103,7 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
                 {permissions
                   .filter((p) => p.category === cat)
                   .map((p) => {
-                    const isChecked = selectedKeys.includes(p.key) || roleName === 'Admin';
+                    const isChecked = selectedKeys.includes(p.key);
                     return (
                       <label
                         key={p.key}
@@ -108,7 +116,7 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          disabled={roleName === 'Admin'}
+                          disabled={protectedRole || loadedRoleId !== roleId}
                           onChange={() => toggleKey(p.key)}
                           className="mt-0.5 w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500"
                         />
@@ -132,7 +140,7 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
             variant="primary"
             onClick={handleSave}
             isLoading={isSaving}
-            disabled={roleName === 'Admin'}
+            disabled={protectedRole || !roleId || loadedRoleId !== roleId}
           >
             <IconCheck className="w-4 h-4" />
             حفظ مصفوفة الصلاحيات

@@ -33,13 +33,15 @@ import {
 export const UsersView: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { hasPermission } = useAuth();
+  const canViewUsers = hasPermission('Permissions.Users.View');
   const canCreate = hasPermission(Permissions.Users.Create);
   const canEdit = hasPermission(Permissions.Users.Edit);
   const canDelete = hasPermission(Permissions.Users.Delete);
   const canResetPassword = hasPermission(Permissions.Users.ResetPassword);
   const canViewRoles = hasPermission(Permissions.Roles.View);
   const canManageRoles = hasPermission(Permissions.Roles.Manage);
-  const [activeTab, setActiveTab] = useState('users');
+  const [selectedTab, setActiveTab] = useState('users');
+  const activeTab = (selectedTab === 'users' ? canViewUsers : canViewRoles) ? selectedTab : canViewUsers ? 'users' : 'roles';
 
   // المستخدمين
   const [users, setUsers] = useState<UserItemDto[]>([]);
@@ -63,7 +65,7 @@ export const UsersView: React.FC = () => {
   const [userToReset, setUserToReset] = useState<UserItemDto | null>(null);
 
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<{ name: string; label: string } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<{ id: string; name: string; label: string } | null>(null);
 
   const [userToDelete, setUserToDelete] = useState<UserItemDto | null>(null);
 
@@ -96,9 +98,9 @@ export const UsersView: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadUsers();
-    loadRoles();
-  }, [loadUsers, loadRoles]);
+    if (canViewUsers) loadUsers();
+    if (canViewRoles) loadRoles();
+  }, [loadUsers, loadRoles, canViewUsers, canViewRoles]);
 
   const handleDelete = async () => {
     if (!userToDelete) return;
@@ -113,7 +115,7 @@ export const UsersView: React.FC = () => {
   };
 
   const tabs: TabItem[] = [
-    { id: 'users', label: 'المستخدمين والموظفين', icon: <IconUsers className="w-4 h-4" /> },
+    ...(canViewUsers ? [{ id: 'users', label: 'المستخدمين والموظفين', icon: <IconUsers className="w-4 h-4" /> }] : []),
     ...(canViewRoles
       ? [{ id: 'roles', label: 'الأدوار ومصفوفة الصلاحيات (RBAC)', icon: <IconShield className="w-4 h-4" /> }]
       : []),
@@ -345,7 +347,7 @@ export const UsersView: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSelectedRole({ name: r.name, label: r.label });
+                    setSelectedRole({ id: r.id, name: r.name, label: r.label });
                     setIsMatrixOpen(true);
                   }}
                 >
@@ -376,6 +378,7 @@ export const UsersView: React.FC = () => {
         isOpen={isMatrixOpen}
         onClose={() => setIsMatrixOpen(false)}
         roleName={selectedRole?.name || null}
+        roleId={selectedRole?.id || null}
         roleLabel={selectedRole?.label || ''}
       />
 
