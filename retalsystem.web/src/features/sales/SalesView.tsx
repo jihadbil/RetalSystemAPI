@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { salesService } from './services/salesService';
 import type { SalesInvoiceDto, SalesReturnDto } from './types/sales.types';
 import { InvoiceStatusLabels } from './types/sales.types';
@@ -29,12 +29,15 @@ import {
 
 export const SalesView: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const { hasPermission } = useAuth();
-  const canCreateInvoice = hasPermission(Permissions.SalesInvoices.Create);
+  const { hasPermission, currentBranchId, isCashier } = useAuth();
+  const canViewInvoices = hasPermission(Permissions.SalesInvoices.View);
+  const canCreateInvoice = !isCashier && hasPermission(Permissions.SalesInvoices.Create);
   const canCreateReturn = hasPermission(Permissions.SalesReturns.Create);
   const canViewReturns = hasPermission(Permissions.SalesReturns.View);
   const canPrint = hasPermission(Permissions.SalesInvoices.Print);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'returns'>('invoices');
+  const [selectedTab, setActiveTab] = useState<'invoices' | 'returns'>('invoices');
+  const activeTab = (selectedTab === 'invoices' ? canViewInvoices : canViewReturns)
+    ? selectedTab : canViewInvoices ? 'invoices' : 'returns';
 
   const [invoices, setInvoices] = useState<SalesInvoiceDto[]>([]);
   const [returns, setReturns] = useState<SalesReturnDto[]>([]);
@@ -43,7 +46,9 @@ export const SalesView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const pagination = usePagination({ initialPageSize: 10 });
-  const { page, pageSize, setTotalCount } = pagination;
+  const { page, pageSize, setTotalCount, resetPage } = pagination;
+  const loadVersion = useRef(0);
+  useEffect(() => { resetPage(); }, [currentBranchId, debouncedSearch, activeTab, resetPage]);
 
   // النوافذ المنبثقة
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -54,6 +59,7 @@ export const SalesView: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadSalesData = useCallback(async () => {
+    const version = ++loadVersion.current;
     setIsLoading(true);
     setLoadError(null);
     try {
@@ -62,28 +68,32 @@ export const SalesView: React.FC = () => {
           pageNumber: page,
           pageSize,
           search: debouncedSearch,
+          branchId: currentBranchId || undefined,
         });
+        if (version !== loadVersion.current) return;
         setInvoices(res.items);
         setTotalCount(res.totalCount);
       } else {
-        const rets = await salesService.getReturns();
+        const rets = await salesService.getReturns({ branchId: currentBranchId || undefined });
+        if (version !== loadVersion.current) return;
         setReturns(rets);
       }
     } catch (err: unknown) {
+      if (version !== loadVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات المبيعات';
       setLoadError(msg);
       showError('خطأ في تحميل المبيعات', msg);
     } finally {
-      setIsLoading(false);
+      if (version === loadVersion.current) setIsLoading(false);
     }
-  }, [activeTab, page, pageSize, setTotalCount, debouncedSearch, showError]);
+  }, [activeTab, page, pageSize, setTotalCount, debouncedSearch, showError, currentBranchId]);
 
   useEffect(() => {
     loadSalesData();
   }, [loadSalesData]);
 
   const tabs = [
-    { id: 'invoices', label: 'فواتير المبيعات', icon: <IconReceipt className="w-4 h-4" />, badge: pagination.totalCount },
+    ...(canViewInvoices ? [{ id: 'invoices', label: 'فواتير المبيعات', icon: <IconReceipt className="w-4 h-4" />, badge: pagination.totalCount }] : []),
     ...(canViewReturns
       ? [{ id: 'returns', label: 'مرتجعات المبيعات', icon: <IconArrowBackUp className="w-4 h-4" />, badge: returns.length }]
       : []),
