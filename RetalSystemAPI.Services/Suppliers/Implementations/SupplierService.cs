@@ -143,6 +143,12 @@ public class SupplierService : ISupplierService
 
         // نقل البيانات المحدثة من DTO إلى الكيان
         _mapper.Map(dto, supplier);
+        foreach (var phone in supplier.SupplierPhones.ToList())
+            _unitOfWork.Suppliers.HardDeletePhone(phone);
+        supplier.SupplierPhones = dto.Phones.Select(phone => new SupplierPhone
+        {
+            SupplierId = id, PhoneNumber = phone.PhoneNumber, Name = phone.Name
+        }).ToList();
         // ضمان ثبات معرف المورد الأصلي
         supplier.Id = id;
         // وسم الكيان للتحديث في المستودع

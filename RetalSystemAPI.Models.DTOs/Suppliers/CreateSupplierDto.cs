@@ -8,6 +8,7 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class CreateSupplierDto
 {
+    public bool IsActive { get; set; } = true;
     /// <summary>اسم المورد أو الشركة الموردة</summary>
     [Required(ErrorMessage = "اسم المورد مطلوب")]
     [MaxLength(200, ErrorMessage = "اسم المورد يجب أن لا يتجاوز 200 حرف")]

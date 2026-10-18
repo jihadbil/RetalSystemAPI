@@ -340,8 +340,10 @@ export const SuppliersView: React.FC = () => {
                           type="button"
                           title="تعديل بيانات المورد"
                           onClick={() => {
-                            setSupplierToEdit(s);
-                            setIsFormOpen(true);
+                            void supplierService.getById(s.id).then((details) => {
+                              setSupplierToEdit(details);
+                              setIsFormOpen(true);
+                            }).catch(() => showError('تعذر تحميل تفاصيل المورد للتعديل'));
                           }}
                           className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                         >

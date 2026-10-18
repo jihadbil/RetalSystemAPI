@@ -23,6 +23,7 @@ public class SupplierMappingProfile : Profile
 
         // تكوين تحويل كيان المورد إلى ناقل بيانات الملخص السريع للعرض في الجداول
         CreateMap<Supplier, SupplierSummaryDto>()
+            .ForMember(dest => dest.PrimaryPhone, opt => opt.MapFrom(src => src.SupplierPhones.Select(phone => phone.PhoneNumber).FirstOrDefault()))
             // احتساب إجمالي عدد الهواتف المسجلة للمورد
             .ForMember(dest => dest.PhoneCount, opt => opt.MapFrom(src => src.SupplierPhones.Count));
 
@@ -31,6 +32,7 @@ public class SupplierMappingProfile : Profile
 
         // تكوين تحويل ناقل بيانات تعديل المورد إلى كيان المورد
         CreateMap<UpdateSupplierDto, Supplier>(MemberList.None)
+            .ForMember(dest => dest.SupplierPhones, opt => opt.Ignore())
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للكيان
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 

@@ -47,6 +47,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
     if (supplierToEdit) {
       setFormData({
         name: supplierToEdit.name,
+        phones: supplierToEdit.phones,
         companyName: supplierToEdit.companyName || '',
         phone: supplierToEdit.phone || '',
         email: supplierToEdit.email || '',

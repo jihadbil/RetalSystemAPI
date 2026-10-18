@@ -8,6 +8,7 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class UpdateSupplierDto
 {
+    public bool IsActive { get; set; } = true;
     /// <summary>المعرف الفريد للمورد المطلوب تعديله</summary>
     [Required(ErrorMessage = "معرف المورد مطلوب")]
     public Guid Id { get; set; }

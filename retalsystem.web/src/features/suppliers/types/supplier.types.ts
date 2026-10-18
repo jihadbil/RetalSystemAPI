@@ -1,6 +1,7 @@
 // أنواع ونماذج الموردين وسندات الصرف وكشوفات الحساب
 
 export interface SupplierDto {
+  phones?: { phoneNumber: string; name?: string }[];
   id: string;
   name: string;
   companyName?: string;
