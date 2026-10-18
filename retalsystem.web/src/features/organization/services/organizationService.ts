@@ -23,6 +23,39 @@ interface BranchListResponse {
   items?: BranchApiDto[];
 }
 
+interface TenantApiDto extends Partial<TenantSettingsDto> {
+  id: string;
+  name: string;
+  commercialName?: string;
+  phoneNumber?: string;
+  contactEmail?: string;
+  defaultCurrencySymbol?: string;
+  commercialRegistrationNumber?: string;
+  invoiceHeaderNote?: string;
+  invoiceFooterNote?: string;
+}
+
+export const normalizeTenant = (data: TenantApiDto): TenantSettingsDto => ({
+  ...data, companyName: data.commercialName || data.name, phone: data.phoneNumber || '',
+  email: data.contactEmail || '', currencySymbol: data.defaultCurrencySymbol || 'د.ل',
+  commercialRegister: data.commercialRegistrationNumber || '', defaultTaxRate: data.defaultTaxRate ?? 0,
+  receiptHeader: data.invoiceHeaderNote || '', receiptFooter: data.invoiceFooterNote || '',
+});
+
+export function buildTenantPayload(data: Partial<TenantSettingsDto>) {
+  const { companyName, phone, email, currencySymbol, commercialRegister, receiptHeader, receiptFooter, ...rest } = data;
+  return {
+    ...rest,
+    ...(companyName !== undefined && { commercialName: companyName }),
+    ...(phone !== undefined && { phoneNumber: phone }),
+    ...(email !== undefined && { contactEmail: email.trim() || null }),
+    ...(currencySymbol !== undefined && { defaultCurrencySymbol: currencySymbol }),
+    ...(commercialRegister !== undefined && { commercialRegistrationNumber: commercialRegister }),
+    ...(receiptHeader !== undefined && { invoiceHeaderNote: receiptHeader }),
+    ...(receiptFooter !== undefined && { invoiceFooterNote: receiptFooter }),
+  };
+}
+
 export const organizationService = {
   // الفروع
   async getBranches(): Promise<BranchDto[]> {
@@ -97,7 +130,7 @@ export const organizationService = {
   // إعدادات المنشأة / المستأجر
   async getTenantSettings(): Promise<TenantSettingsDto> {
     try {
-      return await apiClient.get<TenantSettingsDto>('tenants/me');
+      return normalizeTenant(await apiClient.get<TenantApiDto>('tenants/me'));
     } catch (err) {
       console.error('[organizationService.getTenantSettings] Failed to fetch tenant settings:', err);
       throw err;
@@ -106,7 +139,7 @@ export const organizationService = {
 
   async updateTenantSettings(data: Partial<TenantSettingsDto>): Promise<TenantSettingsDto> {
     try {
-      return await apiClient.put<TenantSettingsDto>('tenants/me', data);
+      return normalizeTenant(await apiClient.put<TenantApiDto>('tenants/me', buildTenantPayload(data)));
     } catch (err) {
       console.error('[organizationService.updateTenantSettings] Failed to update tenant settings:', err);
       throw err;
