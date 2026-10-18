@@ -134,10 +134,10 @@ public class SalesReturnService : ISalesReturnService
             }
 
             // منع الإرجاع على فاتورة ملغاة
-            if (originalInvoice.Status == InvoiceStatus.Cancelled || originalInvoice.Status == InvoiceStatus.Voided)
+            if (originalInvoice.Status is not (InvoiceStatus.Pending or InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid))
             {
                 // إرجاع خطأ الفاتورة الملغاة
-                return ServiceResult<SalesReturnResponseDto>.Failure("لا يمكن إنشاء مرتجع على فاتورة ملغاة", ErrorCodes.ValidationError);
+                return ServiceResult<SalesReturnResponseDto>.Failure("يجب أن تكون الفاتورة الأصلية مرحلة وغير ملغاة", ErrorCodes.ValidationError);
             }
 
             // المرتجع يعود حصراً لنفس فرع ومستودع الفاتورة الأصلية

@@ -318,6 +318,7 @@ export const SalesView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ مرتجع المبيعات';
             showError('خطأ أثناء حفظ المرتجع', msg);
+            throw err;
           }
         }}
       />

@@ -145,10 +145,10 @@ public class PurchaseReturnService : IPurchaseReturnService
             }
 
             // منع إنشاء مرتجع على فاتورة ملغاة أو باطلة
-            if (originalInvoice.Status == InvoiceStatus.Cancelled || originalInvoice.Status == InvoiceStatus.Voided)
+            if (originalInvoice.Status is not (InvoiceStatus.Pending or InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid))
             {
                 // إرجاع خطأ عدم جواز الإرجاع على فاتورة ملغاة
-                return ServiceResult<PurchaseReturnResponseDto>.Failure("لا يمكن إنشاء مرتجع على فاتورة ملغاة", ErrorCodes.ValidationError);
+                return ServiceResult<PurchaseReturnResponseDto>.Failure("يجب أن تكون الفاتورة الأصلية مرحلة وغير ملغاة", ErrorCodes.ValidationError);
             }
 
             // الفرع يعود للفاتورة، أما المخزن المصدر فيحدده الطلب بعد تحويل البضاعة إليه عند الحاجة.

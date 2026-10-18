@@ -7,6 +7,11 @@ import { stockService } from '../../stock/services/stockService';
 import { customerService } from '../../customers/services/customerService';
 import { accountingService } from '../../accounting/services/accountingService';
 import { catalogService } from '../../catalog/services/catalogService';
+import { salesService } from '../services/salesService';
+import type { SalesInvoiceDto } from '../types/sales.types';
+import { salesReturnLines } from '../../../shared/utils/returnLines';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
+import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
 import { useAuth } from '../../../shared/context/AuthContext';
 import type { WarehouseDto } from '../../stock/types/stock.types';
 import type { CustomerDto } from '../../customers/types/customer.types';
@@ -21,6 +26,8 @@ interface SalesReturnModalProps {
 }
 
 interface ReturnItemState {
+  productBarCodeId?: string;
+  maxQuantity?: number;
   productId: string;
   productName: string;
   quantity: number;
@@ -29,8 +36,16 @@ interface ReturnItemState {
 }
 
 export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onClose, onSave }) => {
-  const { currentBranchId } = useAuth();
+  const { currentBranchId, hasPermission } = useAuth();
 
+  const [invoiceId, setInvoiceId] = useState('');
+  const [invoices, setInvoices] = useState<SalesInvoiceDto[]>([]);
+  const [originalInvoice, setOriginalInvoice] = useState<SalesInvoiceDto | null>(null);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const debouncedInvoiceSearch = useDebounce(invoiceSearch, 300);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+  const canReturnWithoutInvoice = hasPermission('Permissions.SalesReturns.ReturnWithoutInvoice');
+  const invoiceLines = originalInvoice ? salesReturnLines(originalInvoice) : [];
   const [returnNumber, setReturnNumber] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
@@ -53,6 +68,31 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { product: selectedProduct, barcodeId, setBarcodeId, error: barcodeError } = useProductBarcodes(invoiceId ? '' : selectedProductId, isOpen);
+  const needsBarcode = warehouses.find((w) => w.id === warehouseId)?.type === 1;
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void salesService.getInvoices({ pageNumber: 1, pageSize: 100, branchId: currentBranchId || undefined, search: debouncedInvoiceSearch || undefined })
+      .then((result) => { if (!cancelled) setInvoices(result.items.filter((invoice) => [1, 2, 3].includes(invoice.status))); })
+      .catch(() => { if (!cancelled) setError('تعذر تحميل الفواتير الأصلية'); });
+    return () => { cancelled = true; };
+  }, [isOpen, currentBranchId, debouncedInvoiceSearch]);
+  useEffect(() => {
+    setItems([]); setSelectedProductId(''); setOriginalInvoice(null);
+    if (!isOpen || !invoiceId) { setLoadingInvoice(false); return; }
+    let cancelled = false;
+    setLoadingInvoice(true);
+    void salesService.getInvoiceById(invoiceId).then((invoice) => {
+      if (cancelled) return;
+      if (![1, 2, 3].includes(invoice.status)) throw new Error('الفاتورة غير مرحلة أو ملغاة');
+      setOriginalInvoice(invoice); setWarehouseId(invoice.warehouseId || ''); setCustomerId(invoice.customerId || '');
+    }).catch((err: unknown) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : 'تعذر تحميل الفاتورة');
+    }).finally(() => { if (!cancelled) setLoadingInvoice(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, invoiceId]);
+
   useEffect(() => {
     if (isOpen) {
       const now = new Date();
@@ -60,6 +100,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
       const rand = Math.floor(100 + Math.random() * 900);
       setReturnNumber(`SRTN-${dateStr.replace(/-/g, '')}-${rand}`);
       setReturnDate(dateStr);
+      setInvoiceId(''); setOriginalInvoice(null); setInvoiceSearch('');
       setItems([]);
       setSelectedProductId('');
       setNotes('');
@@ -69,14 +110,14 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
       setIsLoadingData(true);
       Promise.all([
-        stockService.getWarehouses(),
+        stockService.getWarehouses(currentBranchId || undefined),
         customerService.getAll(),
-        accountingService.getSafes(),
+        accountingService.getSafes(currentBranchId || undefined, undefined, true),
         catalogService.getProducts(),
       ])
         .then(([whs, custs, sfs, prods]) => {
-          setWarehouses(whs.filter((w) => w.isActive));
-          if (whs.length > 0) setWarehouseId(whs[0].id);
+          const availableWarehouses = whs.filter((w) => w.isActive);
+          setWarehouses(availableWarehouses); setWarehouseId(availableWarehouses[0]?.id || '');
 
           setCustomers(custs.filter((c) => c.isActive));
           if (custs.length > 0) setCustomerId(custs[0].id);
@@ -93,14 +134,22 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
         })
         .finally(() => setIsLoadingData(false));
     }
-  }, [isOpen]);
+  }, [isOpen, currentBranchId]);
 
   const handleAddItem = () => {
     if (!selectedProductId) return;
+    if (invoiceId) {
+      const line = invoiceLines.find((line) => line.key === selectedProductId);
+      if (!line || items.some((item) => item.productId === line.productId && item.productBarCodeId === line.productBarCodeId)) return;
+      setItems((previous) => [...previous, { ...line, maxQuantity: line.quantity, quantity: 1 }]);
+      setSelectedProductId(''); setError(null); return;
+    }
+    if (!canReturnWithoutInvoice) { setError('اختر الفاتورة الأصلية'); return; }
+    if (needsBarcode && !barcodeId) { setError('اختر باركود الصنف'); return; }
     const prod = products.find((p) => p.id === selectedProductId);
     if (!prod) return;
 
-    if (items.some((i) => i.productId === prod.id)) {
+    if (items.some((i) => i.productId === prod.id && i.productBarCodeId === (needsBarcode ? barcodeId : undefined))) {
       setError('هذا الصنف مضاف بالفعل في قائمة المرتجع');
       return;
     }
@@ -109,6 +158,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
       ...prev,
       {
         productId: prod.id,
+        productBarCodeId: needsBarcode ? barcodeId : undefined,
         productName: prod.name,
         quantity: 1,
         unitPrice: prod.salePrice || 0,
@@ -133,6 +183,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loadingInvoice || invoiceId && !originalInvoice || !invoiceId && !canReturnWithoutInvoice) { setError('اختر فاتورة أصلية صالحة وانتظر تحميل بنودها'); return; }
     if (!warehouseId) {
       setError('يرجى تحديد المستودع المستلم للبضاعة المرتجعة');
       return;
@@ -142,7 +193,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
       return;
     }
     for (const item of items) {
-      if (item.quantity <= 0) {
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0 || item.maxQuantity !== undefined && item.quantity > item.maxQuantity) {
         setError(`الكمية للصنف ${item.productName} يجب أن تكون أكبر من صفر`);
         return;
       }
@@ -156,18 +207,20 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
     setError(null);
     try {
       const payload = {
+        originalInvoiceId: invoiceId || undefined,
         returnNumber,
         returnDate: new Date(returnDate).toISOString(),
-        branchId: currentBranchId || warehouses.find((w) => w.id === warehouseId)?.branchId,
+        branchId: originalInvoice?.branchId || currentBranchId || warehouses.find((w) => w.id === warehouseId)?.branchId,
         warehouseId,
         customerId: customerId || undefined,
-        refundedAmount: totalAmount,
+        refundedAmount: paymentMethod === 4 ? 0 : originalInvoice ? undefined : totalAmount,
         paymentMethod: Number(paymentMethod),
         refundSafeId: refundSafeId || undefined,
         reason: Number(reason),
         notes: notes.trim() || undefined,
         items: items.map((i) => ({
           productId: i.productId,
+          productBarCodeId: i.productBarCodeId,
           quantity: Number(i.quantity),
           unitPrice: Number(i.unitPrice),
           notes: i.notes?.trim() || undefined,
@@ -201,7 +254,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
             size="md"
             onClick={handleSubmit}
             isLoading={isSubmitting}
-            disabled={isLoadingData || items.length === 0}
+            disabled={isLoadingData || loadingInvoice || !!invoiceId && !originalInvoice || !invoiceId && !canReturnWithoutInvoice || items.length === 0}
           >
             اعتماد مرتجع المبيعات
           </Button>
@@ -215,6 +268,13 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
           </div>
         )}
 
+        <Input label="البحث عن الفاتورة الأصلية" value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} placeholder="رقم الفاتورة..." />
+        <Select label="الفاتورة الأصلية" value={invoiceId} onChange={(e) => { setInvoiceId(e.target.value); setError(null); }} options={[
+          { value: '', label: canReturnWithoutInvoice ? 'دون فاتورة أصلية' : '-- اختر الفاتورة الأصلية --' },
+          ...(originalInvoice && !invoices.some((invoice) => invoice.id === originalInvoice.id) ? [{ value: originalInvoice.id, label: originalInvoice.invoiceNumber }] : []),
+          ...invoices.map((invoice) => ({ value: invoice.id, label: `${invoice.invoiceNumber} — ${invoice.customerName || ''}` })),
+        ]} />
+        {originalInvoice && <p className="text-xs text-slate-500">تُحتسب القيمة النهائية والكميات المتبقية بعد المرتجعات السابقة في الخادم وفق الفاتورة الأصلية.</p>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
             label="رقم المرتجع *"
@@ -234,6 +294,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
           <Select
             label="المستودع / الصالة المستلمة *"
+            disabled={!!invoiceId}
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
             options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
@@ -244,9 +305,10 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Select
             label="العميل"
+            disabled={!!invoiceId}
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            options={[
+            options={originalInvoice ? [{ value: originalInvoice.customerId || '', label: originalInvoice.customerName || 'عميل نقدي' }] : [
               { value: '', label: 'عميل عام / نقدي' },
               ...customers.map((c) => ({ value: c.id, label: c.name })),
             ]}
@@ -271,8 +333,8 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
             onChange={(e) => setPaymentMethod(Number(e.target.value))}
             options={[
               { value: 1, label: 'نقداً (من الخزينة)' },
-              { value: 2, label: 'بطاقة مصرفية' },
-              { value: 3, label: 'تحويل مصرفي' },
+              { value: 3, label: 'بطاقة مصرفية' },
+              { value: 2, label: 'تحويل مصرفي' },
               { value: 4, label: 'آجل / تخفيض رصيد العميل' },
             ]}
           />
@@ -320,10 +382,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
                 onChange={(e) => setSelectedProductId(e.target.value)}
                 options={[
                   { value: '', label: '-- اختر الصنف لإضافته للمرتجع --' },
-                  ...products.map((p) => ({
-                    value: p.id,
-                    label: `${p.name} - ${p.salePrice} د.ل`,
-                  })),
+                  ...(originalInvoice ? invoiceLines.map((line) => ({ value: line.key, label: `${line.productName} — ${line.productBarCodeId || ''} (الكمية الأصلية: ${line.quantity})` })) : products.map((p) => ({ value: p.id, label: p.name }))),
                 ]}
               />
             </div>
@@ -338,6 +397,11 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
             </Button>
           </div>
 
+          {!invoiceId && needsBarcode && selectedProduct && <Select label="باركود الصنف" value={barcodeId} onChange={(e) => setBarcodeId(e.target.value)} options={[
+            { value: '', label: '-- اختر الباركود --' },
+            ...(selectedProduct.barCodes || []).map((barcode) => ({ value: barcode.id || "", label: `${barcode.title || ''} ${barcode.barCode}` })),
+          ]} />}
+          {barcodeError && <p className="text-xs text-rose-600">{barcodeError}</p>}
           {items.length > 0 && (
             <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
               <table className="w-full text-xs text-right">
@@ -353,12 +417,14 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {items.map((item, idx) => (
-                    <tr key={item.productId} className="hover:bg-slate-50/50">
+                    <tr key={`${item.productId}:${item.productBarCodeId || ""}`} className="hover:bg-slate-50/50">
                       <td className="p-2.5 font-semibold text-slate-800">{item.productName}</td>
                       <td className="p-2">
                         <Input
                           type="number"
                           min="1"
+                          step="1"
+                          max={item.maxQuantity}
                           value={item.quantity}
                           onChange={(e) =>
                             handleItemChange(idx, 'quantity', Math.max(1, Number(e.target.value)))
@@ -371,6 +437,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
                           type="number"
                           step="0.01"
                           min="0"
+                          readOnly
                           value={item.unitPrice}
                           onChange={(e) =>
                             handleItemChange(idx, 'unitPrice', Math.max(0, Number(e.target.value)))

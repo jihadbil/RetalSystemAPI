@@ -470,6 +470,7 @@ export const PurchaseView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ مرتجع المشتريات';
             showError('خطأ أثناء حفظ المرتجع', msg);
+            throw err;
           }
         }}
       />
