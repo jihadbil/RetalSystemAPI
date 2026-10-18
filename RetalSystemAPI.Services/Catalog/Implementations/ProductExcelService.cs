@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Catalog;
 using RetalSystemAPI.Models.DTOs.Catalog.Product;
+using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Models.Warehouses;
 using RetalSystemAPI.Services.Catalog.Interfaces;
@@ -336,6 +337,15 @@ public class ProductExcelService : IProductExcelService
                     rowVal.SalePrice = salePrice;
                     rowVal.ShowroomQuantity = showQty;
                     rowVal.StorageQuantity = storeQty;
+                    if (NumericError(costStr, saleStr, showQtyStr, storeQtyStr,
+                        GetCellValue(ws, r, colMap.MinStockCol), GetCellValue(ws, r, colMap.ConversionFactorCol)) is { } numericError)
+                    {
+                        rowVal.Status = RowValidationStatus.Error;
+                        rowVal.Message = numericError;
+                        result.InvalidRows++;
+                        result.Rows.Add(rowVal);
+                        continue;
+                    }
                     // التحقق من الحقول الإلزامية
                     if (string.IsNullOrWhiteSpace(name))
                     {
@@ -533,6 +543,14 @@ public class ProductExcelService : IProductExcelService
                             UnitName = "حبة",
                             Message = extraMsg
                         };
+                        if (NumericError(c3, c4) is { } numericError)
+                        {
+                            rowVal.Status = RowValidationStatus.Error;
+                            rowVal.Message = numericError;
+                            result.InvalidRows++;
+                            result.Rows.Add(rowVal);
+                            continue;
+                        }
                         if (productNameMap.ContainsKey(name))
                         {
                             rowVal.Action = options.ImportMode == ProductImportMode.InsertOnly ? RowActionType.Skip : RowActionType.Update;
@@ -603,19 +621,27 @@ public class ProductExcelService : IProductExcelService
             bool isSingleSheet = DetectIfSingleSheet(workbook);
             // جلب المخازن والصالات لتهيئة المخزون
             var showrooms = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Show, ct);
-            if (showrooms.Count == 0)
-            {
-                showrooms = await _unitOfWork.Warehouses.ListLookupAsync(ct);
-            }
+            showrooms = showrooms.Where(w => w.IsActive).ToList();
 
-            var targetShowroom = options.DefaultShowroomWarehouseId.HasValue ? showrooms.FirstOrDefault(s => s.Id == options.DefaultShowroomWarehouseId.Value) ?? showrooms.FirstOrDefault() : showrooms.FirstOrDefault();
+            var targetShowroom = options.DefaultShowroomWarehouseId.HasValue ? showrooms.FirstOrDefault(s => s.Id == options.DefaultShowroomWarehouseId.Value) : showrooms.FirstOrDefault();
             var storageWarehouses = await _unitOfWork.Warehouses.GetByTypeAsync(WarehouseType.Storge, ct);
-            if (storageWarehouses.Count == 0)
-            {
-                storageWarehouses = await _unitOfWork.Warehouses.ListLookupAsync(ct);
-            }
+            storageWarehouses = storageWarehouses.Where(w => w.IsActive).ToList();
 
-            var targetStorageWh = options.DefaultStorageWarehouseId.HasValue ? storageWarehouses.FirstOrDefault(s => s.Id == options.DefaultStorageWarehouseId.Value) ?? storageWarehouses.FirstOrDefault() : storageWarehouses.FirstOrDefault();
+            var targetStorageWh = options.DefaultStorageWarehouseId.HasValue ? storageWarehouses.FirstOrDefault(s => s.Id == options.DefaultStorageWarehouseId.Value) : storageWarehouses.FirstOrDefault();
+            if (options.DefaultShowroomWarehouseId.HasValue && targetShowroom is null ||
+                options.DefaultStorageWarehouseId.HasValue && targetStorageWh is null)
+                return ServiceResult<ProductImportResultDto>.Failure("مستودع الاستيراد المحدد غير متاح أو نوعه غير صحيح", ErrorCodes.ValidationError);
+            if (isSingleSheet)
+            {
+                var sheet = workbook.Worksheets.First();
+                var columns = DetectSingleSheetColumns(sheet);
+                for (var row = 2; row <= (sheet.LastRowUsed()?.RowNumber() ?? 1); row++)
+                {
+                    if (targetShowroom is null && int.TryParse(GetCellValue(sheet, row, columns.ShowroomQtyCol), out var showQuantity) && showQuantity > 0 ||
+                        targetStorageWh is null && int.TryParse(GetCellValue(sheet, row, columns.StorageQtyCol), out var storageQuantity) && storageQuantity > 0)
+                        return ServiceResult<ProductImportResultDto>.Failure("يجب توفير مستودع نشط من النوع المناسب للأرصدة الافتتاحية", ErrorCodes.ValidationError);
+                }
+            }
             // بدء معاملة مالية متكاملة لضمان سلامة العمليات
             await _unitOfWork.BeginTransactionAsync(ct);
             if (isSingleSheet)
@@ -781,6 +807,11 @@ public class ProductExcelService : IProductExcelService
             string desc = GetCellValue(ws, r, colMap.DescriptionCol);
             if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(barcode))
                 continue;
+            if (NumericError(costStr, saleStr, showQtyStr, storeQtyStr, minStockStr, convStr) is { } numericError)
+            {
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, ErrorReason = numericError });
+                continue;
+            }
             decimal.TryParse(costStr, out var costPrice);
             decimal.TryParse(saleStr, out var salePrice);
             int.TryParse(convStr, out var convFactor);
@@ -874,8 +905,8 @@ public class ProductExcelService : IProductExcelService
 
                 // تحديث بيانات الصنف
                 targetProduct.Name = name;
-                targetProduct.CostPrice = costPrice;
-                targetProduct.SalePrice = salePrice;
+                if (!string.IsNullOrWhiteSpace(costStr)) targetProduct.CostPrice = costPrice;
+                if (!string.IsNullOrWhiteSpace(saleStr)) targetProduct.SalePrice = salePrice;
                 targetProduct.CategoryId = finalCategory.Id;
                 if (!string.IsNullOrWhiteSpace(desc))
                     targetProduct.Description = desc;
@@ -1147,6 +1178,11 @@ public class ProductExcelService : IProductExcelService
                 continue;
             string? rawProdIdCode = col1;
             string prodName = string.IsNullOrWhiteSpace(col2) ? col1 : col2;
+            if (NumericError(col3, col4) is { } numericError)
+            {
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = col1, Name = prodName, ErrorReason = numericError });
+                continue;
+            }
             decimal.TryParse(col3, out var costPrice);
             decimal.TryParse(col4, out var salePrice);
             string catInputStr = col5;
@@ -1187,8 +1223,8 @@ public class ProductExcelService : IProductExcelService
                 if (options.ImportMode != ProductImportMode.InsertOnly)
                 {
                     targetProduct.Name = prodName;
-                    targetProduct.CostPrice = costPrice;
-                    targetProduct.SalePrice = salePrice;
+                    if (!string.IsNullOrWhiteSpace(col3)) targetProduct.CostPrice = costPrice;
+                    if (!string.IsNullOrWhiteSpace(col4)) targetProduct.SalePrice = salePrice;
                     targetProduct.CategoryId = finalCategoryId;
                     result.ProductsImported++;
                 }
@@ -1511,6 +1547,20 @@ public class ProductExcelService : IProductExcelService
                 return candidate;
             }
         }
+    }
+
+    private static string? NumericError(string cost, string sale, string? showroom = null,
+        string? storage = null, string? minimum = null, string? conversion = null)
+    {
+        foreach (var text in new[] { cost, sale })
+            if (!string.IsNullOrWhiteSpace(text) && (!decimal.TryParse(text, out var price) || price < 0 || price > MoneyAmountAttribute.Maximum || decimal.Round(price, 4) != price))
+                return "السعر يجب أن يكون رقماً غير سالب ضمن الحدود المسموحة وبأربع منازل عشرية كحد أقصى";
+        foreach (var text in new[] { showroom, storage, minimum })
+            if (!string.IsNullOrWhiteSpace(text) && (!int.TryParse(text, out var quantity) || quantity < 0))
+                return "الكميات وحد الطلب يجب أن تكون أعداداً صحيحة غير سالبة ضمن الحدود المسموحة";
+        if (!string.IsNullOrWhiteSpace(conversion) && (!int.TryParse(conversion, out var factor) || factor <= 0))
+            return "معامل التحويل يجب أن يكون عدداً صحيحاً موجباً";
+        return null;
     }
 
     private bool DetectIfSingleSheet(IXLWorkbook workbook)
