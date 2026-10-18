@@ -42,6 +42,7 @@ import {
 export const AccountingView: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { currentBranchId, hasPermission } = useAuth();
+  const canViewSafes = hasPermission(Permissions.Safes.View);
   const canCreateSafe = hasPermission(Permissions.Safes.Create);
   const canEditSafe = hasPermission(Permissions.Safes.Edit);
   const canTransfer = hasPermission(Permissions.Safes.Transfer);
@@ -49,7 +50,8 @@ export const AccountingView: React.FC = () => {
   const canViewExpenses = hasPermission(Permissions.Expenses.View);
   const canCreateExpense = hasPermission(Permissions.Expenses.Create);
   const canDeleteExpense = hasPermission(Permissions.Expenses.Delete);
-  const [activeTab, setActiveTab] = useState('safes');
+  const [selectedTab, setActiveTab] = useState('safes');
+  const activeTab = (selectedTab === 'expenses' ? canViewExpenses : canViewSafes) ? selectedTab : canViewSafes ? 'safes' : 'expenses';
 
   // بيانات الخزائن
   const [safes, setSafes] = useState<SafeDto[]>([]);
@@ -87,11 +89,9 @@ export const AccountingView: React.FC = () => {
     try {
       setIsLoadingSafes(true);
       setAccountingError(null);
-      const data = await accountingService.getSafes();
+      const data = await accountingService.getSafes(currentBranchId || undefined);
       setSafes(data);
-      if (data.length > 0 && !selectedSafeForTrx) {
-        setSelectedSafeForTrx(data[0].id);
-      }
+      if (!data.some((safe) => safe.id === selectedSafeForTrx)) setSelectedSafeForTrx(data[0]?.id || '');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات الخزائن';
       setAccountingError(msg);
@@ -99,13 +99,13 @@ export const AccountingView: React.FC = () => {
     } finally {
       setIsLoadingSafes(false);
     }
-  }, [selectedSafeForTrx, showError]);
+  }, [selectedSafeForTrx, showError, currentBranchId]);
 
   const loadExpenses = useCallback(async () => {
     try {
       setIsLoadingExpenses(true);
       const [expResult, cats] = await Promise.all([
-        accountingService.getExpenses(1, 20, selectedCategory || undefined, undefined, debouncedExpenseSearch),
+        accountingService.getExpenses(1, 20, selectedCategory || undefined, undefined, debouncedExpenseSearch, currentBranchId || undefined),
         accountingService.getExpenseCategories(),
       ]);
       setExpenses(expResult.items);
@@ -117,7 +117,7 @@ export const AccountingView: React.FC = () => {
     } finally {
       setIsLoadingExpenses(false);
     }
-  }, [selectedCategory, debouncedExpenseSearch, showError]);
+  }, [selectedCategory, debouncedExpenseSearch, showError, currentBranchId]);
 
   const loadTransactions = useCallback(async () => {
     if (!selectedSafeForTrx) return;
@@ -134,18 +134,18 @@ export const AccountingView: React.FC = () => {
   }, [selectedSafeForTrx, showError]);
 
   const loadTerminals = useCallback(async () => {
-    try { setIsLoadingTerminals(true); setTerminals(await accountingService.getPosTerminals()); }
+    try { setIsLoadingTerminals(true); setTerminals((await accountingService.getPosTerminals()).filter((terminal) => !currentBranchId || terminal.branchId === currentBranchId)); }
     catch (err) { showError('خطأ في نقاط البيع', err instanceof Error ? err.message : 'تعذر تحميل نقاط البيع'); }
     finally { setIsLoadingTerminals(false); }
-  }, [showError]);
+  }, [showError, currentBranchId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadSafes();
+      if (canViewSafes) void loadSafes();
       if (canViewExpenses) void loadExpenses();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [canViewExpenses, loadSafes, loadExpenses]);
+  }, [canViewSafes, canViewExpenses, loadSafes, loadExpenses]);
 
   useEffect(() => {
     if (activeTab === 'transactions' && selectedSafeForTrx) {
@@ -165,12 +165,14 @@ export const AccountingView: React.FC = () => {
   const totalExpensesAmount = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
 
   const tabs: TabItem[] = [
-    { id: 'safes', label: 'الخزائن والحسابات المصرفية', icon: <IconVault className="w-4 h-4" /> },
+    ...(canViewSafes ? [{ id: 'safes', label: 'الخزائن والحسابات المصرفية', icon: <IconVault className="w-4 h-4" /> }] : []),
     ...(canViewExpenses
       ? [{ id: 'expenses', label: 'سجل المصروفات والنفقات', icon: <IconReceipt className="w-4 h-4" /> }]
       : []),
-    { id: 'transactions', label: 'كشف حركات الصندوق', icon: <IconArrowsExchange className="w-4 h-4" /> },
-    { id: 'terminals', label: 'نقاط البيع والأدراج', icon: <IconDeviceDesktop className="w-4 h-4" /> },
+    ...(canViewSafes ? [
+      { id: 'transactions', label: 'كشف حركات الصندوق', icon: <IconArrowsExchange className="w-4 h-4" /> },
+      { id: 'terminals', label: 'نقاط البيع والأدراج', icon: <IconDeviceDesktop className="w-4 h-4" /> },
+    ] : []),
   ];
 
   return (

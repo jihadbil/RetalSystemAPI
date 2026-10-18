@@ -215,13 +215,15 @@ export const accountingService = {
     pageSize = 10,
     categoryId?: string,
     safeId?: string,
-    search?: string
+    search?: string,
+    branchId?: string
   ): Promise<PagedResult<ExpenseDto>> {
     try {
       const params: Record<string, string | number> = { pageNumber, pageSize };
       if (categoryId) params.expenseCategoryId = categoryId;
       if (safeId) params.safeId = safeId;
       if (search) params.searchTerm = search;
+      if (branchId) params.branchId = branchId;
 
       return await apiClient.get<PagedResult<ExpenseDto>>('expenses', params);
     } catch (err) {
