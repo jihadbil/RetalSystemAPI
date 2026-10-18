@@ -3,6 +3,9 @@ import type { CustomerDto, CustomerStatementDto } from '../types/customer.types'
 import type { PagedResult } from '../../../shared/types/api.types';
 
 export interface CreateCustomerRequest {
+  code?: string;
+  type?: number;
+  phones?: CustomerDto['phones'];
   name: string;
   phone: string;
   email?: string;
@@ -34,6 +37,27 @@ export interface CreateCustomerAdjustmentRequest {
   notes?: string;
 }
 
+interface CustomerApiDto extends CustomerDto { primaryPhone?: string }
+
+export const normalizeCustomer = (data: CustomerApiDto): CustomerDto => ({
+  ...data,
+  phone: data.primaryPhone || data.phones?.find((p) => p.isDefault)?.phoneNumber || data.phones?.[0]?.phoneNumber || data.phone || '',
+});
+
+export function buildCustomerPayload(data: CreateCustomerRequest) {
+  const phones = (data.phones || []).map((phone) => ({ ...phone }));
+  const primary = Math.max(0, phones.findIndex((phone) => phone.isDefault));
+  if (data.phone.trim()) {
+    if (phones.length) phones[primary].phoneNumber = data.phone.trim();
+    else phones.push({ phoneNumber: data.phone.trim(), isDefault: true });
+  } else if (phones.length) phones.splice(primary, 1);
+  return {
+    name: data.name.trim(), code: data.code || null, type: data.type ?? 1,
+    email: data.email?.trim() || null, address: data.address?.trim() || null,
+    creditLimit: data.creditLimit, isActive: data.isActive, phones,
+  };
+}
+
 export const customerService = {
   async getAll(search?: string, isActive?: boolean): Promise<CustomerDto[]> {
     try {
@@ -41,7 +65,7 @@ export const customerService = {
       if (search) params.search = search;
       if (isActive !== undefined) params.isActive = String(isActive);
 
-      return await apiClient.get<CustomerDto[]>('customers', params);
+      return (await apiClient.get<CustomerApiDto[]>('customers', params)).map(normalizeCustomer);
     } catch (err) {
       console.error('[customerService.getAll] Failed to fetch customers:', err);
       throw err;
@@ -59,7 +83,8 @@ export const customerService = {
       if (search) params.search = search;
       if (isActive !== undefined) params.isActive = String(isActive);
 
-      return await apiClient.get<PagedResult<CustomerDto>>('customers/paged', params);
+      const result = await apiClient.get<PagedResult<CustomerApiDto>>('customers/paged', params);
+      return { ...result, items: result.items.map(normalizeCustomer) };
     } catch (err) {
       console.error('[customerService.getPaged] Failed to fetch paged customers:', err);
       throw err;
@@ -68,7 +93,7 @@ export const customerService = {
 
   async getById(id: string): Promise<CustomerDto> {
     try {
-      return await apiClient.get<CustomerDto>(`customers/${id}`);
+      return normalizeCustomer(await apiClient.get<CustomerApiDto>(`customers/${id}`));
     } catch (err) {
       console.error(`[customerService.getById] Failed to fetch customer ${id}:`, err);
       throw err;
@@ -77,7 +102,7 @@ export const customerService = {
 
   async create(data: CreateCustomerRequest): Promise<CustomerDto> {
     try {
-      return await apiClient.post<CustomerDto>('customers', data);
+      return normalizeCustomer(await apiClient.post<CustomerApiDto>('customers', buildCustomerPayload(data)));
     } catch (err) {
       console.error('[customerService.create] Failed to create customer:', err);
       throw err;
@@ -86,7 +111,7 @@ export const customerService = {
 
   async update(id: string, data: UpdateCustomerRequest): Promise<CustomerDto> {
     try {
-      return await apiClient.put<CustomerDto>(`customers/${id}`, data);
+      return normalizeCustomer(await apiClient.put<CustomerApiDto>(`customers/${id}`, { id, ...buildCustomerPayload(data) }));
     } catch (err) {
       console.error(`[customerService.update] Failed to update customer ${id}:`, err);
       throw err;

@@ -166,7 +166,7 @@ public class CustomerService : ICustomerService
         // تحديث حالة النشاط
         customer.IsActive = dto.IsActive;
         // التحقق من تقديم قائمة أرقام هواتف جديدة
-        if (dto.Phones != null && dto.Phones.Any())
+        if (dto.Phones != null)
         {
             // حذف أرقام الهواتف القديمة في حال وجودها
             if (customer.CustomerPhones != null && customer.CustomerPhones.Any())

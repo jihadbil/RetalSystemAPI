@@ -349,8 +349,10 @@ export const CustomersView: React.FC = () => {
                           type="button"
                           title="تعديل بيانات العميل"
                           onClick={() => {
-                            setCustomerToEdit(c);
-                            setIsFormOpen(true);
+                            void customerService.getById(c.id).then((details) => {
+                              setCustomerToEdit(details);
+                              setIsFormOpen(true);
+                            }).catch(() => showError('تعذر تحميل تفاصيل العميل للتعديل'));
                           }}
                           className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                         >

@@ -1,6 +1,9 @@
 // أنواع ونماذج العملاء وسندات القبض وكشوفات الحساب
 
 export interface CustomerDto {
+  code?: string;
+  type?: number;
+  phones?: { phoneNumber: string; contactName?: string; isDefault: boolean }[];
   id: string;
   name: string;
   phone: string;

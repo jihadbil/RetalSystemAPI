@@ -42,6 +42,9 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     if (customerToEdit) {
       setFormData({
         name: customerToEdit.name,
+        code: customerToEdit.code,
+        type: customerToEdit.type,
+        phones: customerToEdit.phones,
         phone: customerToEdit.phone || '',
         email: customerToEdit.email || '',
         address: customerToEdit.address || '',
