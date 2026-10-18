@@ -330,8 +330,12 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         if (await _unitOfWork.PurchaseReturns.HasInvoiceReferencesAsync(id, ct))
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة لها مرتجعات مشتريات؛ اعكس المرتجعات أولاً", ErrorCodes.ValidationError);
 
-        // لا يعدل بعد الإغلاق؛ الفاتورة المفتوحة Pending فقط تقبل الإضافة التراكمية.
-        if (invoice.Status is not InvoiceStatus.Draft and not InvoiceStatus.Pending)
+        // المسودة لم ترحّل؛ لا يجوز تمريرها عبر مسار تعديل إيصال مرحّل.
+        if (invoice.Status == InvoiceStatus.Draft)
+            return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن ترحيل مسودة شراء عبر التعديل؛ ألغ المسودة وأنشئ فاتورة شراء جديدة", ErrorCodes.ValidationError);
+
+        // الفاتورة المفتوحة Pending فقط تقبل الإضافة التراكمية.
+        if (invoice.Status != InvoiceStatus.Pending)
         {
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("لا يمكن تعديل فاتورة مشتريات مرحلة — استخدم الإلغاء أو مرتجع المشتريات", ErrorCodes.ValidationError);
         }
