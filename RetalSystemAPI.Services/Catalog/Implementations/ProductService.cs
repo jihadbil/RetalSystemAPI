@@ -64,11 +64,14 @@ public class ProductService : IProductService
     }
 
     /// <inheritdoc/>
-    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default)
+    public Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default) =>
+        GetPagedAsync(pageNumber, pageSize, categoryId, null, ct);
+
+    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, string? search, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام المنتجات للترقيم مع فلتر التصنيف
         // تنفيذ الاستعلام الصفحي لجلب سجلات الصفحة الحالية والعدد الإجمالي
-        var(items, totalCount) = await _unitOfWork.Products.SearchAsync(new ProductQuery { CategoryId = categoryId, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var(items, totalCount) = await _unitOfWork.Products.SearchAsync(new ProductQuery { CategoryId = categoryId, Search = search?.Trim(), PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل عناصر الصفحة إلى قائمة ملخصات
         var dtos = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(items);
         // إنشاء كائن النتيجة المصفحة مع احتساب إجمالي الصفحات
@@ -203,117 +206,128 @@ public class ProductService : IProductService
  Description = b.Description }).ToList();
         }
 
-        // إضافة المنتج الجديد إلى المستودع
-        await _unitOfWork.Products.AddAsync(product, ct);
-        // حفظ التغييرات في قاعدة البيانات لتوليد المعرفات
-        await _unitOfWork.SaveChangesAsync(ct);
-        // توليد رصيد صالة العرض في صالات العرض النشطة فقط.
-
-        // بناء خريطة الأرصدة الافتتاحية لصالات العرض المتعددة
-        var showroomQtyMap = dto.ShowroomInitialQuantities?.ToDictionary(s => s.WarehouseId, s => s.Quantity) ?? new Dictionary<Guid, int>();
-        // المرور على صالات العرض وتأسيس أرصدة الصنف
-        foreach (var show in showrooms)
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            // الكمية الافتتاحية الافتراضية
-            int initShowQty = 0;
-            // فحص وجود كمية مخصصة لهذه الصالة في الخريطة
-            if (showroomQtyMap.TryGetValue(show.Id, out int showQty))
+            // إضافة المنتج الجديد إلى المستودع
+            await _unitOfWork.Products.AddAsync(product, ct);
+            // حفظ التغييرات في قاعدة البيانات لتوليد المعرفات
+            await _unitOfWork.SaveChangesAsync(ct);
+            // توليد رصيد صالة العرض في صالات العرض النشطة فقط.
+
+            // بناء خريطة الأرصدة الافتتاحية لصالات العرض المتعددة
+            var showroomQtyMap = dto.ShowroomInitialQuantities?.ToDictionary(s => s.WarehouseId, s => s.Quantity) ?? new Dictionary<Guid, int>();
+            // المرور على صالات العرض وتأسيس أرصدة الصنف
+            foreach (var show in showrooms)
             {
-                // تعيين الكمية المخصصة
-                initShowQty = showQty;
-            }
-            // فحص تحديد صالة محددة برصيد مفرد
-            else if (dto.ShowroomWarehouseId.HasValue)
-            {
-                if (show.Id == dto.ShowroomWarehouseId.Value)
+                // الكمية الافتتاحية الافتراضية
+                int initShowQty = 0;
+                // فحص وجود كمية مخصصة لهذه الصالة في الخريطة
+                if (showroomQtyMap.TryGetValue(show.Id, out int showQty))
                 {
-                    initShowQty = dto.InitialShowroomQuantity;
+                    // تعيين الكمية المخصصة
+                    initShowQty = showQty;
                 }
-            }
-            // إسناد الكمية للصالة الأولى افتراضياً
-            else
-            {
-                if (showrooms.Count > 0 && show.Id == showrooms[0].Id)
+                // فحص تحديد صالة محددة برصيد مفرد
+                else if (dto.ShowroomWarehouseId.HasValue)
                 {
-                    initShowQty = dto.InitialShowroomQuantity;
-                }
-            }
-
-            // إنشاء سجل رصيد صالة العرض
-            var showStock = new ShowroomStock
-            {
-                TenantId = product.TenantId,
-                WarehouseId = show.Id,
-                ProductId = product.Id,
-                Quantity = initShowQty,
-                MinStockLevel = 0
-            };
-            // إضافة سجل رصيد الصالة
-            await _unitOfWork.Stock.AddShowroomStockAsync(showStock, ct);
-        }
-
-        // توليد رصيد الباركود في مخازن التخزين النشطة فقط.
-
-        // تأسيس أرصدة المخازن للباركودات
-        if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
-        {
-            // خريطة الكميات الافتتاحية المفردة للباركودات
-            var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode.Trim(), b => b.InitialQuantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
-            // خريطة الكميات الافتتاحية للمخازن المتعددة
-            var storageMultiQtyMap = dto.StorageInitialQuantities?.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode.Trim()}", s => s.Quantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
-            // المرور على مخازن التخزين
-            foreach (var storgeWh in storgeWarehouses)
-            {
-                // المرور على باركودات ونكهات المنتج
-                foreach (var bc in product.ProductBarCodes)
-                {
-                    // الكمية المبدئية
-                    int initQty = 0;
-                    // مفتاح الربط المركب بين المخزن والباركود
-                    string key = $"{storgeWh.Id}_{bc.BarCode}";
-                    // فحص وجود كمية مخصصة في الخريطة المتعددة
-                    if (storageMultiQtyMap.TryGetValue(key, out int multiQty))
+                    if (show.Id == dto.ShowroomWarehouseId.Value)
                     {
-                        initQty = multiQty;
+                        initShowQty = dto.InitialShowroomQuantity;
                     }
-                    else
+                }
+                // إسناد الكمية للصالة الأولى افتراضياً
+                else
+                {
+                    if (showrooms.Count > 0 && show.Id == showrooms[0].Id)
                     {
-                        // فحص الكمية المطلوبة للباركود
-                        int requestedQty = initialQtyMap.TryGetValue(bc.BarCode, out int q) ? q : 0;
-                        // فحص المخزن المحدد
-                        if (dto.StorageWarehouseId.HasValue)
+                        initShowQty = dto.InitialShowroomQuantity;
+                    }
+                }
+
+                // إنشاء سجل رصيد صالة العرض
+                var showStock = new ShowroomStock
+                {
+                    TenantId = product.TenantId,
+                    WarehouseId = show.Id,
+                    ProductId = product.Id,
+                    Quantity = initShowQty,
+                    MinStockLevel = 0
+                };
+                // إضافة سجل رصيد الصالة
+                await _unitOfWork.Stock.AddShowroomStockAsync(showStock, ct);
+            }
+
+            // توليد رصيد الباركود في مخازن التخزين النشطة فقط.
+
+            // تأسيس أرصدة المخازن للباركودات
+            if (product.ProductBarCodes != null && product.ProductBarCodes.Count > 0)
+            {
+                // خريطة الكميات الافتتاحية المفردة للباركودات
+                var initialQtyMap = dto.BarCodes?.ToDictionary(b => b.BarCode.Trim(), b => b.InitialQuantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
+                // خريطة الكميات الافتتاحية للمخازن المتعددة
+                var storageMultiQtyMap = dto.StorageInitialQuantities?.ToDictionary(s => $"{s.WarehouseId}_{s.BarCode.Trim()}", s => s.Quantity, StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, int>();
+                // المرور على مخازن التخزين
+                foreach (var storgeWh in storgeWarehouses)
+                {
+                    // المرور على باركودات ونكهات المنتج
+                    foreach (var bc in product.ProductBarCodes)
+                    {
+                        // الكمية المبدئية
+                        int initQty = 0;
+                        // مفتاح الربط المركب بين المخزن والباركود
+                        string key = $"{storgeWh.Id}_{bc.BarCode}";
+                        // فحص وجود كمية مخصصة في الخريطة المتعددة
+                        if (storageMultiQtyMap.TryGetValue(key, out int multiQty))
                         {
-                            if (storgeWh.Id == dto.StorageWarehouseId.Value)
-                            {
-                                initQty = requestedQty;
-                            }
+                            initQty = multiQty;
                         }
                         else
                         {
-                            if (storgeWarehouses.Count > 0 && storgeWh.Id == storgeWarehouses[0].Id)
+                            // فحص الكمية المطلوبة للباركود
+                            int requestedQty = initialQtyMap.TryGetValue(bc.BarCode, out int q) ? q : 0;
+                            // فحص المخزن المحدد
+                            if (dto.StorageWarehouseId.HasValue)
                             {
-                                initQty = requestedQty;
+                                if (storgeWh.Id == dto.StorageWarehouseId.Value)
+                                {
+                                    initQty = requestedQty;
+                                }
+                            }
+                            else
+                            {
+                                if (storgeWarehouses.Count > 0 && storgeWh.Id == storgeWarehouses[0].Id)
+                                {
+                                    initQty = requestedQty;
+                                }
                             }
                         }
-                    }
 
-                    // إنشاء سجل رصيد المخزن للباركود
-                    var storgeStock = new StorgeStock
-                    {
-                        TenantId = product.TenantId,
-                        WarehouseId = storgeWh.Id,
-                        ProductBarcodeId = bc.Id,
-                        Quantity = initQty,
-                        MinStockLevel = 0
-                    };
-                    // إضافة سجل رصيد المخزن
-                    await _unitOfWork.Stock.AddStorgeStockAsync(storgeStock, ct);
+                        // إنشاء سجل رصيد المخزن للباركود
+                        var storgeStock = new StorgeStock
+                        {
+                            TenantId = product.TenantId,
+                            WarehouseId = storgeWh.Id,
+                            ProductBarcodeId = bc.Id,
+                            Quantity = initQty,
+                            MinStockLevel = 0
+                        };
+                        // إضافة سجل رصيد المخزن
+                        await _unitOfWork.Stock.AddStorgeStockAsync(storgeStock, ct);
+                    }
                 }
             }
+
+            // حفظ سجلات الأرصدة الافتتاحية في قاعدة البيانات
+            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            throw;
         }
 
-        // حفظ سجلات الأرصدة الافتتاحية في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
         // إعادة تحميل المنتج مع كافة تفاصيله لضمان دقة كائن الاستجابة
         var createdProduct = await _unitOfWork.Products.GetDetailsAsync(product.Id, ct) ?? product;
         // تحويل الكيان إلى DTO الاستجابة

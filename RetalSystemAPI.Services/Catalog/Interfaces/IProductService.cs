@@ -38,6 +38,8 @@ public interface IProductService
     /// <returns>صفحة نتائج تحتوي على عناصر المنتجات وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default);
 
+    Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, string? search, CancellationToken ct = default);
+
     /// <summary>
     /// البحث السريع في الأصناف بالاسم أو الوصف أو الباركود مع ترتيب النتائج بالأولوية.
     /// </summary>

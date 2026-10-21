@@ -85,10 +85,11 @@ public class ProductsController : BaseApiController
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] Guid? categoryId = null,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         // استدعاء خدمة المنتجات لجلب صفحة المنتجات المحددة
-        var result = await _productService.GetPagedAsync(pageNumber, pageSize, categoryId, ct);
+        var result = await _productService.GetPagedAsync(pageNumber, pageSize, categoryId, search, ct);
 
         // تحويل وإرجاع النتيجة كاستجابة HTTP
         return ToActionResult(result);

@@ -257,7 +257,11 @@ public class ProductExcelService : IProductExcelService
             var existingProductIds = new HashSet<Guid>(existingProducts.Select(p => p.Id));
             var barcodeMap = existingBarcodes.GroupBy(b => b.BarCode.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().ProductId, StringComparer.OrdinalIgnoreCase);
             var productsByBarcodeProductId = existingBarcodes.GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Select(b => b.BarCode.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase));
-            var productNameMap = existingProducts.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
+            var productNameGroups = existingProducts.GroupBy(p => p.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToList();
+            var productNameMap = productNameGroups.Where(g => g.Count() == 1)
+                .ToDictionary(g => g.Key, g => g.Single().Id, StringComparer.OrdinalIgnoreCase);
+            var ambiguousProductNames = productNameGroups.Where(g => g.Count() > 1)
+                .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var categoryNameSet = new HashSet<string>(existingCategories.Select(c => c.Name.Trim()), StringComparer.OrdinalIgnoreCase);
             var fileBarcodesSeen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var newCategoriesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -378,6 +382,16 @@ public class ProductExcelService : IProductExcelService
                         {
                             fileBarcodesSeen[barcode] = r;
                         }
+                    }
+
+                    if (ambiguousProductNames.Contains(name) &&
+                        !(barcodeMap.ContainsKey(barcode) || Guid.TryParse(code, out var productId) && existingProductIds.Contains(productId)))
+                    {
+                        rowVal.Status = RowValidationStatus.Error;
+                        rowVal.Message = "اسم الصنف مكرر في النظام؛ حدد باركوداً مسجلاً أو معرف الصنف لتمييزه";
+                        result.InvalidRows++;
+                        result.Rows.Add(rowVal);
+                        continue;
                     }
 
                     // التحقق من وجود الصنف في النظام
@@ -551,6 +565,15 @@ public class ProductExcelService : IProductExcelService
                             result.Rows.Add(rowVal);
                             continue;
                         }
+                        if (ambiguousProductNames.Contains(name) &&
+                            !(Guid.TryParse(prodCode, out var productId) && existingProductIds.Contains(productId)))
+                        {
+                            rowVal.Status = RowValidationStatus.Error;
+                            rowVal.Message = "اسم الصنف مكرر في النظام؛ حدد معرف الصنف لتمييزه";
+                            result.InvalidRows++;
+                            result.Rows.Add(rowVal);
+                            continue;
+                        }
                         if (productNameMap.ContainsKey(name))
                         {
                             rowVal.Action = options.ImportMode == ProductImportMode.InsertOnly ? RowActionType.Skip : RowActionType.Update;
@@ -662,6 +685,12 @@ public class ProductExcelService : IProductExcelService
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             throw;
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            _logger.LogWarning(ex, "Product Excel import conflicted with concurrent updates; all import changes were rolled back");
+            return ServiceResult<ProductImportResultDto>.Failure("تغيرت بيانات الأصناف أو المخزون أثناء الاستيراد؛ أعد تحميلها قبل إعادة المحاولة", ErrorCodes.ConcurrencyError);
+        }
         catch (Exception ex)
         {
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
@@ -745,7 +774,11 @@ public class ProductExcelService : IProductExcelService
         var existingUnits = (await _unitOfWork.Units.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         var unitNameMap = existingUnits.ToDictionary(u => u.Name.Trim(), u => u, StringComparer.OrdinalIgnoreCase);
         var existingProducts = (await _unitOfWork.Products.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
-        var productNameMap = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
+        var productNameGroups = existingProducts.GroupBy(p => p.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToList();
+        var productNameMap = productNameGroups.Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => g.Single(), StringComparer.OrdinalIgnoreCase);
+        var ambiguousProductNames = productNameGroups.Where(g => g.Count() > 1)
+            .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var productIdMap = existingProducts.ToDictionary(p => p.Id, p => p);
         var existingBarcodes = (await _unitOfWork.Products.GetImportBarcodesForUpdateAsync(importKeys, existingProducts.Select(p => p.Id), ct)).ToList();
         var barcodeMap = existingBarcodes.ToDictionary(b => b.BarCode.Trim(), b => b, StringComparer.OrdinalIgnoreCase);
@@ -829,6 +862,14 @@ public class ProductExcelService : IProductExcelService
             if (costPrice < 0 || salePrice < 0)
             {
                 result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, CostPrice = costPrice, SalePrice = salePrice, ErrorReason = "أسعار الصنف لا يمكن أن تكون سالبة" });
+                continue;
+            }
+
+            if (ambiguousProductNames.Contains(name) &&
+                !(barcodeMap.ContainsKey(barcode) || Guid.TryParse(code, out var productId) && productIdMap.ContainsKey(productId)))
+            {
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode,
+                    ErrorReason = "اسم الصنف مكرر في النظام؛ حدد باركوداً مسجلاً أو معرف الصنف لتمييزه" });
                 continue;
             }
 
@@ -1012,9 +1053,9 @@ public class ProductExcelService : IProductExcelService
                 var sStock = showroomStocksByProductAndWarehouse.TryGetValue((targetShowroom.Id, targetProduct.Id), out var foundStock) ? foundStock : null;
                 if (sStock != null)
                 {
-                    if (showQty > 0)
+                    if (!string.IsNullOrWhiteSpace(showQtyStr))
                         sStock.Quantity = showQty;
-                    if (minStock > 0)
+                    if (!string.IsNullOrWhiteSpace(minStockStr))
                         sStock.MinStockLevel = minStock;
                 }
                 else
@@ -1040,9 +1081,9 @@ public class ProductExcelService : IProductExcelService
                 var stStock = storageStocksByBarcodeAndWarehouse.TryGetValue((targetStorageWh.Id, primaryBarcodeEntity.Id), out var foundStStock) ? foundStStock : null;
                 if (stStock != null)
                 {
-                    if (storeQty > 0)
+                    if (!string.IsNullOrWhiteSpace(storeQtyStr))
                         stStock.Quantity = storeQty;
-                    if (minStock > 0)
+                    if (!string.IsNullOrWhiteSpace(minStockStr))
                         stStock.MinStockLevel = minStock;
                 }
                 else
@@ -1156,10 +1197,14 @@ public class ProductExcelService : IProductExcelService
         var existingProducts = (await _unitOfWork.Products.GetImportCandidatesForUpdateAsync(importKeys, ct)).ToList();
         // فهارس قاموسية للأصناف وأرصدة الصالة بدل المسح الخطي لكل صف
         var productsById = existingProducts.ToDictionary(p => p.Id, p => p);
-        var productsByName = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
+        var productNameGroups = existingProducts.GroupBy(p => p.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToList();
+        var productsByName = productNameGroups.Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => g.Single(), StringComparer.OrdinalIgnoreCase);
+        var ambiguousProductNames = productNameGroups.Where(g => g.Count() > 1)
+            .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var prod in existingProducts)
         {
-            if (!string.IsNullOrWhiteSpace(prod.Name))
+            if (!string.IsNullOrWhiteSpace(prod.Name) && !ambiguousProductNames.Contains(prod.Name.Trim()))
                 productNameMap[prod.Name.Trim()] = prod.Id;
         }
 
@@ -1216,6 +1261,12 @@ public class ProductExcelService : IProductExcelService
                 targetProduct = byCodeProd;
             if (targetProduct == null && !string.IsNullOrWhiteSpace(rawProdIdCode) && Guid.TryParse(rawProdIdCode, out var parsedGuid) && productsById.TryGetValue(parsedGuid, out var byGuidProd))
                 targetProduct = byGuidProd;
+            if (targetProduct == null && ambiguousProductNames.Contains(prodName))
+            {
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = col1, Name = prodName,
+                    ErrorReason = "اسم الصنف مكرر في النظام؛ حدد معرف الصنف لتمييزه" });
+                continue;
+            }
             if (targetProduct == null && productsByName.TryGetValue(prodName, out var byNameProd))
                 targetProduct = byNameProd;
             if (targetProduct != null)
@@ -1251,9 +1302,11 @@ public class ProductExcelService : IProductExcelService
             {
                 if (!string.IsNullOrWhiteSpace(rawProdIdCode))
                     productCodeMap[rawProdIdCode] = targetProduct.Id;
-                productNameMap[prodName] = targetProduct.Id;
+                if (!ambiguousProductNames.Contains(prodName))
+                    productNameMap[prodName] = targetProduct.Id;
                 productsById[targetProduct.Id] = targetProduct;
-                productsByName[prodName] = targetProduct;
+                if (!ambiguousProductNames.Contains(prodName))
+                    productsByName[prodName] = targetProduct;
                 processedProductsList.Add((targetProduct, rawProdIdCode));
                 // تهيئة مخزون الصالة الافتراضي — بحث O(1) بالفهرس المسبق
                 if (targetShowroom != null)
@@ -1610,44 +1663,38 @@ public class ProductExcelService : IProductExcelService
     private SingleSheetColumnMapping DetectSingleSheetColumns(IXLWorksheet ws)
     {
         var mapping = new SingleSheetColumnMapping();
-        int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 12;
-        for (int c = 1; c <= lastCol; c++)
+        var fields = new (Action<int> Assign, string[] Aliases)[]
         {
-            string h = ws.Cell(1, c).GetString().Trim();
-            if (string.IsNullOrWhiteSpace(h))
-                continue;
-            if (MatchesHeader(h, "اسم الصنف", "اسم المنتج", "الاسم", "الصنف", "المنتج", "name", "product name", "item name", "product"))
-                mapping.NameCol = c;
-            else if (MatchesHeader(h, "الباركود", "باركود", "كود الباركود", "barcode", "bar code", "upc", "ean"))
-                mapping.BarcodeCol = c;
-            else if (MatchesHeader(h, "كود الصنف", "كود", "معرف الصنف", "المعرف", "رمز الصنف", "code", "itemcode", "item code", "id"))
-                mapping.ItemCodeCol = c;
-            else if (MatchesHeader(h, "التصنيف", "اسم التصنيف", "المجموعة", "الفئة", "القسم", "category", "category name", "group"))
-                mapping.CategoryCol = c;
-            else if (MatchesHeader(h, "الوحدة", "اسم الوحدة", "نوع الوحدة", "unit", "unit name", "uom"))
-                mapping.UnitCol = c;
-            else if (MatchesHeader(h, "معامل التحويل", "العبوة", "سعة العبوة", "معامل", "conversion factor", "factor"))
-                mapping.ConversionFactorCol = c;
-            else if (MatchesHeader(h, "سعر التكلفة", "التكلفة", "سعر الشراء", "شراء", "تكلفة", "cost", "cost price", "costprice", "purchase price"))
-                mapping.CostPriceCol = c;
-            else if (MatchesHeader(h, "سعر البيع", "سعر بيع", "البيع", "بيع", "السعر", "price", "sale price", "saleprice"))
-                mapping.SalePriceCol = c;
-            else if (MatchesHeader(h, "كمية الصالة", "رصيد الصالة", "المعرض", "صالة", "showroom qty", "showroom quantity"))
-                mapping.ShowroomQtyCol = c;
-            else if (MatchesHeader(h, "كمية المخزن", "رصيد المخزن", "المستودع", "مخزن", "storage qty", "storage quantity", "stock", "الكمية"))
-                mapping.StorageQtyCol = c;
-            else if (MatchesHeader(h, "حد الطلب", "الحد الأدنى", "حد إعادة الطلب", "min stock", "min stock level"))
-                mapping.MinStockCol = c;
-            else if (MatchesHeader(h, "الوصف", "ملاحظات", "البيان", "description", "notes"))
-                mapping.DescriptionCol = c;
+            (column => mapping.NameCol = column, ["اسم الصنف", "اسم المنتج", "الاسم", "الصنف", "المنتج", "name", "product name", "item name", "product"]),
+            (column => mapping.BarcodeCol = column, ["الباركود", "باركود", "كود الباركود", "barcode", "bar code", "upc", "ean"]),
+            (column => mapping.ItemCodeCol = column, ["كود الصنف", "كود", "معرف الصنف", "المعرف", "رمز الصنف", "code", "itemcode", "item code", "id"]),
+            (column => mapping.CategoryCol = column, ["التصنيف", "اسم التصنيف", "المجموعة", "الفئة", "القسم", "category", "category name", "group"]),
+            (column => mapping.UnitCol = column, ["الوحدة", "اسم الوحدة", "نوع الوحدة", "unit", "unit name", "uom"]),
+            (column => mapping.ConversionFactorCol = column, ["معامل التحويل", "العبوة", "سعة العبوة", "معامل", "conversion factor", "factor"]),
+            (column => mapping.CostPriceCol = column, ["سعر التكلفة", "التكلفة", "سعر الشراء", "شراء", "تكلفة", "cost", "cost price", "costprice", "purchase price"]),
+            (column => mapping.SalePriceCol = column, ["سعر البيع", "سعر بيع", "البيع", "بيع", "السعر", "price", "sale price", "saleprice"]),
+            (column => mapping.ShowroomQtyCol = column, ["كمية الصالة", "رصيد الصالة", "المعرض", "صالة", "showroom qty", "showroom quantity"]),
+            (column => mapping.StorageQtyCol = column, ["كمية المخزن", "رصيد المخزن", "المستودع", "مخزن", "storage qty", "storage quantity", "stock", "الكمية"]),
+            (column => mapping.MinStockCol = column, ["حد الطلب", "الحد الأدنى", "حد إعادة الطلب", "min stock", "min stock level"]),
+            (column => mapping.DescriptionCol = column, ["الوصف", "ملاحظات", "البيان", "description", "notes"]),
+        };
+        int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 12;
+        for (int column = 1; column <= lastCol; column++)
+        {
+            string header = ws.Cell(1, column).GetString().Trim().TrimEnd('*').Trim();
+            if (string.IsNullOrWhiteSpace(header)) continue;
+            // Prefer a complete, specific header over broad aliases such as "stock"
+            // or "الصنف", so "min stock" and "كود الصنف" cannot select another field.
+            var match = fields.Select(field => new
+            {
+                field.Assign,
+                Score = field.Aliases.Select(alias =>
+                    header.Equals(alias, StringComparison.OrdinalIgnoreCase) ? 1000 + alias.Length :
+                    header.Contains(alias, StringComparison.OrdinalIgnoreCase) ? alias.Length : 0).Max()
+            }).OrderByDescending(field => field.Score).First();
+            if (match.Score > 0) match.Assign(column);
         }
-
         return mapping;
-    }
-
-    private static bool MatchesHeader(string header, params string[] candidates)
-    {
-        return candidates.Any(cand => header.Equals(cand, StringComparison.OrdinalIgnoreCase) || header.StartsWith(cand + " ", StringComparison.OrdinalIgnoreCase) || header.StartsWith(cand + "*", StringComparison.OrdinalIgnoreCase) || header.Contains(cand, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string GetCellValue(IXLWorksheet ws, int row, int col)
@@ -1657,52 +1704,8 @@ public class ProductExcelService : IProductExcelService
         return ws.Cell(row, col).GetString().Trim();
     }
 
-    private async Task SaveTrackedChangesAsync(CancellationToken ct)
-    {
-        foreach (var entry in _unitOfWork.ChangeTrackerEntries())
-        {
-            if (entry.State == EntityState.Modified)
-            {
-                try
-                {
-                    var rowVersionProp = entry.Property("RowVersion");
-                    if (rowVersionProp.OriginalValue == null)
-                    {
-                        rowVersionProp.IsModified = false;
-                        if (rowVersionProp.CurrentValue != null)
-                        {
-                            rowVersionProp.OriginalValue = rowVersionProp.CurrentValue;
-                        }
-                    }
-                }
-                catch
-                {
-                }
-            }
-        }
-
-        try
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            foreach (var entry in ex.Entries)
-            {
-                var dbValues = await entry.GetDatabaseValuesAsync(ct);
-                if (dbValues == null)
-                {
-                    entry.State = EntityState.Detached;
-                }
-                else
-                {
-                    entry.OriginalValues.SetValues(dbValues);
-                }
-            }
-
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-    }
+    // A stale import must abort; refreshing original values would overwrite concurrent edits.
+    private Task SaveTrackedChangesAsync(CancellationToken ct) => _unitOfWork.SaveChangesAsync(ct);
 
     private static void SetupHeader(IXLWorksheet ws, string[] headers)
     {
