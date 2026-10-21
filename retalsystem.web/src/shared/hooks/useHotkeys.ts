@@ -21,6 +21,7 @@ export function useHotkeys(keyMap: HotkeyMap, enabled = true): void {
     if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       const key = e.key;
 
       // أزرار F1 إلى F11 يجب منع سلوك المتصفح الافتراضي لها (مثل F1 Help أو F3 Find)

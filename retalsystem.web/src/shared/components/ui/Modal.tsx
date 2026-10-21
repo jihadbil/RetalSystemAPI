@@ -1,7 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { IconX } from '@tabler/icons-react';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
+
+const openDialogs = new Set<HTMLDialogElement>();
+let originalOverflow = '';
 
 interface ModalProps {
   isOpen: boolean;
@@ -24,22 +28,25 @@ export const Modal: React.FC<ModalProps> = ({
   size = 'md',
   closeOnBackdrop = true,
 }) => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const subtitleId = useId();
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (openDialogs.size === 0) originalOverflow = document.body.style.overflow;
+    openDialogs.add(dialog);
+    document.body.style.overflow = 'hidden';
+    // Native dialogs keep focus in the top dialog and restore it to its opener.
+    dialog.showModal();
     return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
+      dialog.close();
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      openDialogs.delete(dialog);
+      if (openDialogs.size === 0) document.body.style.overflow = originalOverflow;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,30 +60,41 @@ export const Modal: React.FC<ModalProps> = ({
     full: 'max-w-[95vw] h-[92vh]',
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
-      <div
-        className="fixed inset-0"
-        onClick={() => closeOnBackdrop && onClose()}
-        aria-hidden="true"
-      />
-
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      aria-describedby={subtitle ? subtitleId : undefined}
+      aria-modal="true"
+      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-2 sm:p-4 open:flex items-center justify-center backdrop:bg-slate-900/50 backdrop:backdrop-blur-xs"
+      onCancel={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Tab') return;
+        event.stopPropagation();
+        const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+        )).filter((control) => control.getClientRects().length > 0);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}
+      onClick={(event) => { if (event.target === event.currentTarget && closeOnBackdrop) onClose(); }}
+    >
       <div
         className={`relative z-10 w-full bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] overflow-hidden ${sizeClasses[size]} animate-in zoom-in-95 duration-200`}
-        role="dialog"
-        aria-modal="true"
       >
         {/* ترويسة النافذة */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+            <h3 id={titleId} className="text-sm sm:text-base font-bold text-slate-900 leading-snug">{title}</h3>
+            {subtitle && <p id={subtitleId} className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             title="إغلاق (Esc)"
+            aria-label="إغلاق"
           >
             <IconX className="w-5 h-5" />
           </button>
@@ -92,6 +110,6 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </dialog>, document.body
   );
 };
