@@ -3,6 +3,7 @@ import { Modal } from '../../../shared/components/ui/Modal';
 import { posService } from '../services/posService';
 import type { QuickProductItem } from '../types/pos.types';
 import { IconPackage, IconSearch } from '@tabler/icons-react';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { Input } from '../../../shared/components/ui/Input';
 
 interface QuickItemsModalProps {
@@ -18,13 +19,18 @@ export const QuickItemsModal: React.FC<QuickItemsModalProps> = ({
 }) => {
   const [items, setItems] = useState<QuickProductItem[]>([]);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 250);
+  const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
 
   useEffect(() => {
-    if (isOpen) {
-      posService.getQuickItems().then(setItems);
-    }
-  }, [isOpen]);
+    let cancelled = false;
+    setItems([]); setError('');
+    if (isOpen) void posService.getQuickItems(debouncedSearch).then((items) => {
+      if (!cancelled) setItems(items);
+    }).catch(() => { if (!cancelled) setError('تعذر تحميل الأصناف'); });
+    return () => { cancelled = true; };
+  }, [isOpen, debouncedSearch]);
 
   const categories = ['الكل', ...Array.from(new Set(items.map((i) => i.categoryName || 'أخرى')))];
 
@@ -43,6 +49,7 @@ export const QuickItemsModal: React.FC<QuickItemsModalProps> = ({
       size="xl"
     >
       <div className="flex flex-col gap-4">
+        {error && <p role="alert">{error}</p>}
         {/* شريط البحث وفلاتر التصنيفات */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="w-full sm:w-72">

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { IconUser, IconPhone, IconPlus, IconCheck, IconSearch } from '@tabler/icons-react';
 import { useToast } from '../../../shared/context/ToastContext';
 import { customerService } from '../../customers/services/customerService';
-import type { CustomerDto } from '../../customers/types/customer.types';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { Permissions } from '../../../shared/auth/permissions';
 
@@ -26,7 +27,10 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
   const canCreateCustomer = hasPermission(Permissions.Customers.Create);
   const { showSuccess, showError } = useToast();
   const [search, setSearch] = useState('');
-  const [customers, setCustomers] = useState<CustomerDto[]>([]);
+  const debouncedSearch = useDebounce(search, 250);
+  const requestVersion = useRef(0);
+  const invalidateRequest = useCallback(() => { requestVersion.current++; }, []);
+  const [customers, setCustomers] = useState<LookupOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -36,24 +40,29 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadCustomers = useCallback(async (q?: string) => {
+    const version = ++requestVersion.current;
+    setCustomers([]);
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await customerService.getAll(q);
+      const data = (await lookupService.page('customers', { search: q })).items;
+      if (version !== requestVersion.current) return;
       setCustomers(data);
     } catch (err: unknown) {
+      if (version !== requestVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل قائمة العملاء';
       setLoadError(msg);
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (isOpen) {
-      loadCustomers(search);
+      loadCustomers(debouncedSearch);
     }
-  }, [isOpen, search, loadCustomers]);
+    return invalidateRequest;
+  }, [isOpen, debouncedSearch, loadCustomers, invalidateRequest]);
 
   const handleSelect = (cust: { id?: string; name: string; phone?: string }) => {
     onSelectCustomer(cust);
@@ -159,7 +168,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
                   <button
                     key={cust.id}
                     type="button"
-                    onClick={() => handleSelect({ id: cust.id, name: cust.name, phone: cust.phone })}
+                    onClick={() => handleSelect({ id: cust.id, name: cust.name, phone: undefined })}
                     className={`flex items-center justify-between p-3 text-right hover:bg-emerald-50/50 transition-colors cursor-pointer ${
                       isSelected ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-800'
                     }`}
@@ -170,7 +179,6 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
                       </div>
                       <div>
                         <p className="text-sm leading-tight">{cust.name}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5 num-ltr">{cust.phone || '-'}</p>
                       </div>
                     </div>
 

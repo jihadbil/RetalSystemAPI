@@ -1,3 +1,5 @@
+import { Select } from '../../shared/components/ui/Select';
+import { stockService } from '../stock/services/stockService';
 import React, { useState, useRef, useEffect } from 'react';
 import { PosProvider, usePos } from './context/PosContext';
 import { PosCart } from './components/PosCart';
@@ -25,7 +27,7 @@ import {
 } from '@tabler/icons-react';
 
 const PosContent: React.FC = () => {
-  const { hasPermission, isLocked } = useAuth();
+  const { hasPermission, isLocked, currentBranchId } = useAuth();
   const canCreateSale = hasPermission(Permissions.Pos.CreateSale);
   const canApplyDiscount = hasPermission(Permissions.Pos.ApplyDiscount);
   const canOpenSession = hasPermission(Permissions.Pos.OpenSession);
@@ -46,17 +48,19 @@ const PosContent: React.FC = () => {
     setExactCash,
     setCardPayment,
     completeSale,
+    pendingCheckout,
+    recoveryError,
+    recoverPendingSale,
+    isCheckingOut,
     lastReceipt,
     discount,
     setDiscount,
     deviceContext,
-    paymentAccounts,
     paymentSafeId,
     setPaymentSafeId,
     pairDevice,
     openCashSession,
     closeCashSession,
-    warehouses,
     selectedWarehouseId,
     setSelectedWarehouseId,
     grandTotal,
@@ -131,7 +135,7 @@ const PosContent: React.FC = () => {
       setIsClearCartConfirmOpen(false);
       focusBarcode();
     },
-  }, !isLocked);
+  }, !isLocked && !pendingCheckout && !isCheckingOut && !recoveryError);
 
   // معالجة إدخال الباركود بالضغط على Enter
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
@@ -156,6 +160,13 @@ const PosContent: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full gap-3 select-none">
+      {(pendingCheckout || recoveryError) && <div role="alert" className="p-4 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg">
+        <p className="font-bold">توجد محاولة بيع لم تُحسم نتيجتها</p>
+        <p className="text-sm">{recoveryError || `رقم العملية: ${pendingCheckout?.request.invoiceNumber}. استعد نتيجتها قبل بدء بيع جديد.`}</p>
+        {pendingCheckout && <Button onClick={() => void recoverPendingSale()} isLoading={isCheckingOut}>استعادة نتيجة البيع</Button>}
+      </div>}
+
+      <div className="contents" inert={Boolean(pendingCheckout) || isCheckingOut || Boolean(recoveryError)}>
       <div className="flex flex-wrap items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 text-xs">
         {deviceContext ? (
           <>
@@ -185,24 +196,17 @@ const PosContent: React.FC = () => {
         )}
         <label className="flex items-center gap-2 font-semibold text-slate-600">
           <span>حساب تحصيل البطاقة:</span>
-          <select value={paymentSafeId} onChange={(e) => setPaymentSafeId(e.target.value)} className="h-8 rounded-lg border border-slate-200 px-2">
-            <option value="">اختر الحساب المصرفي</option>
-            {paymentAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
-          </select>
+          <Select lookup={{ resource: 'pos-payment-accounts', branchId: deviceContext?.terminal.branchId || currentBranchId || undefined }} label="حساب تحصيل البطاقة"
+            value={paymentSafeId} onLookupSelect={(option) => setPaymentSafeId(option.id, { id: option.id, name: option.name, branchId: option.branchId || '' })}
+            onChange={(event) => setPaymentSafeId(event.target.value)} />
         </label>
         {deviceContext && (
           <label className="mr-auto flex items-center gap-2 font-semibold text-slate-600">
             <span>مستودع البيع:</span>
-            <select
+            <Select lookup={{ resource: 'warehouses', branchId: deviceContext.terminal.branchId }} label="مستودع البيع"
               value={selectedWarehouseId}
-              onChange={(event) => setSelectedWarehouseId(event.target.value)}
-              className="h-8 min-w-44 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">اختر المستودع</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
-              ))}
-            </select>
+              onLookupSelect={(option) => setSelectedWarehouseId(option.id, stockService.warehouseOption(option))}
+              onChange={(event) => setSelectedWarehouseId(event.target.value)} />
           </label>
         )}
       </div>
@@ -457,6 +461,7 @@ const PosContent: React.FC = () => {
 
       {/* قالب الطباعة الحرارية 80mm المخصص لأمر window.print() */}
       <ReceiptPrintView receipt={lastReceipt} />
+      </div>
     </div>
   );
 };

@@ -1,3 +1,5 @@
+import { useRequestGate } from '../../../shared/hooks/useRequestGate';
+import { loadPendingCheckout, savePendingCheckout, settlePendingCheckout, withCheckoutLock, type PendingCheckout } from '../services/pendingCheckout';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { CartItem, PosDraft, QuickProductItem, ReceiptData } from '../types/pos.types';
 import { PaymentMethod } from '../types/pos.types';
@@ -10,6 +12,8 @@ import { useThermalPrint } from '../../../shared/hooks/useThermalPrint';
 import { stockService } from '../../stock/services/stockService';
 import type { WarehouseDto } from '../../stock/types/stock.types';
 import { Permissions } from '../../../shared/auth/permissions';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
+import { calculatePosTotals } from '../utils/posTotals';
 
 interface PosContextType {
   cartItems: CartItem[];
@@ -23,13 +27,16 @@ interface PosContextType {
   selectedItemIndex: number;
   lastReceipt: ReceiptData | null;
   isCheckingOut: boolean;
+  pendingCheckout: PendingCheckout | null;
+  recoveryError: string;
+  recoverPendingSale: () => Promise<boolean>;
   deviceContext: PosDeviceContext | null;
   warehouses: WarehouseDto[];
   selectedWarehouseId: string;
   paymentAccounts: PosPaymentAccount[];
   paymentSafeId: string;
-  setPaymentSafeId: (id: string) => void;
-  setSelectedWarehouseId: (warehouseId: string) => void;
+  setPaymentSafeId: (id: string, option?: PosPaymentAccount) => void;
+  setSelectedWarehouseId: (warehouseId: string, option?: WarehouseDto) => void;
   pairDevice: (pairingCode: string) => Promise<boolean>;
   openCashSession: (openingFloat: number) => Promise<boolean>;
   closeCashSession: (countedBalance: number, notes?: string) => Promise<boolean>;
@@ -71,9 +78,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { user, currentBranchId, currentTenantId, hasPermission, isLocked } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
   const { printDocument } = useThermalPrint();
-  const draftScope = `${currentTenantId || 'no-tenant'}:${currentBranchId || 'no-branch'}:${user?.id || 'anonymous'}`;
+  const [deviceContext, setDeviceContext] = useState<PosDeviceContext | null>(null);
+  const deviceGate = useRequestGate();
+  const draftScope = `${currentTenantId || 'no-tenant'}:${deviceContext?.terminal.branchId || currentBranchId || 'no-branch'}:${user?.id || 'anonymous'}`;
   const draftScopeRef = useRef(draftScope);
   const skipNextDraftSaveRef = useRef(false);
+  const checkoutInFlight = useRef(false);
+  const cartGeneration = useRef(0);
+  const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
+  const [recoveryError, setRecoveryError] = useState('');
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<{ id?: string; name: string; phone?: string }>({
@@ -88,7 +101,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
   const [lastReceipt, setLastReceipt] = useState<ReceiptData | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [deviceContext, setDeviceContext] = useState<PosDeviceContext | null>(null);
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState<PosPaymentAccount[]>([]);
@@ -107,14 +119,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentBranchId, deviceContext?.terminal.branchId, showError]);
 
   const refreshDeviceContext = useCallback(async () => {
-    try { setDeviceContext(await posService.getDeviceContext()); }
-    catch { setDeviceContext(null); }
-  }, []);
+    const isCurrent = deviceGate.begin();
+    try { const context = await posService.getDeviceContext(); if (isCurrent()) setDeviceContext(context); }
+    catch { if (isCurrent()) setDeviceContext(null); }
+  }, [deviceGate]);
 
   useEffect(() => {
+    setDeviceContext(null);
     const timer = window.setTimeout(() => { void refreshDeviceContext(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [refreshDeviceContext]);
+    return () => { window.clearTimeout(timer); deviceGate.invalidate(); };
+  }, [refreshDeviceContext, currentTenantId, user?.id, deviceGate]);
 
   const pairDevice = useCallback(async (pairingCode: string) => {
     if (!currentTenantId) { showError('تعذر الربط', 'لا يوجد مستأجر حالي في جلسة الدخول'); return false; }
@@ -153,7 +167,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       draftScopeRef.current = draftScope;
       skipNextDraftSaveRef.current = true;
       setHeldDrafts(posService.loadDrafts(draftScope));
+      cartGeneration.current++;
+      setCartItems([]); setCustomer({ name: 'عميل نقدي' });
+      setDiscount(0); setPaidAmount(0); setNotes(''); setLastReceipt(null);
     }
+  }, [draftScope]);
+
+  useEffect(() => {
+    const refresh = () => {
+      try { setPendingCheckout(loadPendingCheckout(draftScope)); setRecoveryError(''); }
+      catch (error) { setRecoveryError(error instanceof Error ? error.message : 'تعذر قراءة البيع المعلق'); }
+    };
+    refresh();
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
   }, [draftScope]);
 
   // مزامنة المسودات في تخزين معزول لكل مستأجر وفرع ومستخدم.
@@ -194,31 +221,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { isCancelled = true; };
   }, [currentBranchId, deviceContext?.terminal.branchId]);
 
+  const selectWarehouse = useCallback((warehouseId: string, option?: WarehouseDto) => {
+    const branchId = deviceContext?.terminal.branchId || currentBranchId;
+    if (option) {
+      if (!option.isActive || option.branchId !== branchId) return;
+      setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), option]);
+    }
+    setSelectedWarehouseId(warehouseId);
+  }, [deviceContext?.terminal.branchId, currentBranchId]);
+
+  const selectPaymentAccount = useCallback((id: string, option?: PosPaymentAccount) => {
+    if (option) {
+      if (option.branchId !== (deviceContext?.terminal.branchId || currentBranchId)) return;
+      setPaymentAccounts((previous) => [...previous.filter((account) => account.id !== option.id), option]);
+    }
+    setPaymentSafeId(id);
+  }, [deviceContext?.terminal.branchId, currentBranchId]);
+
   // الحسابات المالية اللحظية
-  const subtotal = useMemo(() => {
-    return cartItems.reduce((acc, item) => acc + item.lineTotal, 0);
-  }, [cartItems]);
-
-  const discountAmount = useMemo(() => {
-    return Math.min(subtotal, Math.max(0, discount));
-  }, [subtotal, discount]);
-
-  const taxAmount = useMemo(() => {
-    return Math.round((subtotal - discountAmount) * (taxRate / 100) * 100) / 100;
-  }, [subtotal, discountAmount, taxRate]);
-
-  const grandTotal = useMemo(() => {
-    return Math.max(0, subtotal - discountAmount + taxAmount);
-  }, [subtotal, discountAmount, taxAmount]);
-
-  // المبلغ المستلم لا يتغير تلقائياً مع الإجمالي (قاعدة design.md)
-  const changeAmount = useMemo(() => {
-    return Math.max(0, paidAmount - grandTotal);
-  }, [paidAmount, grandTotal]);
-
-  const remainingAmount = useMemo(() => {
-    return Math.max(0, grandTotal - paidAmount);
-  }, [paidAmount, grandTotal]);
+  const { subtotal, discountAmount, taxAmount, grandTotal, changeAmount, remainingAmount } = useMemo(
+    () => calculatePosTotals(cartItems, discount, taxRate, paidAmount),
+    [cartItems, discount, taxRate, paidAmount],
+  );
 
   // إضافة صنف إلى السلة مع قاعدة الصالة: التجميع بمفتاح ProductId
   const addCartItem = useCallback((product: QuickProductItem | CartItem) => {
@@ -270,8 +294,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // مسح وإضافة بالباركود
   const addItemByBarcode = useCallback(async (barcode: string): Promise<boolean> => {
     if (!barcode.trim()) return false;
+    const scope = draftScope;
+    const generation = cartGeneration.current;
     try {
       const item = await posService.findProductByBarcode(barcode.trim());
+      if (scope !== draftScopeRef.current || generation !== cartGeneration.current || checkoutInFlight.current) return false;
       if (item) {
         addCartItem(item);
         return true;
@@ -286,7 +313,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showError('خطأ في الاتصال', msg);
       return false;
     }
-  }, [addCartItem, showWarning, showError]);
+  }, [addCartItem, showWarning, showError, draftScope]);
 
   // تعديل كمية صنف
   const updateQuantity = useCallback((lineId: string, newQty: number) => {
@@ -354,6 +381,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // تفريغ السلة
   const clearCart = useCallback(() => {
+    cartGeneration.current++;
     setCartItems([]);
     setDiscount(0);
     setPaidAmount(0);
@@ -369,7 +397,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const newDraft: PosDraft = {
-      id: `${Date.now()}`,
+      id: createDocumentNumber('DRAFT'),
       savedAt: new Date().toISOString(),
       branchId: currentBranchId || undefined,
       customerId: customer.id,
@@ -431,9 +459,38 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPaidAmount(grandTotal);
   }, [grandTotal]);
 
+  const recoverPendingSale = useCallback(async (): Promise<boolean> => {
+    if (isLocked || checkoutInFlight.current || !hasPermission(Permissions.Pos.CreateSale)) return false;
+    const scope = draftScope;
+    checkoutInFlight.current = true;
+    cartGeneration.current++;
+    setIsCheckingOut(true);
+    try {
+      return await withCheckoutLock(scope, async () => {
+        const pending = loadPendingCheckout(scope);
+        if (!pending) { setPendingCheckout(null); return true; }
+        const receipt = await settlePendingCheckout(pending, posService.checkout, false);
+        if (draftScopeRef.current !== scope) return true;
+        setLastReceipt(receipt); setPendingCheckout(null); setRecoveryError('');
+        const currentItems = cartItems.map((item) => ({ productId: item.productId, productBarCodeId: item.productBarCodeId,
+          barCode: item.barCode, quantity: item.quantity, unitPrice: item.unitPrice, discountAmount: item.discountAmount, totalPrice: item.lineTotal }));
+        if (JSON.stringify(currentItems) === JSON.stringify(pending.request.items)) clearCart();
+        showSuccess('تم استعادة نتيجة البيع', `فاتورة رقم: ${receipt.invoiceNumber}`);
+        return true;
+      });
+    } catch (error) {
+      if (draftScopeRef.current === scope) showError('تعذر حسم نتيجة البيع', error instanceof Error ? error.message : 'أعد المحاولة بنفس رقم العملية');
+      return false;
+    } finally { checkoutInFlight.current = false; setIsCheckingOut(false); }
+  }, [draftScope, hasPermission, isLocked, showSuccess, showError, cartItems, clearCart]);
+
   // إتمام البيع والطباعة (F10)
   const completeSale = useCallback(async (): Promise<boolean> => {
-    if (isLocked || isCheckingOut) return false;
+    if (isLocked || isCheckingOut || checkoutInFlight.current) return false;
+    if (pendingCheckout || recoveryError) {
+      showWarning('محاولة بيع معلقة', 'استعد نتيجة المحاولة السابقة قبل بدء بيع جديد');
+      return false;
+    }
     if (!hasPermission(Permissions.Pos.CreateSale)) {
       showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إتمام المبيعات من نقطة البيع');
       return false;
@@ -476,6 +533,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    checkoutInFlight.current = true;
+    cartGeneration.current++;
     setIsCheckingOut(true);
     try {
       const invoicePaidAmount = paymentMethod === PaymentMethod.Cash || paymentMethod === PaymentMethod.Card
@@ -505,11 +564,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })),
       };
 
-      const result = await posService.checkout(invoicePayload);
+      const invoiceNumber = createDocumentNumber('POS');
 
       // تجهيز بيانات الإيصال الحراري للطباعة
       const receipt: ReceiptData = {
-        invoiceNumber: result.invoiceNumber,
+        invoiceNumber,
         date: new Date().toLocaleString('ar-LY'),
         cashierName: user?.fullName || user?.userName || 'الكاشير',
         customerName: customer.name,
@@ -528,15 +587,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         paid: paymentMethod === PaymentMethod.Card ? grandTotal : paidAmount,
         change: paymentMethod === PaymentMethod.Card ? 0 : changeAmount,
         paymentMethod: paymentMethod === PaymentMethod.Card ? 'بطاقة مصرفية' : 'نقداً',
-        qrCodeValue: `${result.invoiceNumber}|${grandTotal.toFixed(2)}|${new Date().toISOString()}`,
+        qrCodeValue: `${invoiceNumber}|${grandTotal.toFixed(2)}|${new Date().toISOString()}`,
       };
 
-      setLastReceipt(receipt);
-      soundService.playSuccessChime();
-      showSuccess('تم إتمام البيع بنجاح (F10)', `فاتورة رقم: ${result.invoiceNumber} — الإجمالي: ${grandTotal.toFixed(2)} د.ل`);
-
-      // إفراغ السلة بعد البيع
-      clearCart();
+      await withCheckoutLock(draftScope, async () => {
+        const pending: PendingCheckout = { version: 1, scope: draftScope,
+          request: { ...invoicePayload, invoiceNumber }, receipt };
+        savePendingCheckout(pending);
+        setPendingCheckout(pending);
+        const savedReceipt = await settlePendingCheckout(pending, posService.checkout, true);
+        if (draftScopeRef.current !== draftScope) return;
+        setLastReceipt(savedReceipt);
+        setPendingCheckout(null);
+        soundService.playSuccessChime();
+        showSuccess('تم إتمام البيع بنجاح (F10)', `فاتورة رقم: ${savedReceipt.invoiceNumber} — الإجمالي: ${grandTotal.toFixed(2)} د.ل`);
+        clearCart();
+      });
+      if (draftScopeRef.current !== draftScope) return true;
 
       // إطلاق أمر الطباعة
       setTimeout(() => {
@@ -547,13 +614,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: unknown) {
       soundService.playErrorBuzz();
       const msg = err instanceof Error ? err.message : 'فشل حفظ الفاتورة على الخادم';
-      showError('خطأ أثناء حفظ الفاتورة', msg);
+      if (draftScopeRef.current === draftScope) {
+        try { setPendingCheckout(loadPendingCheckout(draftScope)); }
+        catch (error) { setRecoveryError(error instanceof Error ? error.message : 'تعذر قراءة البيع المعلق'); }
+        showError('خطأ أثناء حفظ الفاتورة', msg);
+      }
       return false;
     } finally {
+      checkoutInFlight.current = false;
       setIsCheckingOut(false);
     }
   }, [
     cartItems,
+    pendingCheckout,
+    recoveryError,
+    draftScope,
     isLocked,
     isCheckingOut,
     paymentSafeId,
@@ -604,13 +679,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedItemIndex,
         lastReceipt,
         isCheckingOut,
+        pendingCheckout,
+        recoveryError,
+        recoverPendingSale,
         deviceContext,
         warehouses,
         selectedWarehouseId,
         paymentAccounts,
         paymentSafeId,
-        setPaymentSafeId,
-        setSelectedWarehouseId,
+        setPaymentSafeId: selectPaymentAccount,
+        setSelectedWarehouseId: selectWarehouse,
         pairDevice,
         openCashSession,
         closeCashSession,

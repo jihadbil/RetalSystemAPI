@@ -1,6 +1,7 @@
 import { apiClient, ApiError } from '../../../shared/services/apiClient';
 import type { CartItem, PosDraft, QuickProductItem } from '../types/pos.types';
-import { catalogService } from '../../catalog/services/catalogService';
+import { lookupService } from '../../../shared/services/lookupService';
+import type { ProductDto } from '../../catalog/types/catalog.types';
 
 const DRAFTS_STORAGE_PREFIX = 'retal_pos_held_drafts';
 
@@ -24,7 +25,7 @@ export interface PosDeviceContext {
   currentSession?: CashSessionInfo;
 }
 
-interface CheckoutPayload {
+export interface CheckoutPayload {
   invoiceNumber?: string;
   warehouseId?: string;
   [key: string]: unknown;
@@ -38,7 +39,7 @@ interface CheckoutResponse {
 
 export const posService = {
   getPaymentAccounts(branchId: string): Promise<PosPaymentAccount[]> {
-    return apiClient.get<PosPaymentAccount[]>('pos-sales/payment-accounts', { branchId });
+    return lookupService.list('pos-payment-accounts', branchId).then((options) => options.map((option) => ({ id: option.id, name: option.name, branchId: option.branchId || '' })));
   },
   claimDevice(tenantId: string, pairingCode: string) {
     return apiClient.post('pos-device/claim', { tenantId, pairingCode });
@@ -79,7 +80,7 @@ export const posService = {
   // البحث السريع عن الصنف بواسطة الباركود
   async findProductByBarcode(barcode: string): Promise<CartItem | null> {
     try {
-      const product = await catalogService.getByBarCode(barcode);
+      const product = await lookupService.barcode(barcode);
 
       if (!product || !product.id) return null;
 
@@ -109,9 +110,10 @@ export const posService = {
   },
 
   // جلب قائمة الأصناف السريعة (Quick Items)
-  async getQuickItems(): Promise<QuickProductItem[]> {
+  async getQuickItems(search?: string): Promise<QuickProductItem[]> {
     try {
-      const paged = await catalogService.getProducts({
+      const paged = await lookupService.page<ProductDto>('products', {
+        search,
         pageNumber: 1,
         pageSize: 30,
       });
@@ -136,7 +138,7 @@ export const posService = {
     try {
       const payload = { ...invoiceData };
       if (!payload.invoiceNumber) {
-        payload.invoiceNumber = `POS-${Date.now()}`;
+        payload.invoiceNumber = `POS-${crypto.randomUUID().replace(/-/g, '')}`;
       }
       if (!payload.warehouseId) {
         throw new ApiError('يجب تحديد المستودع الذي ستُخصم منه مبيعات نقطة البيع', 400, 'WAREHOUSE_REQUIRED');
