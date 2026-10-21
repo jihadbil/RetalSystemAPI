@@ -1,3 +1,4 @@
+import { useRequestGate } from '../../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
@@ -28,7 +29,10 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
   const [loadedRoleId, setLoadedRoleId] = useState<string | null>(null);
   const protectedRole = roleName === 'Admin' || roleName === 'SuperAdmin';
 
+  const loadGate = useRequestGate();
+  useEffect(() => loadGate.invalidate, [loadGate, roleId, showError]);
   const load = useCallback(async () => {
+    const isCurrent = loadGate.begin();
     if (!roleId) return;
     setLoadedRoleId(null);
     try {
@@ -36,13 +40,15 @@ export const PermissionsMatrixModal: React.FC<PermissionsMatrixModalProps> = ({
         userService.getAllPermissions(),
         userService.getRolePermissions(roleId),
       ]);
+      if (!isCurrent()) return;
       setPermissions(allPerms);
       setSelectedKeys(assigned);
       setLoadedRoleId(roleId);
     } catch {
+      if (!isCurrent()) return;
       showError('فشل تحميل الصلاحيات');
     }
-  }, [roleId, showError]);
+  }, [loadGate, roleId, showError]);
 
   useEffect(() => {
     if (isOpen && roleName) {

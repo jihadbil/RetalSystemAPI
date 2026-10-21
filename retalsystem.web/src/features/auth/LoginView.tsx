@@ -29,7 +29,7 @@ export const LoginView: React.FC = () => {
     try {
       const response = await authService.login({
         userName: userName.trim(),
-        password: password.trim(),
+        password,
         rememberMe,
       });
 

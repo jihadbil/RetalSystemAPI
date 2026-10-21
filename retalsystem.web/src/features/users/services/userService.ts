@@ -85,6 +85,7 @@ export const userService = {
       const payload = {
         userName: data.userName,
         password: data.password,
+        isActive: data.isActive,
         email: data.email || '',
         phoneNumber: data.phone,
         role: data.role,

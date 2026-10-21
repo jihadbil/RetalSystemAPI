@@ -1,3 +1,4 @@
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserItemDto } from './types/user.types';
 import { userService } from './services/userService';
@@ -71,31 +72,44 @@ export const UsersView: React.FC = () => {
 
   const [userError, setUserError] = useState<string | null>(null);
 
+  const loadUsersGate = useRequestGate();
+  useEffect(() => loadUsersGate.invalidate, [loadUsersGate, pageNumber, pageSize, debouncedSearch, showError]);
   const loadUsers = useCallback(async () => {
+    const isCurrent = loadUsersGate.begin();
+    setUsers([]);
     try {
       setIsLoadingUsers(true);
       setUserError(null);
       const res = await userService.getPaged(pageNumber, pageSize, debouncedSearch);
+      if (!isCurrent()) return;
       setUsers(res.items);
       setTotalPages(res.totalPages);
       setTotalCount(res.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل قائمة المستخدمين';
       setUserError(msg);
       showError('خطأ في تحميل المستخدمين', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoadingUsers(false);
+      }
     }
-  }, [pageNumber, pageSize, debouncedSearch, showError]);
+  }, [loadUsersGate, pageNumber, pageSize, debouncedSearch, showError]);
 
+  const loadRolesGate = useRequestGate();
+  useEffect(() => loadRolesGate.invalidate, [loadRolesGate]);
   const loadRoles = useCallback(async () => {
+    const isCurrent = loadRolesGate.begin();
     try {
       const data = await userService.getRoles();
+      if (!isCurrent()) return;
       setRoles(data);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       console.error('Failed to load roles:', err);
     }
-  }, []);
+  }, [loadRolesGate]);
 
   useEffect(() => {
     if (canViewUsers) loadUsers();
@@ -368,11 +382,11 @@ export const UsersView: React.FC = () => {
         onSaved={loadUsers}
       />
 
-      <ResetPasswordModal
+      {isResetOpen && <ResetPasswordModal
         isOpen={isResetOpen}
         onClose={() => setIsResetOpen(false)}
         user={userToReset}
-      />
+      />}
 
       <PermissionsMatrixModal
         isOpen={isMatrixOpen}

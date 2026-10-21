@@ -37,7 +37,7 @@ export const Permissions = {
     Delete: 'Permissions.Suppliers.Delete',
   },
   Warehouses: { View: 'Permissions.Warehouses.View', Create: 'Permissions.Warehouses.Create' },
-  StockAdjustments: { View: 'Permissions.StockAdjustments.View', Create: 'Permissions.StockAdjustments.Create' },
+  StockAdjustments: { View: 'Permissions.StockAdjustments.View', Create: 'Permissions.StockAdjustments.Create', Approve: 'Permissions.StockAdjustments.Approve' },
   StockTransfers: { View: 'Permissions.StockTransfers.View', Create: 'Permissions.StockTransfers.Create', Approve: 'Permissions.StockTransfers.Approve' },
   Branches: {
     View: 'Permissions.Branches.View',

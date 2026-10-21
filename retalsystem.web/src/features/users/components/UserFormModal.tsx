@@ -1,3 +1,4 @@
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Input } from '../../../shared/components/ui/Input';
@@ -5,8 +6,6 @@ import { Select } from '../../../shared/components/ui/Select';
 import { Button } from '../../../shared/components/ui/Button';
 import { UserItemDto } from '../types/user.types';
 import { userService } from '../services/userService';
-import { organizationService } from '../../organization/services/organizationService';
-import { BranchDto } from '../../organization/types/organization.types';
 import { useToast } from '../../../shared/context/ToastContext';
 import { IconUser, IconKey, IconPhone, IconMail } from '@tabler/icons-react';
 
@@ -26,7 +25,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const { showSuccess, showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [branches, setBranches] = useState<BranchDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Cashier');
@@ -38,10 +37,12 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
-      organizationService
-        .getBranches()
+      lookupService
+        .list('branches')
         .then((data) => {
+          if (cancelled) return;
           const activeBranches = (data || []).filter((b) => b.isActive);
           setBranches(activeBranches);
           if (!userToEdit && activeBranches.length > 0) {
@@ -49,9 +50,11 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
           }
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to fetch branches:', err);
         });
     }
+    return () => { cancelled = true; };
   }, [isOpen, userToEdit]);
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!userName.trim()) errs.userName = 'اسم المستخدم (تسجيل الدخول) مطلوب';
+    if (!email.trim()) errs.email = 'البريد الإلكتروني مطلوب';
     if (!userToEdit && (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password))) {
       errs.password = '10 خانات على الأقل وتشمل حرفاً كبيراً وصغيراً ورقماً ورمزاً';
     }
@@ -164,14 +168,14 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
               { value: 'Admin', label: 'مدير نظام (Admin)' },
               { value: 'Cashier', label: 'كاشير مبيعات (Cashier)' },
               { value: 'Accountant', label: 'محاسب مالي (Accountant)' },
-              { value: 'StockManager', label: 'أمين مستودع (Stock Manager)' },
+              { value: 'WarehouseKeeper', label: 'أمين مستودع (Warehouse Keeper)' },
             ]}
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
-            label="الفرع المخصص للعمل فيه *"
+            lookup={{ resource: 'branches' }} label="الفرع المخصص للعمل فيه *"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             options={
@@ -195,8 +199,10 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
         </div>
 
         <Input
-          label="البريد الإلكتروني"
+          label="البريد الإلكتروني *"
           type="email"
+          required
+          error={errors.email}
           placeholder="user@retalsystem.sa"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

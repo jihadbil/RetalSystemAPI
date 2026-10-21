@@ -14,8 +14,18 @@ describe('authorization policy', () => {
     )).toBe(true);
   });
 
-  it('allows privileged roles case-insensitively', () => {
-    expect(isPrivilegedUser({ roles: ['ADMIN'] })).toBe(true);
-    expect(userHasPermission({ roles: ['Owner'] }, 'Permissions.Users.Delete')).toBe(true);
+  it('reserves the permission bypass for SuperAdmin as the backend does', () => {
+    expect(isPrivilegedUser({ roles: ['SuperAdmin'] })).toBe(true);
+    expect(userHasPermission({ roles: ['SuperAdmin'] }, 'Permissions.Users.Delete')).toBe(true);
+  });
+
+  it.each(['Admin', 'Owner'])('requires explicit claims for %s', (role) => {
+    expect(isPrivilegedUser({ roles: [role] })).toBe(false);
+    expect(userHasPermission({ roles: [role], permissions: [] }, 'Permissions.Users.Delete')).toBe(false);
+    expect(userHasPermission({ roles: [role], permissions: ['Permissions.Users.View'] }, 'Permissions.Users.View')).toBe(true);
+  });
+
+  it('matches permission claims case-insensitively as the backend does', () => {
+    expect(userHasPermission({ permissions: ['permissions.products.view'] }, 'Permissions.Products.View')).toBe(true);
   });
 });
