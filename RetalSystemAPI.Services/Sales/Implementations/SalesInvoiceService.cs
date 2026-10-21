@@ -2,6 +2,7 @@ using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
@@ -116,6 +117,13 @@ public class SalesInvoiceService : ISalesInvoiceService
         if ((dto.DiscountAmount > 0 || dto.Items.Any(i => i.DiscountAmount > 0)) &&
             !_permissions.HasPermission(Permissions.Pos.ApplyDiscount))
             return ServiceResult<SalesInvoiceResponseDto>.Failure("لا تملك صلاحية منح خصم في نقطة البيع", ErrorCodes.Forbidden);
+
+        var invoiceNumber = PosSaleRequest.InvoiceNumber(dto.InvoiceNumber);
+        var requestHash = PosSaleRequest.Fingerprint(dto);
+        var existing = await _unitOfWork.SalesInvoices.GetByNumberAsync(invoiceNumber, ct);
+        if (existing is not null)
+            return PosReplay(existing, requestHash);
+
         var products = (await _unitOfWork.Products.GetByIdsAsync(dto.Items.Select(i => i.ProductId).Distinct().ToList(), ct)).ToDictionary(p => p.Id);
         if (dto.Items.Any(i => !products.TryGetValue(i.ProductId, out var product) || i.UnitPrice != product.SalePrice))
             return ServiceResult<SalesInvoiceResponseDto>.Failure("تغيرت أسعار الأصناف أو حالتها؛ أعد تحميلها قبل إتمام البيع", ErrorCodes.ValidationError);
@@ -125,11 +133,35 @@ public class SalesInvoiceService : ISalesInvoiceService
             if (account is null || account.Type != SafeType.Bank || !account.IsActive || account.BranchId != dto.BranchId)
                 return ServiceResult<SalesInvoiceResponseDto>.Failure("اختر حساب تحصيل مصرفي نشطاً تابعاً لفرع نقطة البيع", ErrorCodes.ValidationError);
         }
-        dto.InvoiceNumber = $"POS-{Guid.NewGuid():N}";
-        return await CreateAsync(dto, ct);
+        try
+        {
+            var result = await CreateCoreAsync(PosSaleRequest.ForPosting(dto, invoiceNumber), requestHash, ct);
+            if (!result.IsSuccess)
+            {
+                existing = await _unitOfWork.SalesInvoices.GetByNumberAsync(invoiceNumber, ct);
+                if (existing is not null) return PosReplay(existing, requestHash);
+            }
+            return result;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            // A concurrent identical request may have won the unique-index race.
+            // CreateCoreAsync has rolled back and cleared its failed tracked writes.
+            existing = await _unitOfWork.SalesInvoices.GetByNumberAsync(invoiceNumber, ct);
+            if (existing is not null) return PosReplay(existing, requestHash);
+            throw;
+        }
     }
 
-    public async Task<ServiceResult<SalesInvoiceResponseDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default)
+    private ServiceResult<SalesInvoiceResponseDto> PosReplay(SalesInvoice existing, string requestHash) =>
+        existing.PosRequestHash == requestHash
+            ? ServiceResult<SalesInvoiceResponseDto>.Success(_mapper.Map<SalesInvoiceResponseDto>(existing))
+            : ServiceResult<SalesInvoiceResponseDto>.Failure("رقم عملية نقطة البيع مستخدم لطلب مختلف؛ لا تعِد استخدامه بعد تغيير البيانات", ErrorCodes.SalesInvoiceNumberExists);
+
+    public Task<ServiceResult<SalesInvoiceResponseDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default) =>
+        CreateCoreAsync(dto, null, ct);
+
+    private async Task<ServiceResult<SalesInvoiceResponseDto>> CreateCoreAsync(CreateSalesInvoiceDto dto, string? posRequestHash, CancellationToken ct)
     {
         if (DtoValidation.GetError(dto) is { } validationError)
             return ServiceResult<SalesInvoiceResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
@@ -255,7 +287,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         if (warehouse.Type == WarehouseType.Show)
         {
             // تجميع إجمالي الكمية المطلوبة لكل منتج
-            var productTotals = dto.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var productTotals = dto.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
             // قائمة معرفات المنتجات
             var warehouseProductIds = productTotals.Keys.ToList();
             // جلب الأرصدة المتتبعة في الصالة
@@ -284,7 +316,7 @@ public class SalesInvoiceService : ISalesInvoiceService
             }
 
             // تجميع الكميات المطلوبة لكل باركود
-            var barcodeTotals = dto.Items.GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+            var barcodeTotals = dto.Items.GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
             // قائمة الباركودات
             var warehouseBarcodeIds = barcodeTotals.Keys.ToList();
             // جلب الأرصدة المتتبعة بالمستودع
@@ -303,6 +335,7 @@ public class SalesInvoiceService : ISalesInvoiceService
 
         // تحويل كائن DTO إلى كيان فاتورة المبيعات
         var invoice = _mapper.Map<SalesInvoice>(dto);
+        invoice.PosRequestHash = posRequestHash;
         // ضبط تاريخ الفاتورة
         invoice.InvoiceDate = dto.InvoiceDate == default ? DateTime.UtcNow : dto.InvoiceDate;
         // لا تثق في الإجماليات أو التكلفة القادمة من العميل.
@@ -331,7 +364,7 @@ public class SalesInvoiceService : ISalesInvoiceService
             if (warehouse.Type == WarehouseType.Show)
             {
                 // تجميع الكميات المطلوبة لكل صنف
-                var productTotals = invoice.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+                var productTotals = invoice.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
                 // قائمة المعرفات
                 var warehouseProductIds = productTotals.Keys.ToList();
                 // جلب الأرصدة المتتبعة
@@ -343,14 +376,14 @@ public class SalesInvoiceService : ISalesInvoiceService
                     if (stocksByProduct.TryGetValue(productId, out var stock))
                     {
                         // طرح الكمية المباعة
-                        stock.Quantity -= totalQty;
+                        stock.Quantity = checked(stock.Quantity - (int)totalQty);
                     }
                 }
             }
             else if (warehouse.Type == WarehouseType.Storge)
             {
                 // تجميع الكميات لكل باركود
-                var barcodeTotals = invoice.Items.Where(i => i.ProductBarCodeId.HasValue).GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+                var barcodeTotals = invoice.Items.Where(i => i.ProductBarCodeId.HasValue).GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
                 // قائمة الباركودات
                 var warehouseBarcodeIds = barcodeTotals.Keys.ToList();
                 // جلب الأرصدة المتتبعة
@@ -362,7 +395,7 @@ public class SalesInvoiceService : ISalesInvoiceService
                     if (stocksByBarcode.TryGetValue(barcodeId, out var stock))
                     {
                         // طرح الكمية المباعة
-                        stock.Quantity -= totalQty;
+                        stock.Quantity = checked(stock.Quantity - (int)totalQty);
                     }
                 }
             }
@@ -542,7 +575,7 @@ public class SalesInvoiceService : ISalesInvoiceService
                         {
                             if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
                             {
-                                stock.Quantity += item.Quantity;
+                                stock.Quantity = checked(stock.Quantity + item.Quantity);
                             }
                         }
                     }
@@ -558,7 +591,7 @@ public class SalesInvoiceService : ISalesInvoiceService
                             {
                                 if (item.ProductBarCodeId.HasValue && stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
                                 {
-                                    stock.Quantity += item.Quantity;
+                                    stock.Quantity = checked(stock.Quantity + item.Quantity);
                                 }
                             }
                         }
@@ -580,6 +613,16 @@ public class SalesInvoiceService : ISalesInvoiceService
             // حفظ التغييرات وحركات المخزون
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("تغيرت الفاتورة أو أرصدتها أثناء الإلغاء؛ أعد تحميلها قبل إعادة المحاولة", ErrorCodes.ConcurrencyError);
+        }
+        catch (OverflowException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            return ServiceResult<SalesInvoiceResponseDto>.Failure("إلغاء الفاتورة يتجاوز سعة المخزون المسموحة", ErrorCodes.ValidationError);
         }
         catch
         {

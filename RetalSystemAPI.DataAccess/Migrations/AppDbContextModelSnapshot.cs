@@ -2156,6 +2156,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<Guid?>("PaymentSafeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("PosRequestHash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<Guid?>("PosTerminalId")
                         .HasColumnType("uniqueidentifier");
 

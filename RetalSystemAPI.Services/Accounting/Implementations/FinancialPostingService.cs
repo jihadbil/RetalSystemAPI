@@ -54,8 +54,9 @@ public sealed class FinancialPostingService(IUnitOfWork unitOfWork, IPosCashServ
                     ErrorCodes.ValidationError);
             }
 
-            // تعيين الخزينة الوحيدة المتاحة في الفرع
-            safe = candidates[0];
+            // قائمة الاختيار غير متتبعة وقد تحمل نسخة أخرى من الفرع. أعد تحميل
+            // الخزينة ككيان متتبع قبل تعديل الرصيد أو ربط الحركات المالية بها.
+            safe = await unitOfWork.Accounting.GetSafeByIdAsync(candidates[0].Id, ct);
         }
 
         // التحقق من وجود الخزينة وتبعيتها للفرع المحدد

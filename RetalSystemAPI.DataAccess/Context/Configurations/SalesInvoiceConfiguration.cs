@@ -27,6 +27,8 @@ public class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesInvoice>
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(si => si.PosRequestHash).HasMaxLength(64).IsUnicode(false);
+
         // تعيين تاريخ الفاتورة كحقل إجباري
         builder.Property(si => si.InvoiceDate)
             .IsRequired();

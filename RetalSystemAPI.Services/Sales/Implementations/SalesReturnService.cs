@@ -1,6 +1,7 @@
 using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Customers;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
@@ -125,7 +126,7 @@ public class SalesReturnService : ISalesReturnService
         if (dto.OriginalInvoiceId.HasValue)
         {
             // استعلام الفاتورة الأصلية مع تفاصيل بنودها
-            originalInvoice = await _unitOfWork.SalesInvoices.GetDetailsAsync(dto.OriginalInvoiceId.Value, ct);
+            originalInvoice = await _unitOfWork.SalesInvoices.GetDetailsForUpdateAsync(dto.OriginalInvoiceId.Value, ct);
             // التحقق من وجود الفاتورة
             if (originalInvoice is null)
             {
@@ -161,6 +162,10 @@ public class SalesReturnService : ISalesReturnService
             // إرجاع خطأ عدم وجود المستودع
             return ServiceResult<SalesReturnResponseDto>.Failure("المستودع أو صالة العرض غير موجودة", ErrorCodes.WarehouseNotFound);
         }
+
+        if (!Enum.IsDefined(warehouse.Type) || warehouse.BranchId != dto.BranchId ||
+            originalInvoice is null && !warehouse.IsActive)
+            return ServiceResult<SalesReturnResponseDto>.Failure("اختر مستودعاً صالحاً تابعاً لفرع المرتجع", ErrorCodes.ValidationError);
 
         Customer? customer = null;
         // التحقق من وجود العميل إن تم تحديده
@@ -229,7 +234,7 @@ public class SalesReturnService : ISalesReturnService
                 }
 
                 // التحقق من عدم تجاوز سقف الكمية المباعة
-                if (previouslyReturned + item.Quantity > soldQuantity)
+                if ((long)previouslyReturned + item.Quantity > soldQuantity)
                 {
                     return ServiceResult<SalesReturnResponseDto>.Failure($"الكمية المرتجعة تتجاوز الكمية المباعة (المباعة: {soldQuantity} — المرتجع سابقاً: {previouslyReturned})", ErrorCodes.SalesReturnExceedsSold);
                 }
@@ -239,7 +244,7 @@ public class SalesReturnService : ISalesReturnService
             {
                 var soldQuantity = originalInvoice.Items.Where(i => i.ProductId == requestedGroup.Key.ProductId && i.ProductBarCodeId == requestedGroup.Key.ProductBarCodeId).Sum(i => i.Quantity);
                 previousReturnItems.TryGetValue(requestedGroup.Key, out var previouslyReturned);
-                if (previouslyReturned + requestedGroup.Sum(i => i.Quantity) > soldQuantity)
+                if ((long)previouslyReturned + requestedGroup.Sum(i => (long)i.Quantity) > soldQuantity)
                 {
                     return ServiceResult<SalesReturnResponseDto>.Failure("إجمالي البنود المكررة في المرتجع يتجاوز الكمية المباعة لنفس الباركود", ErrorCodes.SalesReturnExceedsSold);
                 }
@@ -267,6 +272,12 @@ public class SalesReturnService : ISalesReturnService
         var productsById = (await _unitOfWork.Products.GetByIdsAsync(returnProductIds, ct)).ToDictionary(p => p.Id);
         if (productsById.Count != returnProductIds.Count)
             return ServiceResult<SalesReturnResponseDto>.Failure("أحد الأصناف المحددة غير موجود", ErrorCodes.ProductNotFound);
+        var returnBarcodeIds = dto.Items.Where(i => i.ProductBarCodeId.HasValue)
+            .Select(i => i.ProductBarCodeId!.Value).Distinct().ToList();
+        var returnBarcodes = (await _unitOfWork.Products.GetBarcodesByIdsAsync(returnBarcodeIds, ct)).ToDictionary(b => b.Id);
+        if (dto.Items.Any(i => warehouse.Type == WarehouseType.Storge && !i.ProductBarCodeId.HasValue ||
+            i.ProductBarCodeId.HasValue && (!returnBarcodes.TryGetValue(i.ProductBarCodeId.Value, out var barcode) || barcode.ProductId != i.ProductId)))
+            return ServiceResult<SalesReturnResponseDto>.Failure("الباركود مطلوب للمخزن ويجب أن يتبع الصنف المحدد", ErrorCodes.ValidationError);
         var originalAmounts = new Dictionary<(Guid ProductId, Guid? ProductBarCodeId), (decimal Quantity, decimal Amount)>();
         if (originalInvoice is not null)
         {
@@ -348,6 +359,11 @@ public class SalesReturnService : ISalesReturnService
         await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
+            // يشترك الإلغاء وكل المرتجعات في نسخة الفاتورة نفسها لمنع الترحيل المتزامن
+            // اعتماداً على حالة أو كميات مرتجعة أصبحت قديمة.
+            if (originalInvoice is not null)
+                _unitOfWork.SalesInvoices.Update(originalInvoice);
+
             // إعادة البضاعة إلى رصيد المخزون (صالة أو مخزن)
             if (warehouse.Type == WarehouseType.Show)
             {
@@ -358,7 +374,7 @@ public class SalesReturnService : ISalesReturnService
                 {
                     if (stocksByProduct.TryGetValue(item.ProductId, out var stock))
                     {
-                        stock.Quantity += item.Quantity;
+                        stock.Quantity = checked(stock.Quantity + item.Quantity);
                     }
                     else
                     {
@@ -386,7 +402,7 @@ public class SalesReturnService : ISalesReturnService
                         continue;
                     if (stocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
                     {
-                        stock.Quantity += item.Quantity;
+                        stock.Quantity = checked(stock.Quantity + item.Quantity);
                     }
                     else
                     {
@@ -422,6 +438,16 @@ public class SalesReturnService : ISalesReturnService
             // حفظ التغييرات وحركات المخزون في قاعدة البيانات
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            return ServiceResult<SalesReturnResponseDto>.Failure("تغيرت الفاتورة أو أرصدتها أثناء الترحيل؛ أعد تحميلها قبل إعادة المحاولة", ErrorCodes.ConcurrencyError);
+        }
+        catch (OverflowException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            return ServiceResult<SalesReturnResponseDto>.Failure("كمية المرتجع تتجاوز سعة المخزون المسموحة", ErrorCodes.ValidationError);
         }
         catch
         {

@@ -21,6 +21,9 @@ public class SalesInvoice : TenantBaseEntity
     // خاصية رقم فاتورة المبيعات الإلزامي
     public required string InvoiceNumber { get; set; }
 
+    /// <summary>بصمة طلب نقطة البيع للتحقق من إعادة المحاولة بنفس البيانات.</summary>
+    public string? PosRequestHash { get; set; }
+
     /// <summary>
     /// تاريخ ووقت إصدار الفاتورة.
     /// </summary>
