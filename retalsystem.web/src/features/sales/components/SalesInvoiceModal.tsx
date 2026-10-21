@@ -1,18 +1,13 @@
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
-import { customerService } from '../../customers/services/customerService';
 import { stockService } from '../../stock/services/stockService';
-import { accountingService } from '../../accounting/services/accountingService';
-import { organizationService } from '../../organization/services/organizationService';
-import { catalogService } from '../../catalog/services/catalogService';
 import { useAuth } from '../../../shared/context/AuthContext';
-import type { CustomerDto } from '../../customers/types/customer.types';
 import type { WarehouseDto } from '../../stock/types/stock.types';
-import type { SafeDto } from '../../accounting/types/accounting.types';
-import type { BranchDto } from '../../organization/types/organization.types';
 import type { ProductDto } from '../../catalog/types/catalog.types';
 import {
   InvoiceStatus,
@@ -43,10 +38,10 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
   const { currentBranchId } = useAuth();
 
   // ════════ Master Data Lists ════════
-  const [branches, setBranches] = useState<BranchDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
-  const [customers, setCustomers] = useState<CustomerDto[]>([]);
-  const [safes, setSafes] = useState<SafeDto[]>([]);
+  const [customers, setCustomers] = useState<LookupOption[]>([]);
+  const [safes, setSafes] = useState<LookupOption[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
 
   // ════════ Invoice Main Fields ════════
@@ -83,17 +78,13 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
 
   // ── 1. Initialize Master Data on Open ──
   useEffect(() => {
+    let cancelled = false;
     if (!isOpen) return;
 
     const now = new Date();
     const dateFormatted = now.toISOString().slice(0, 10);
-    const randCode = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-      now.getDate()
-    ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(
-      now.getMinutes()
-    ).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
-    setInvoiceNumber(`INV-${randCode}`);
+    setInvoiceNumber(createDocumentNumber('INV'));
     setInvoiceDate(dateFormatted);
     setPaymentMethod(SalesPaymentMethod.Cash);
     setCustomerId('');
@@ -107,13 +98,14 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
 
     setIsLoadingData(true);
     Promise.all([
-      organizationService.getBranches().catch(() => []),
+      lookupService.list('branches').catch(() => []),
       stockService.getWarehouses().catch(() => []),
-      customerService.getAll().catch(() => []),
-      accountingService.getSafes().catch(() => []),
-      catalogService.getProducts({ pageNumber: 1, pageSize: 200 }).catch(() => ({ items: [] })),
+      lookupService.list('customers').catch(() => []),
+      lookupService.list('safes').catch(() => []),
+      lookupService.page<ProductDto>('products', { pageNumber: 1, pageSize: 200 }).catch(() => ({ items: [] })),
     ])
       .then(([bList, wList, cList, sfList, pResult]) => {
+          if (cancelled) return;
         setBranches(bList);
         const activeWarehouses = wList.filter((w) => w.isActive);
         setWarehouses(activeWarehouses);
@@ -133,10 +125,12 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
         if (branchSafes.length > 0) setPaymentSafeId(branchSafes[0].id);
       })
       .catch((err) => {
+          if (cancelled) return;
         console.error('Failed to load sales invoice dropdowns:', err);
         setFormError('تعذر تحميل بيانات الفروع أو المستودعات أو العملاء');
       })
-      .finally(() => setIsLoadingData(false));
+      .finally(() => { if (!cancelled) setIsLoadingData(false); });
+    return () => { cancelled = true; };
   }, [isOpen, currentBranchId]);
 
   const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
@@ -148,20 +142,26 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
 
   // ── 2. Reload Safes on Branch Change ──
   useEffect(() => {
+    let cancelled = false;
     if (!branchId) return;
-    accountingService
-      .getSafes(branchId, undefined, true)
+    lookupService
+      .list('safes', branchId)
       .then((sfList) => {
+          if (cancelled) return;
         setSafes(sfList);
         if (sfList.length > 0 && (!paymentSafeId || !sfList.some((s) => s.id === paymentSafeId))) {
           setPaymentSafeId(sfList[0].id);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+          if (cancelled) return;});
+    return () => { cancelled = true; };
   }, [branchId, paymentSafeId]);
 
   // ── 3. Reset Item Entry ──
   function resetItemEntry() {
+    selectionVersion.current++;
+    setIsSearchingBarcode(false);
     setSelectedBarcodeId(undefined);
     setSelectedProduct(null);
     setSelectedProductId('');
@@ -174,13 +174,16 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
 
   // ── 4. On Product Selected ──
   const selectionVersion = useRef(0);
+  const invalidateSelection = useCallback(() => { selectionVersion.current++; }, []);
+  useEffect(() => invalidateSelection, [isOpen, invalidateSelection]);
   const handleSelectProduct = useCallback(async (summary: ProductDto, scannedBarcode?: string) => {
     const version = ++selectionVersion.current;
+    setIsSearchingBarcode(false);
     setSelectedProduct(null);
     setSelectedBarcodeId(undefined);
     setSelectedProductId(summary.id);
     try {
-      const product = summary.barCodes?.length ? summary : await catalogService.getProductById(summary.id);
+      const product = summary.barCodes?.length ? summary : await lookupService.product(summary.id);
       if (version !== selectionVersion.current) return;
       const barcode = scannedBarcode
         ? product.barCodes?.find((b) => b.barCode.toLowerCase() === scannedBarcode.toLowerCase())
@@ -199,12 +202,14 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
   // ── 5. Lookup Barcode ──
   const handleLookupBarcode = async () => {
     if (!searchBarcode.trim()) return;
+    const version = ++selectionVersion.current;
     setIsSearchingBarcode(true);
     setSearchErrorMessage(null);
 
     try {
       const trimmed = searchBarcode.trim();
-      const product = await catalogService.getByBarCode(trimmed);
+      const product = await lookupService.barcode(trimmed);
+      if (version !== selectionVersion.current) return;
       if (product && product.id) {
         await handleSelectProduct(product, trimmed);
       } else {
@@ -221,6 +226,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
         }
       }
     } catch {
+      if (version !== selectionVersion.current) return;
       const local = products.find(
         (p) =>
           p.code.toLowerCase() === searchBarcode.trim().toLowerCase() ||
@@ -232,7 +238,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
         setSearchErrorMessage(`لم يتم العثور على صنف بالباركود: ${searchBarcode.trim()}`);
       }
     } finally {
-      setIsSearchingBarcode(false);
+      if (version === selectionVersion.current) setIsSearchingBarcode(false);
     }
   };
 
@@ -424,7 +430,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             />
 
             <Select
-              label="الفرع *"
+              lookup={{ resource: 'branches' }} label="الفرع *"
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
               required
@@ -437,7 +443,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             </Select>
 
             <Select
-              label="صالة العرض / المستودع *"
+              lookup={{ resource: 'warehouses', branchId: branchId }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="صالة العرض / المستودع *"
               value={warehouseId}
               onChange={(e) => setWarehouseId(e.target.value)}
               required
@@ -450,14 +456,14 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             </Select>
 
             <Select
-              label="العميل"
+              lookup={{ resource: 'customers' }} label="العميل"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
               <option value="">(عميل نقدي عام)</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} {c.phone ? `(${c.phone})` : ''}
+                  {c.name}
                 </option>
               ))}
             </Select>
@@ -487,14 +493,14 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             />
 
             <Select
-              label="الخزينة / الحساب للتحصيل"
+              lookup={{ resource: 'safes', branchId }} label="الخزينة / الحساب للتحصيل"
               value={paymentSafeId}
               onChange={(e) => setPaymentSafeId(e.target.value)}
               disabled={paymentMethod === SalesPaymentMethod.Credit}
             >
               {safes.map((sf) => (
                 <option key={sf.id} value={sf.id}>
-                  {sf.name} ({sf.currentBalance?.toFixed(2) ?? '0.00'} د.ل)
+                  {sf.name}
                 </option>
               ))}
             </Select>
@@ -551,11 +557,12 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({
             {/* Product Selector Dropdown */}
             <div className="sm:col-span-4">
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">الصنف *</label>
-              <Select
+              <Select lookup={{ resource: 'products' }} label="الصنف"
                 value={selectedProductId}
                 onChange={(e) => {
-                  const prod = products.find((p) => p.id === e.target.value);
-                  if (prod) handleSelectProduct(prod);
+                  const id = e.target.value;
+                  if (id) void handleSelectProduct({ id } as ProductDto);
+                  else resetItemEntry();
                 }}
                 className="h-9"
               >

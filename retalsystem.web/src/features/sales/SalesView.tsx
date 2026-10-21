@@ -212,22 +212,22 @@ export const SalesView: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              {canPrint && <button
+                          <button
                                 type="button"
                                 onClick={() => setSelectedDetailsInvoiceId(inv.id)}
                                 className="p-1.5 text-slate-500 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
                                 title="عرض تفاصيل وبنود الفاتورة"
                               >
                                 <IconEye className="w-4 h-4" />
-                              </button>}
-                              <button
+                          </button>
+                          {canPrint && <button
                                 type="button"
                                 onClick={() => setViewingInvoice(inv)}
                                 className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                                 title="معاينة وطباعة الفاتورة A4"
                               >
                                 <IconPrinter className="w-4 h-4" />
-                              </button>
+                          </button>}
                             </div>
                           </td>
                         </tr>
@@ -297,6 +297,7 @@ export const SalesView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ الفاتورة على الخادم';
             showError('خطأ أثناء حفظ الفاتورة', msg);
+            throw err;
           }
         }}
       />

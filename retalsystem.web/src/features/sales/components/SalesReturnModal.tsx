@@ -1,21 +1,16 @@
+import { lookupService, type LookupOption, type ReturnSourceInvoice } from '../../../shared/services/lookupService';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
 import { stockService } from '../../stock/services/stockService';
-import { customerService } from '../../customers/services/customerService';
-import { accountingService } from '../../accounting/services/accountingService';
-import { catalogService } from '../../catalog/services/catalogService';
-import { salesService } from '../services/salesService';
-import type { SalesInvoiceDto } from '../types/sales.types';
 import { salesReturnLines } from '../../../shared/utils/returnLines';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
 import { useAuth } from '../../../shared/context/AuthContext';
 import type { WarehouseDto } from '../../stock/types/stock.types';
-import type { CustomerDto } from '../../customers/types/customer.types';
-import type { SafeDto } from '../../accounting/types/accounting.types';
 import type { ProductDto } from '../../catalog/types/catalog.types';
 import { IconPlus, IconTrash, IconReceiptRefund } from '@tabler/icons-react';
 
@@ -39,8 +34,8 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
   const { currentBranchId, hasPermission } = useAuth();
 
   const [invoiceId, setInvoiceId] = useState('');
-  const [invoices, setInvoices] = useState<SalesInvoiceDto[]>([]);
-  const [originalInvoice, setOriginalInvoice] = useState<SalesInvoiceDto | null>(null);
+  const [invoices, setInvoices] = useState<ReturnSourceInvoice[]>([]);
+  const [originalInvoice, setOriginalInvoice] = useState<ReturnSourceInvoice | null>(null);
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const debouncedInvoiceSearch = useDebounce(invoiceSearch, 300);
   const [loadingInvoice, setLoadingInvoice] = useState(false);
@@ -60,8 +55,8 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
   // Dropdown lists
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
-  const [customers, setCustomers] = useState<CustomerDto[]>([]);
-  const [safes, setSafes] = useState<SafeDto[]>([]);
+  const [customers, setCustomers] = useState<LookupOption[]>([]);
+  const [safes, setSafes] = useState<LookupOption[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
 
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -73,7 +68,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    void salesService.getInvoices({ pageNumber: 1, pageSize: 100, branchId: currentBranchId || undefined, search: debouncedInvoiceSearch || undefined })
+    void lookupService.page<ReturnSourceInvoice>('sales-return-invoices', { pageNumber: 1, pageSize: 100, branchId: currentBranchId || undefined, search: debouncedInvoiceSearch || undefined })
       .then((result) => { if (!cancelled) setInvoices(result.items.filter((invoice) => [1, 2, 3].includes(invoice.status))); })
       .catch(() => { if (!cancelled) setError('تعذر تحميل الفواتير الأصلية'); });
     return () => { cancelled = true; };
@@ -83,9 +78,15 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
     if (!isOpen || !invoiceId) { setLoadingInvoice(false); return; }
     let cancelled = false;
     setLoadingInvoice(true);
-    void salesService.getInvoiceById(invoiceId).then((invoice) => {
+    void lookupService.page<ReturnSourceInvoice>('sales-return-invoices', { id: invoiceId, pageSize: 1 }).then((result) => {
+      if (!result.items[0]) throw new Error('الفاتورة غير متاحة للإرجاع');
+      return result.items[0];
+    }).then(async (invoice) => {
+      const available = await stockService.getWarehouses(invoice.branchId, invoice.warehouseId);
+      if (!available.some((warehouse) => warehouse.id === invoice.warehouseId)) throw new Error('مستودع الفاتورة الأصلية غير متاح للإرجاع');
       if (cancelled) return;
       if (![1, 2, 3].includes(invoice.status)) throw new Error('الفاتورة غير مرحلة أو ملغاة');
+      setWarehouses(available);
       setOriginalInvoice(invoice); setWarehouseId(invoice.warehouseId || ''); setCustomerId(invoice.customerId || '');
     }).catch((err: unknown) => {
       if (!cancelled) setError(err instanceof Error ? err.message : 'تعذر تحميل الفاتورة');
@@ -94,11 +95,11 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
   }, [isOpen, invoiceId]);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
-      const rand = Math.floor(100 + Math.random() * 900);
-      setReturnNumber(`SRTN-${dateStr.replace(/-/g, '')}-${rand}`);
+      setReturnNumber(createDocumentNumber('SRTN'));
       setReturnDate(dateStr);
       setInvoiceId(''); setOriginalInvoice(null); setInvoiceSearch('');
       setItems([]);
@@ -111,11 +112,12 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
       setIsLoadingData(true);
       Promise.all([
         stockService.getWarehouses(currentBranchId || undefined),
-        customerService.getAll(),
-        accountingService.getSafes(currentBranchId || undefined, undefined, true),
-        catalogService.getProducts(),
+        lookupService.list('customers'),
+        lookupService.list('safes', currentBranchId || undefined),
+        lookupService.page<ProductDto>('products'),
       ])
         .then(([whs, custs, sfs, prods]) => {
+          if (cancelled) return;
           const availableWarehouses = whs.filter((w) => w.isActive);
           setWarehouses(availableWarehouses); setWarehouseId(availableWarehouses[0]?.id || '');
 
@@ -129,11 +131,13 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
           setProducts(productList.filter((p) => p.isActive));
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load return modal dropdowns:', err);
           setError('فشل تحميل القوائم الأساسية لمرتجع المبيعات');
         })
-        .finally(() => setIsLoadingData(false));
+        .finally(() => { if (!cancelled) setIsLoadingData(false); });
     }
+    return () => { cancelled = true; };
   }, [isOpen, currentBranchId]);
 
   const handleAddItem = () => {
@@ -146,7 +150,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
     }
     if (!canReturnWithoutInvoice) { setError('اختر الفاتورة الأصلية'); return; }
     if (needsBarcode && !barcodeId) { setError('اختر باركود الصنف'); return; }
-    const prod = products.find((p) => p.id === selectedProductId);
+    const prod = selectedProduct;
     if (!prod) return;
 
     if (items.some((i) => i.productId === prod.id && i.productBarCodeId === (needsBarcode ? barcodeId : undefined))) {
@@ -293,7 +297,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
           />
 
           <Select
-            label="المستودع / الصالة المستلمة *"
+            lookup={{ resource: 'warehouses', branchId: currentBranchId || undefined }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع / الصالة المستلمة *"
             disabled={!!invoiceId}
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
@@ -304,7 +308,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Select
-            label="العميل"
+            lookup={originalInvoice ? undefined : { resource: 'customers' }} label="العميل"
             disabled={!!invoiceId}
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
@@ -343,12 +347,12 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
         {paymentMethod !== 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="الخزينة المنصرف منها المبلغ *"
+              lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة المنصرف منها المبلغ *"
               value={refundSafeId}
               onChange={(e) => setRefundSafeId(e.target.value)}
               options={safes.map((s) => ({
                 value: s.id,
-                label: `${s.name} (الرصيد: ${s.currentBalance.toLocaleString('ar-LY')} د.ل)`,
+                label: s.name,
               }))}
             />
             <Input
@@ -377,7 +381,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
 
           <div className="flex gap-2">
             <div className="flex-1">
-              <Select
+              <Select lookup={invoiceId ? undefined : { resource: 'products' }} label="الصنف"
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(e.target.value)}
                 options={[

@@ -5,6 +5,8 @@ import { salesService } from '../services/salesService';
 import type { SalesInvoiceDto } from '../types/sales.types';
 import { InvoiceStatusLabels } from '../types/sales.types';
 import { IconPrinter, IconAlertCircle } from '@tabler/icons-react';
+import { useAuth } from '../../../shared/context/AuthContext';
+import { Permissions } from '../../../shared/auth/permissions';
 
 interface SalesInvoiceDetailsModalProps {
   isOpen: boolean;
@@ -17,25 +19,30 @@ export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> =
   onClose,
   invoiceId,
 }) => {
+  const { hasPermission } = useAuth();
   const [invoice, setInvoice] = useState<SalesInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setInvoice(null);
     if (isOpen && invoiceId) {
       setIsLoading(true);
       setError(null);
       salesService
         .getInvoiceById(invoiceId)
-        .then((data) => setInvoice(data))
+        .then((data) => { if (!cancelled) setInvoice(data); })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load sales invoice details:', err);
           setError('تعذر تحميل تفاصيل الفاتورة من الخادم');
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => { if (!cancelled) setIsLoading(false); });
     } else {
       setInvoice(null);
     }
+    return () => { cancelled = true; };
   }, [isOpen, invoiceId]);
 
   if (!isOpen) return null;
@@ -51,14 +58,14 @@ export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> =
       size="2xl"
       footer={
         <div className="flex justify-between items-center w-full">
-          <Button
+          {hasPermission(Permissions.SalesInvoices.Print) && <Button
             variant="outline"
             size="md"
             leftIcon={<IconPrinter className="w-4 h-4" />}
             onClick={() => window.print()}
           >
             طباعة الفاتورة
-          </Button>
+          </Button>}
           <Button variant="secondary" size="md" onClick={onClose}>
             إغلاق
           </Button>

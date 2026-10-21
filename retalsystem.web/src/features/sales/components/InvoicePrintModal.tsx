@@ -6,6 +6,7 @@ import { InvoiceStatusLabels } from '../types/sales.types';
 import { IconPrinter } from '@tabler/icons-react';
 import { useThermalPrint } from '../../../shared/hooks/useThermalPrint';
 import { salesService } from '../services/salesService';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface InvoicePrintModalProps {
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, onClose, invoice: initialInvoice }) => {
+  const { user } = useAuth();
   const { printDocument } = useThermalPrint();
   const [fullInvoice, setFullInvoice] = useState<SalesInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,9 +69,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         {/* الترويسة */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-5">
           <div className="flex flex-col">
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">شركة ريتال للتجارة والخدمات</h2>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">{user?.tenantName || 'فاتورة مبيعات'}</h2>
             <p className="text-slate-500 mt-1">{invoice.branchName || 'الفرع الرئيسي'}</p>
-            <p className="text-slate-500">الرقم الضريبي: 300123456789</p>
           </div>
 
           <div className="flex flex-col text-left">
