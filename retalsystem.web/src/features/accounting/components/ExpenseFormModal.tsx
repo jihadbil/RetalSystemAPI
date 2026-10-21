@@ -41,15 +41,17 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [error, setError] = useState('');
 
-  const selectedSafe = activeSafes.find((s) => s.id === safeId);
+  const selectedCategoryId = categoryId;
+  const selectedSafeId = safeId;
+  const selectedSafe = activeSafes.find((s) => s.id === selectedSafeId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryId) {
+    if (!selectedCategoryId) {
       setError('يرجى اختيار تصنيف المصروف');
       return;
     }
-    if (!safeId) {
+    if (!selectedSafeId) {
       setError('يرجى اختيار الخزينة أو الحساب المسدد منه');
       return;
     }
@@ -61,16 +63,12 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
       setError('يرجى إدخال بيان وشرح المصروف');
       return;
     }
-    if (selectedSafe && amount > selectedSafe.currentBalance) {
-      setError(`رصيد الحساب المحدد (${selectedSafe.currentBalance.toLocaleString('ar-LY')} د.ل) لا يكفي`);
-      return;
-    }
 
     try {
       setIsSubmitting(true);
       await accountingService.createExpense({
-        expenseCategoryId: categoryId,
-        safeId,
+        expenseCategoryId: selectedCategoryId,
+        safeId: selectedSafeId,
         branchId: currentBranchId || undefined,
         amount: Number(amount),
         expenseDate,
@@ -103,8 +101,8 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
-            label="بند / تصنيف المصروف *"
-            value={categoryId}
+            lookup={{ resource: 'expense-categories' }} label="بند / تصنيف المصروف *"
+            value={selectedCategoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={categories.map((c) => ({
               value: c.id,
@@ -114,8 +112,8 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
 
           <div className="flex flex-col gap-1">
             <Select
-              label="الخصم من خزينة / بنك *"
-              value={safeId}
+              lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخصم من خزينة / بنك *"
+              value={selectedSafeId}
               onChange={(e) => {
                 setSafeId(e.target.value);
                 setError('');
@@ -189,9 +187,9 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
         />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-700">البيان / تفاصيل وشرح المصروف *</label>
+          <label htmlFor="expense-description" className="text-xs font-bold text-slate-700">البيان / تفاصيل وشرح المصروف *</label>
           <input
-            type="text"
+            id="expense-description" type="text"
             className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             placeholder="مثال: فاتورة صيانة دورية للمكيفات بالفرع الرئيسي"
             value={description}

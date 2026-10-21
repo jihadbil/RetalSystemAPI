@@ -74,8 +74,8 @@ export interface CreateExpenseRequest {
 }
 
 export const accountingService = {
-  getPosTerminals(): Promise<PosTerminalDto[]> {
-    return apiClient.get<PosTerminalDto[]>('pos-terminals');
+  getPosTerminals(pageNumber: number, pageSize: number, branchId?: string): Promise<PagedResult<PosTerminalDto>> {
+    return apiClient.get<PagedResult<PosTerminalDto>>('lookups/pos-terminals', { pageNumber, pageSize, branchId });
   },
 
   createPosTerminal(data: { code: string; name: string; branchId: string; defaultCashDrawerId: string }): Promise<PosTerminalDto> {
@@ -87,6 +87,9 @@ export const accountingService = {
   },
 
   // --- الخزائن ---
+  async getSafesPage(pageNumber: number, pageSize: number, branchId?: string): Promise<PagedResult<SafeDto>> {
+    return apiClient.get<PagedResult<SafeDto>>('safes/paged', { pageNumber, pageSize, branchId });
+  },
   async getSafes(branchId?: string, type?: SafeType, isActive?: boolean): Promise<SafeDto[]> {
     try {
       const params: Record<string, string | number> = {};

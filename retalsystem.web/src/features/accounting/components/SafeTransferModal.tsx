@@ -33,16 +33,18 @@ export const SafeTransferModal: React.FC<SafeTransferModalProps> = ({
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  const sourceSafe = activeSafes.find((s) => s.id === sourceSafeId);
-  const destSafe = activeSafes.find((s) => s.id === destinationSafeId);
+  const selectedSourceId = sourceSafeId;
+  const selectedDestinationId = destinationSafeId;
+  const sourceSafe = activeSafes.find((s) => s.id === selectedSourceId);
+  const destSafe = activeSafes.find((s) => s.id === selectedDestinationId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sourceSafeId || !destinationSafeId) {
+    if (!selectedSourceId || !selectedDestinationId) {
       setError('يرجى اختيار الخزينة المصدر والخزينة الوجهة');
       return;
     }
-    if (sourceSafeId === destinationSafeId) {
+    if (selectedSourceId === selectedDestinationId) {
       setError('لا يمكن التحويل من وإلى نفس الحساب');
       return;
     }
@@ -58,8 +60,8 @@ export const SafeTransferModal: React.FC<SafeTransferModalProps> = ({
     try {
       setIsSubmitting(true);
       await accountingService.transferFunds({
-        fromSafeId: sourceSafeId,
-        toSafeId: destinationSafeId,
+        fromSafeId: selectedSourceId,
+        toSafeId: selectedDestinationId,
         amount: Number(amount),
         transferDate,
         description: notes.trim() || 'تحويل مالي بين الخزائن',
@@ -90,8 +92,8 @@ export const SafeTransferModal: React.FC<SafeTransferModalProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <Select
-              label="التحويل من (المصدر) *"
-              value={sourceSafeId}
+              lookup={{ resource: 'safes' }} label="التحويل من (المصدر) *"
+              value={selectedSourceId}
               onChange={(e) => {
                 setSourceSafeId(e.target.value);
                 setError('');
@@ -110,14 +112,14 @@ export const SafeTransferModal: React.FC<SafeTransferModalProps> = ({
 
           <div className="flex flex-col gap-1">
             <Select
-              label="التحويل إلى (الوجهة) *"
-              value={destinationSafeId}
+              lookup={{ resource: 'safes' }} label="التحويل إلى (الوجهة) *"
+              value={selectedDestinationId}
               onChange={(e) => {
                 setDestinationSafeId(e.target.value);
                 setError('');
               }}
               options={activeSafes
-                .filter((s) => s.id !== sourceSafeId)
+                .filter((s) => s.id !== selectedSourceId)
                 .map((s) => ({
                   value: s.id,
                   label: `${s.name} (${s.currentBalance.toLocaleString('ar-LY')} د.ل)`,

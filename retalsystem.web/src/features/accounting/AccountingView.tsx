@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { PosTerminalFormModal } from './components/PosTerminalFormModal';
+import { lookupService } from '../../shared/services/lookupService';
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SafeDto,
   SafeType,
@@ -21,6 +24,8 @@ import { Badge } from '../../shared/components/ui/Badge';
 import { Tabs, TabItem } from '../../shared/components/ui/Tabs';
 import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { usePagination } from '../../shared/hooks/usePagination';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
 import { useAuth } from '../../shared/context/AuthContext';
@@ -50,6 +55,7 @@ export const AccountingView: React.FC = () => {
   const canViewExpenses = hasPermission(Permissions.Expenses.View);
   const canCreateExpense = hasPermission(Permissions.Expenses.Create);
   const canDeleteExpense = hasPermission(Permissions.Expenses.Delete);
+  const canViewExpenseCategories = hasPermission('Permissions.ExpenseCategories.View');
   const [selectedTab, setActiveTab] = useState('safes');
   const activeTab = (selectedTab === 'expenses' ? canViewExpenses : canViewSafes) ? selectedTab : canViewSafes ? 'safes' : 'expenses';
 
@@ -70,6 +76,9 @@ export const AccountingView: React.FC = () => {
   const [transactions, setTransactions] = useState<SafeTransactionDto[]>([]);
   const [isLoadingTrx, setIsLoadingTrx] = useState(false);
   const [terminals, setTerminals] = useState<PosTerminalDto[]>([]);
+  const [terminalFormOpen, setTerminalFormOpen] = useState(false);
+  const terminalPagination = usePagination({ initialPageSize: 20 });
+  const { page: terminalPage, pageSize: terminalPageSize, setTotalCount: setTerminalCount } = terminalPagination;
   const [isLoadingTerminals, setIsLoadingTerminals] = useState(false);
 
   // النوافذ المنبثقة
@@ -84,71 +93,102 @@ export const AccountingView: React.FC = () => {
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
 
   const [accountingError, setAccountingError] = useState<string | null>(null);
+  const safePagination = usePagination({ initialPageSize: 20 });
+  const { page: safePage, pageSize: safePageSize, setTotalCount: setSafeCount, resetPage: resetSafePage } = safePagination;
+  useEffect(() => { resetSafePage(); }, [currentBranchId, resetSafePage]);
+  const expensePagination = usePagination({ initialPageSize: 20 });
+  const transactionPagination = usePagination({ initialPageSize: 20 });
+  const { page: expensePage, pageSize: expensePageSize, setTotalCount: setExpenseCount, resetPage: resetExpensePage } = expensePagination;
+  const { page: transactionPage, pageSize: transactionPageSize, setTotalCount: setTransactionCount, resetPage: resetTransactionPage } = transactionPagination;
+  const safeRequestVersion = useRef(0);
+  const expenseRequestVersion = useRef(0);
+  const transactionRequestVersion = useRef(0);
+
+  useEffect(() => { resetExpensePage(); }, [currentBranchId, selectedCategory, debouncedExpenseSearch, resetExpensePage]);
+  useEffect(() => { resetTransactionPage(); }, [selectedSafeForTrx, resetTransactionPage]);
 
   const loadSafes = useCallback(async () => {
+    const version = ++safeRequestVersion.current;
     try {
       setIsLoadingSafes(true);
       setAccountingError(null);
-      const data = await accountingService.getSafes(currentBranchId || undefined);
-      setSafes(data);
-      if (!data.some((safe) => safe.id === selectedSafeForTrx)) setSelectedSafeForTrx(data[0]?.id || '');
+      const data = await accountingService.getSafesPage(safePage, safePageSize, currentBranchId || undefined);
+      if (version !== safeRequestVersion.current) return;
+      setSafes(data.items); setSafeCount(data.totalCount);
+      setSelectedSafeForTrx((previous) => data.items.some((safe) => safe.id === previous) ? previous : data.items[0]?.id || '');
     } catch (err: unknown) {
+      if (version !== safeRequestVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات الخزائن';
       setAccountingError(msg);
       showError('خطأ في تحميل الخزائن', msg);
     } finally {
-      setIsLoadingSafes(false);
+      if (version === safeRequestVersion.current) setIsLoadingSafes(false);
     }
-  }, [selectedSafeForTrx, showError, currentBranchId]);
+  }, [showError, currentBranchId, safePage, safePageSize, setSafeCount]);
 
   const loadExpenses = useCallback(async () => {
+    const version = ++expenseRequestVersion.current;
     try {
       setIsLoadingExpenses(true);
       const [expResult, cats] = await Promise.all([
-        accountingService.getExpenses(1, 20, selectedCategory || undefined, undefined, debouncedExpenseSearch, currentBranchId || undefined),
-        accountingService.getExpenseCategories(),
+        accountingService.getExpenses(expensePage, expensePageSize, selectedCategory || undefined, undefined, debouncedExpenseSearch, currentBranchId || undefined),
+        canViewExpenseCategories ? lookupService.list('expense-categories').then((items) => items.map((item) => ({ ...item, isActive: item.isActive !== false }))) : Promise.resolve([]),
       ]);
+      if (version !== expenseRequestVersion.current) return;
       setExpenses(expResult.items);
+      setExpenseCount(expResult.totalCount);
       setCategories(cats);
     } catch (err: unknown) {
+      if (version !== expenseRequestVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل المصروفات والتصنيفات';
       setAccountingError(msg);
       showError('خطأ في تحميل المصروفات', msg);
     } finally {
-      setIsLoadingExpenses(false);
+      if (version === expenseRequestVersion.current) setIsLoadingExpenses(false);
     }
-  }, [selectedCategory, debouncedExpenseSearch, showError, currentBranchId]);
+  }, [expensePage, expensePageSize, setExpenseCount, canViewExpenseCategories, selectedCategory, debouncedExpenseSearch, showError, currentBranchId]);
 
   const loadTransactions = useCallback(async () => {
-    if (!selectedSafeForTrx) return;
+    const version = ++transactionRequestVersion.current;
+    if (!selectedSafeForTrx) { setTransactions([]); setTransactionCount(0); setIsLoadingTrx(false); return; }
     try {
       setIsLoadingTrx(true);
-      const res = await accountingService.getSafeTransactions(selectedSafeForTrx);
+      const res = await accountingService.getSafeTransactions(selectedSafeForTrx, transactionPage, transactionPageSize);
+      if (version !== transactionRequestVersion.current) return;
       setTransactions(res.items);
+      setTransactionCount(res.totalCount);
     } catch (err: unknown) {
+      if (version !== transactionRequestVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل حركات الخزينة';
       showError('خطأ في كشف حركات الخزينة', msg);
     } finally {
-      setIsLoadingTrx(false);
+      if (version === transactionRequestVersion.current) setIsLoadingTrx(false);
     }
-  }, [selectedSafeForTrx, showError]);
+  }, [selectedSafeForTrx, transactionPage, transactionPageSize, setTransactionCount, showError]);
 
+  const terminalGate = useRequestGate();
   const loadTerminals = useCallback(async () => {
-    try { setIsLoadingTerminals(true); setTerminals((await accountingService.getPosTerminals()).filter((terminal) => !currentBranchId || terminal.branchId === currentBranchId)); }
-    catch (err) { showError('خطأ في نقاط البيع', err instanceof Error ? err.message : 'تعذر تحميل نقاط البيع'); }
-    finally { setIsLoadingTerminals(false); }
-  }, [showError, currentBranchId]);
+    const isCurrent = terminalGate.begin();
+    try { setIsLoadingTerminals(true); setTerminals([]); const terminals = await accountingService.getPosTerminals(terminalPage, terminalPageSize, currentBranchId || undefined);
+      if (isCurrent()) { setTerminals(terminals.items); setTerminalCount(terminals.totalCount); } }
+    catch (err) { if (isCurrent()) showError('خطأ في نقاط البيع', err instanceof Error ? err.message : 'تعذر تحميل نقاط البيع'); }
+    finally { if (isCurrent()) setIsLoadingTerminals(false); }
+  }, [showError, currentBranchId, terminalGate, terminalPage, terminalPageSize, setTerminalCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (canViewSafes) void loadSafes();
-      if (canViewExpenses) void loadExpenses();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [canViewSafes, canViewExpenses, loadSafes, loadExpenses]);
+  }, [canViewSafes, loadSafes]);
 
   useEffect(() => {
-    if (activeTab === 'transactions' && selectedSafeForTrx) {
+    const timer = window.setTimeout(() => { if (canViewExpenses) void loadExpenses(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canViewExpenses, loadExpenses]);
+
+  useEffect(() => {
+    if (activeTab === 'transactions') {
       const timer = window.setTimeout(() => { void loadTransactions(); }, 0);
       return () => window.clearTimeout(timer);
     }
@@ -157,12 +197,12 @@ export const AccountingView: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'terminals') return;
     const timer = window.setTimeout(() => { void loadTerminals(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [activeTab, loadTerminals]);
+    return () => { window.clearTimeout(timer); terminalGate.invalidate(); };
+  }, [activeTab, loadTerminals, terminalGate]);
 
   // إجمالي السيولة النقدية في النظام
   const totalLiquidity = safes.reduce((acc, s) => acc + (s.currentBalance || 0), 0);
-  const totalExpensesAmount = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+  const totalExpensesAmount = expenses.reduce((acc, e) => acc + (e.isCancelled ? 0 : e.amount || 0), 0);
 
   const tabs: TabItem[] = [
     ...(canViewSafes ? [{ id: 'safes', label: 'الخزائن والحسابات المصرفية', icon: <IconVault className="w-4 h-4" /> }] : []),
@@ -224,7 +264,7 @@ export const AccountingView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-200">إجمالي السيولة النقدية والبنكية</span>
+            <span className="text-xs font-semibold text-emerald-200">رصيد حسابات الصفحة الحالية</span>
             <IconWallet className="w-5 h-5 text-emerald-300" />
           </div>
           <div className="text-2xl font-black mt-2 num-ltr text-right">
@@ -232,13 +272,13 @@ export const AccountingView: React.FC = () => {
             <span className="text-xs font-medium text-emerald-200">د.ل</span>
           </div>
           <div className="text-[11px] text-emerald-300/80 mt-1">
-            موزعة على {safes.length} حسابات وصناديق نقدية
+            تظهر {safes.length} من {safePagination.totalCount} حسابات وصناديق نقدية
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400">إجمالي المصروفات المسجلة</span>
+            <span className="text-xs font-bold text-slate-400">مصروفات الصفحة الحالية غير الملغاة</span>
             <div className="text-2xl font-black text-slate-900 num-ltr text-right mt-1">
               {totalExpensesAmount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
               <span className="text-xs font-normal">د.ل</span>
@@ -251,7 +291,7 @@ export const AccountingView: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400">عدد بنود المصروفات النشطة</span>
+            <span className="text-xs font-bold text-slate-400">بنود المصروفات في القائمة الحالية</span>
             <div className="text-2xl font-black text-emerald-700 mt-1">{categories.length}</div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -396,21 +436,7 @@ export const AccountingView: React.FC = () => {
               <h2 className="text-sm font-bold text-slate-800">نقاط البيع المرتبطة بأدراج النقود الفعلية</h2>
               <p className="text-xs text-slate-500 mt-1">أنشئ نقطة بيع ثم ولّد رمزاً صالحاً لخمس دقائق لربط المتصفح أو برنامج سطح المكتب.</p>
             </div>
-            {canEditSafe && <Button variant="primary" size="sm" onClick={async () => {
-              const drawers = safes.filter((s) => s.type === SafeType.CashDrawer && s.isActive && (!currentBranchId || s.branchId === currentBranchId));
-              if (!currentBranchId || drawers.length === 0) { showError('تعذر الإنشاء', 'اختر فرعاً وأنشئ درج نقود نشطاً فيه أولاً'); return; }
-              const code = window.prompt('رمز نقطة البيع (مثال POS-01)');
-              if (!code?.trim()) return;
-              const name = window.prompt('اسم نقطة البيع');
-              if (!name?.trim()) return;
-              const drawerLabel = drawers.map((d, i) => `${i + 1}: ${d.name}`).join('\n');
-              const selection = Number(window.prompt(`اختر رقم درج النقود:\n${drawerLabel}`, '1')) - 1;
-              if (!drawers[selection]) return;
-              try {
-                await accountingService.createPosTerminal({ code: code.trim(), name: name.trim(), branchId: currentBranchId, defaultCashDrawerId: drawers[selection].id });
-                showSuccess('تم إنشاء نقطة البيع'); await loadTerminals();
-              } catch (err) { showError('فشل إنشاء نقطة البيع', err instanceof Error ? err.message : 'خطأ غير متوقع'); }
-            }}>
+            {canEditSafe && <Button variant="primary" size="sm" onClick={() => setTerminalFormOpen(true)}>
               <IconPlus className="w-4 h-4" /> إضافة نقطة بيع
             </Button>}
           </div>
@@ -437,6 +463,13 @@ export const AccountingView: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'safes' && <Pagination currentPage={safePagination.page} totalPages={safePagination.totalPages}
+        totalCount={safePagination.totalCount} pageSize={safePagination.pageSize} onPageChange={safePagination.goToPage} onPageSizeChange={safePagination.changePageSize} isLoading={isLoadingSafes} />}
+
+      {activeTab === 'terminals' && <Pagination currentPage={terminalPagination.page} totalPages={terminalPagination.totalPages}
+        totalCount={terminalPagination.totalCount} pageSize={terminalPagination.pageSize} onPageChange={terminalPagination.goToPage} onPageSizeChange={terminalPagination.changePageSize} isLoading={isLoadingTerminals} />}
+      {terminalFormOpen && <PosTerminalFormModal branchId={currentBranchId || undefined} onClose={() => setTerminalFormOpen(false)} onSaved={() => void loadTerminals()} />}
+
       {activeTab === 'expenses' && (
         <div className="flex flex-col gap-4">
           {/* شريط البحث وفلترة المصروفات */}
@@ -450,7 +483,7 @@ export const AccountingView: React.FC = () => {
               />
 
               <div className="w-48">
-                <Select
+                <Select lookup={{ resource: 'expense-categories' }} label="تصنيف المصروف"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   options={[
@@ -513,9 +546,13 @@ export const AccountingView: React.FC = () => {
                             type="button"
                             title="حذف سند المصروف"
                             onClick={async () => {
-                              await accountingService.deleteExpense(exp.id);
-                              showSuccess('تم حذف سند المصروف');
-                              loadExpenses();
+                              try {
+                                await accountingService.deleteExpense(exp.id);
+                                showSuccess('تم حذف سند المصروف');
+                                await loadExpenses();
+                              } catch (err) {
+                                showError('تعذر حذف سند المصروف', err instanceof Error ? err.message : 'فشل إلغاء المصروف');
+                              }
                             }}
                             className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                           >
@@ -532,13 +569,20 @@ export const AccountingView: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'expenses' && <Pagination
+        currentPage={expensePagination.page} totalPages={expensePagination.totalPages}
+        totalCount={expensePagination.totalCount} pageSize={expensePagination.pageSize}
+        onPageChange={expensePagination.goToPage} onPageSizeChange={expensePagination.changePageSize}
+        isLoading={isLoadingExpenses}
+      />}
+
       {activeTab === 'transactions' && (
         <div className="flex flex-col gap-4">
           <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-slate-700">اختر الخزينة / الحساب:</span>
               <div className="w-72">
-                <Select
+                <Select lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة"
                   value={selectedSafeForTrx}
                   onChange={(e) => setSelectedSafeForTrx(e.target.value)}
                   options={safes.map((s) => ({
@@ -596,6 +640,13 @@ export const AccountingView: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'transactions' && <Pagination
+        currentPage={transactionPagination.page} totalPages={transactionPagination.totalPages}
+        totalCount={transactionPagination.totalCount} pageSize={transactionPagination.pageSize}
+        onPageChange={transactionPagination.goToPage} onPageSizeChange={transactionPagination.changePageSize}
+        isLoading={isLoadingTrx}
+      />}
+
       {/* النوافذ المنبثقة */}
       <SafeFormModal
         isOpen={isSafeFormOpen}
@@ -604,21 +655,21 @@ export const AccountingView: React.FC = () => {
         onSaved={loadSafes}
       />
 
-      <SafeTransferModal
+      {isTransferOpen && <SafeTransferModal
         isOpen={isTransferOpen}
         onClose={() => setIsTransferOpen(false)}
         safes={safes}
         onTransferSuccess={loadSafes}
-      />
+      />}
 
-      <SafeTransactionModal
+      {isTransactionOpen && <SafeTransactionModal
         isOpen={isTransactionOpen}
         onClose={() => setIsTransactionOpen(false)}
         safe={safeForTransaction}
         onTransactionSuccess={loadSafes}
-      />
+      />}
 
-      <ExpenseFormModal
+      {isExpenseFormOpen && <ExpenseFormModal
         isOpen={isExpenseFormOpen}
         onClose={() => setIsExpenseFormOpen(false)}
         categories={categories}
@@ -627,7 +678,7 @@ export const AccountingView: React.FC = () => {
           loadExpenses();
           loadSafes();
         }}
-      />
+      />}
     </div>
   );
 };

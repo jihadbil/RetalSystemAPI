@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Input } from '../../../shared/components/ui/Input';
+import { Select } from '../../../shared/components/ui/Select';
 import { Button } from '../../../shared/components/ui/Button';
 import { SafeDto, TransactionDirection } from '../types/accounting.types';
 import { accountingService } from '../services/accountingService';
@@ -31,12 +32,13 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
   const [referenceNumber, setReferenceNumber] = useState('');
   const [error, setError] = useState('');
 
-  if (!safe) return null;
+  const [safeId, setSafeId] = useState(safe?.id || '');
 
   const isInbound = direction === TransactionDirection.Inbound;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!safeId) { setError('اختر الخزينة أو الحساب'); return; }
     if (!amount || amount <= 0) {
       setError('يرجى إدخال مبلغ صحيح أكبر من الصفر');
       return;
@@ -45,15 +47,15 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
       setError('يرجى إدخال سبب / بيان الحركة');
       return;
     }
-    if (!isInbound && amount > safe.currentBalance) {
-      setError(`المبلغ يتجاوز رصيد الخزينة الحالي (${safe.currentBalance.toLocaleString('ar-SA')} د.ل)`);
+    if (!isInbound && safe && safe.id === safeId && amount > safe.currentBalance) {
+      setError(`المبلغ يتجاوز رصيد الخزينة الحالي (${(safe?.currentBalance ?? 0).toLocaleString('ar-SA')} د.ل)`);
       return;
     }
 
     try {
       setIsSubmitting(true);
       await accountingService.createTransaction({
-        safeId: safe.id,
+        safeId,
         direction,
         amount: Number(amount),
         transactionDate,
@@ -80,10 +82,11 @@ export const SafeTransactionModal: React.FC<SafeTransactionModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isInbound ? 'إيداع نقدي مباشر' : 'سحب نقدي مباشر'}
-      subtitle={`الحساب المتأثر: ${safe.name} (الرصيد: ${safe.currentBalance.toLocaleString('ar-SA')} د.ل)`}
+      subtitle={safe?.id === safeId ? `الحساب المتأثر: ${safe.name} (الرصيد: ${safe.currentBalance.toLocaleString('ar-SA')} د.ل)` : 'اختر الحساب الذي تسجّل عليه الحركة'}
       size="md"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Select lookup={{ resource: 'safes' }} label="الخزينة / الحساب" value={safeId} onChange={(event) => setSafeId(event.target.value)} />
         {/* اختيار اتجاه الحركة */}
         <div className="grid grid-cols-2 gap-3 p-1 bg-slate-100 rounded-xl">
           <button
