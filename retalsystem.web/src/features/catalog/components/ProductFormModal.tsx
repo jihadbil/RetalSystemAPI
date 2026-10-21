@@ -1,3 +1,4 @@
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
@@ -6,6 +7,7 @@ import { Select } from '../../../shared/components/ui/Select';
 import { Tabs } from '../../../shared/components/ui/Tabs';
 import type { ProductDto, CategoryDto, UnitDto, CreateProductRequest } from '../types/catalog.types';
 import { stockService } from '../../stock/services/stockService';
+import { buildProductFormUnits } from '../services/catalogService';
 import type { WarehouseDto } from '../../stock/types/stock.types';
 import {
   IconInfoCircle,
@@ -59,10 +61,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   >([]);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
       stockService
         .getWarehouses()
         .then((whs) => {
+          if (cancelled) return;
           const activeWhs = (whs || []).filter((w) => w.isActive);
           setWarehouses(activeWhs);
         })
@@ -70,6 +74,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           console.error('Failed to load warehouses:', err);
         });
     }
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   useEffect(() => {
@@ -89,7 +94,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         );
       } else {
         setName('');
-        setCode(`PRD-${Math.floor(1000 + Math.random() * 9000)}`);
+        setCode(createDocumentNumber('PRD'));
         setDescription('');
         setCategoryId(categories[0]?.id || '');
         setDefaultUnitId(units[0]?.id || '');
@@ -133,12 +138,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         costPrice: Number(costPrice) || 0,
         salePrice: Number(salePrice) || 0,
         barCodes: barcodes.filter((b) => b.barCode.trim().length > 0),
-        units: defaultUnitId
-          ? [{ unitId: defaultUnitId, conversionFactor: 1, isDefault: true }]
-          : [],
+        units: buildProductFormUnits(productToEdit?.units, defaultUnitId || units[0]?.id || ''),
         openingBalances: openingBalances.filter((o) => o.quantity > 0),
       });
       onClose();
+    } catch {
+      // The parent displays the save error. Preserve the form for a retry.
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +204,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             />
 
             <Select
-              label="التصنيف الأساسي"
+              lookup={{ resource: 'categories' }} label="التصنيف الأساسي"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
@@ -211,7 +216,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </Select>
 
             <Select
-              label="الوحدة الافتراضية للبيع"
+              lookup={{ resource: 'units' }} label="الوحدة الافتراضية للبيع"
               value={defaultUnitId}
               onChange={(e) => setDefaultUnitId(e.target.value)}
             >
@@ -326,6 +331,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <p className="text-xs text-slate-500">
               قسم اختياري: يمكنك تسجيل كميات المخزون الأولية المتوفرة حالياً في مستودعاتك لهذا الصنف:
             </p>
+              <Select lookup={{ resource: 'warehouses' }} label="إضافة مستودع إلى قائمة الرصيد الافتتاحي" value=""
+                  onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} />
             {warehouses.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {warehouses.map((wh) => {

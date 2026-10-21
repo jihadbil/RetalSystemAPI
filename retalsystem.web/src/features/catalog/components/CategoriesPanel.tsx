@@ -1,3 +1,4 @@
+import { Select } from '../../../shared/components/ui/Select';
 import React, { useState } from 'react';
 import type { CategoryDto, CreateCategoryRequest, UpdateCategoryRequest } from '../types/catalog.types';
 import { Button } from '../../../shared/components/ui/Button';
@@ -17,6 +18,7 @@ import { useToast } from '../../../shared/context/ToastContext';
 
 interface CategoriesPanelProps {
   categories: CategoryDto[];
+  onSearchChange?: (search: string) => void;
   onAddCategory: (cat: CreateCategoryRequest) => Promise<void>;
   onUpdateCategory?: (id: string, cat: UpdateCategoryRequest) => Promise<void>;
   onDeleteCategory?: (id: string) => Promise<void>;
@@ -27,6 +29,7 @@ interface CategoriesPanelProps {
 
 export const CategoriesPanel: React.FC<CategoriesPanelProps> = ({
   categories,
+  onSearchChange,
   onAddCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -129,10 +132,7 @@ export const CategoriesPanel: React.FC<CategoriesPanelProps> = ({
   });
 
   // قائمة التصنيفات المتاحة لتكون تصنيفاً أباً (نستثني التصنيف نفسه عند التعديل لمنع الحلقات الدائرية)
-  const availableParentCategories = categories.filter((c) => {
-    if (editingCategory && c.id === editingCategory.id) return false;
-    return true;
-  });
+
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,7 +153,7 @@ export const CategoriesPanel: React.FC<CategoriesPanelProps> = ({
             <Input
               placeholder="بحث في التصنيفات..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); onSearchChange?.(e.target.value); }}
               leftIcon={<IconSearch className="w-4 h-4" />}
             />
           </div>
@@ -184,7 +184,7 @@ export const CategoriesPanel: React.FC<CategoriesPanelProps> = ({
               categories.find((c) => c.id === cat.parentCategoryId)?.name;
 
             // حساب عدد التصنيفات الفرعية المباشرة التابعة لهذا التصنيف
-            const subCategoriesCount = categories.filter((c) => c.parentCategoryId === cat.id).length;
+            const subCategoriesCount = cat.subCategoriesCount ?? categories.filter((c) => c.parentCategoryId === cat.id).length;
 
             return (
               <div
@@ -299,18 +299,7 @@ export const CategoriesPanel: React.FC<CategoriesPanelProps> = ({
             <label className="text-xs font-semibold text-slate-700 block mb-1">
               التصنيف الأب (اختياري)
             </label>
-            <select
-              value={parentCategoryId}
-              onChange={(e) => setParentCategoryId(e.target.value)}
-              className="w-full h-10 px-3 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition-colors"
-            >
-              <option value="">-- تصنيف رئيسي (بدون تصنيف أب) --</option>
-              {availableParentCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
-                </option>
-              ))}
-            </select>
+            <Select lookup={{ resource: 'categories' }} label="التصنيف الأب" value={parentCategoryId} onChange={(event) => setParentCategoryId(event.target.value)} />
             <p className="text-[11px] text-slate-400 mt-1">
               اختر تصنيفاً أعلى لربطه به كفرع، أو اتركه كـ "تصنيف رئيسي" إذا كان يمثل قسماً مستقلاً.
             </p>

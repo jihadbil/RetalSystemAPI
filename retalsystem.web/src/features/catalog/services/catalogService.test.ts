@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { buildProductPayload, normalizeProduct, type ProductApiDto } from './catalogService';
+import { buildProductFormUnits, buildProductPayload, normalizeProduct, type ProductApiDto } from './catalogService';
 
 describe('catalog API contract mapping', () => {
+  it('preserves alternative units and conversion factors during product editing', () => {
+    const existing = [
+      { unitId: 'piece', conversionFactor: 1, isDefault: true },
+      { unitId: 'carton', conversionFactor: 24, isDefault: false },
+    ];
+    expect(buildProductFormUnits(existing, 'carton')).toEqual([
+      { unitId: 'piece', conversionFactor: 1, isDefault: false },
+      { unitId: 'carton', conversionFactor: 24, isDefault: true },
+    ]);
+    expect(existing[0].isDefault).toBe(true);
+  });
+
+  it('adds a newly selected default unit without removing existing units', () => {
+    expect(buildProductFormUnits([{ unitId: 'carton', conversionFactor: 24, isDefault: true }], 'piece')).toEqual([
+      { unitId: 'carton', conversionFactor: 24, isDefault: false },
+      { unitId: 'piece', conversionFactor: 1, isDefault: true },
+    ]);
+  });
+
   it('builds the backend product contract without duplicate barcodes', () => {
     const payload = buildProductPayload({
       name: 'قهوة',

@@ -73,6 +73,7 @@ export interface CategoryDto {
   productsCount?: number;
   productCount?: number;
   subCategories?: CategoryDto[];
+  subCategoriesCount?: number;
 }
 
 export interface CreateCategoryRequest {
@@ -94,8 +95,10 @@ export interface UpdateCategoryRequest {
 export interface UnitDto {
   id: string;
   name: string;
-  symbol: string;
-  isBaseUnit: boolean;
+  symbol?: string;
+  isBaseUnit?: boolean;
+  description?: string;
+  unitPackage?: number;
 }
 
 export interface ImportPreviewRow {

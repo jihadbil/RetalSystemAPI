@@ -27,12 +27,12 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({ units }) => {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-900">{u.name}</h4>
-                <p className="text-xs text-slate-400 mt-0.5">الرمز: {u.symbol}</p>
+                <p className="text-xs text-slate-400 mt-0.5">الوصف: {u.description || u.symbol || '-'}</p>
               </div>
             </div>
 
-            <Badge variant={u.isBaseUnit ? 'success' : 'neutral'} size="sm">
-              {u.isBaseUnit ? 'وحدة أساسية' : 'وحدة تحويل'}
+            <Badge variant={'neutral'} size="sm">
+              محتوى الوحدة: {u.unitPackage ?? 1}
             </Badge>
           </div>
         ))}

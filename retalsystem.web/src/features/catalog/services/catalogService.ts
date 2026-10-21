@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/services/apiClient';
 import type {
   ProductDto,
+  ProductUnitDto,
   CreateProductRequest,
   CategoryDto,
   CreateCategoryRequest,
@@ -70,6 +71,18 @@ export const normalizeProduct = (product: ProductApiDto): ProductDto => {
     images,
     units,
   };
+};
+
+export const buildProductFormUnits = (existingUnits: ProductUnitDto[] | undefined, defaultUnitId: string) => {
+  const units = (existingUnits || []).map((unit) => ({
+    unitId: unit.unitId,
+    conversionFactor: unit.conversionFactor,
+    isDefault: unit.unitId === defaultUnitId,
+  }));
+  if (defaultUnitId && !units.some((unit) => unit.unitId === defaultUnitId)) {
+    units.push({ unitId: defaultUnitId, conversionFactor: 1, isDefault: true });
+  }
+  return units;
 };
 
 export const buildProductPayload = (request: CreateProductRequest, productId = EMPTY_GUID) => {

@@ -1,5 +1,9 @@
+import { lookupService } from '../../shared/services/lookupService';
+import { Select } from '../../shared/components/ui/Select';
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { catalogService } from './services/catalogService';
+import { buildCsv } from '../../shared/utils/csv';
 import type { ProductDto, CategoryDto, UnitDto, CreateProductRequest } from './types/catalog.types';
 import { ProductFormModal } from './components/ProductFormModal';
 import { ProductImportModal } from './components/ProductImportModal';
@@ -66,25 +70,41 @@ export const CatalogView: React.FC = () => {
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
   // جلب التصنيفات والوحدات
+  const categoryPagination = usePagination({ initialPageSize: 30 });
+  const unitPagination = usePagination({ initialPageSize: 30 });
+  const [categorySearch, setCategorySearch] = useState('');
+  const debouncedCategorySearch = useDebounce(categorySearch, 250);
+  const { page: categoryPage, pageSize: categoryPageSize, setTotalCount: setCategoryCount, resetPage: resetCategoryPage } = categoryPagination;
+  const { page: unitPage, pageSize: unitPageSize, setTotalCount: setUnitCount } = unitPagination;
+  useEffect(() => { resetCategoryPage(); }, [debouncedCategorySearch, resetCategoryPage]);
+  const loadMetadataGate = useRequestGate();
+  useEffect(() => loadMetadataGate.invalidate, [loadMetadataGate, canViewCategories, canViewUnits, categoryPage, categoryPageSize, unitPage, unitPageSize, debouncedCategorySearch, setCategoryCount, setUnitCount]);
   const loadMetadata = useCallback(async () => {
+    const isCurrent = loadMetadataGate.begin();
     try {
       const [cats, uns] = await Promise.all([
-        canViewCategories ? catalogService.getCategories() : Promise.resolve([]),
-        canViewUnits ? catalogService.getUnits() : Promise.resolve([]),
+        canViewCategories ? lookupService.page<CategoryDto>('category-directory', { pageNumber: categoryPage, pageSize: categoryPageSize, search: debouncedCategorySearch }) : Promise.resolve({ items: [], totalCount: 0 }),
+        canViewUnits ? lookupService.page<UnitDto>('unit-directory', { pageNumber: unitPage, pageSize: unitPageSize }) : Promise.resolve({ items: [], totalCount: 0 }),
       ]);
-      setCategories(cats);
-      setUnits(uns);
+      if (!isCurrent()) return;
+      setCategories(cats.items); setCategoryCount(cats.totalCount);
+      setUnits(uns.items); setUnitCount(uns.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       console.error('Failed to load categories or units:', err);
     }
-  }, [canViewCategories, canViewUnits]);
+  }, [loadMetadataGate, canViewCategories, canViewUnits, categoryPage, categoryPageSize, unitPage, unitPageSize, debouncedCategorySearch, setCategoryCount, setUnitCount]);
 
   useEffect(() => {
     loadMetadata();
   }, [loadMetadata]);
 
   // جلب قائمة المنتجات
+  const loadProductsGate = useRequestGate();
+  useEffect(() => loadProductsGate.invalidate, [loadProductsGate, page, pageSize, setTotalCount, debouncedSearch, selectedCategory, showError]);
   const loadProducts = useCallback(async () => {
+    const isCurrent = loadProductsGate.begin();
+    setProducts([]);
     setIsLoading(true);
     setCatalogError(null);
     try {
@@ -94,16 +114,20 @@ export const CatalogView: React.FC = () => {
         search: debouncedSearch,
         categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
       });
+      if (!isCurrent()) return;
       setProducts(res.items);
       setTotalCount(res.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل قائمة المنتجات من الخادم';
       setCatalogError(msg);
       showError('خطأ في تحميل الأصناف', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoading(false);
+      }
     }
-  }, [page, pageSize, setTotalCount, debouncedSearch, selectedCategory, showError]);
+  }, [loadProductsGate, page, pageSize, setTotalCount, debouncedSearch, selectedCategory, showError]);
 
   useEffect(() => {
     if (canViewProducts) loadProducts();
@@ -122,6 +146,7 @@ export const CatalogView: React.FC = () => {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل حفظ الصنف';
       showError('خطأ', msg);
+      throw err;
     }
   };
 
@@ -141,21 +166,21 @@ export const CatalogView: React.FC = () => {
     const headers = ['الكود', 'الاسم', 'التصنيف', 'سعر البيع', 'سعر التكلفة', 'الرصيد', 'الباركود'];
     const rows = products.map((p) => [
       p.code,
-      `"${p.name}"`,
-      `"${p.categoryName || ''}"`,
+      p.name,
+      p.categoryName || '',
       p.salePrice,
       p.costPrice,
       p.currentStock ?? '',
-      `"${p.barCodes?.[0]?.barCode || ''}"`,
+      p.barCodes?.[0]?.barCode || '',
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvUrl = URL.createObjectURL(new Blob([buildCsv([headers, ...rows])], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', csvUrl);
     link.setAttribute('download', `products_catalog_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(csvUrl), 0);
     showSuccess('تصدير البيانات', 'تم تنزيل ملف الأصناف بنجاح');
   };
 
@@ -238,23 +263,13 @@ export const CatalogView: React.FC = () => {
                 <Input
                   placeholder="ابحث بالاسم أو الكود أو الباركود..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
                   leftIcon={<IconSearch className="w-4 h-4" />}
                 />
               </div>
 
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="h-10 px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none shrink-0"
-              >
-                <option value="all">كافة التصنيفات</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
-                  </option>
-                ))}
-              </select>
+              <Select lookup={{ resource: 'categories' }} label="التصنيف" value={selectedCategory === 'all' ? '' : selectedCategory}
+                onChange={(event) => { setSelectedCategory(event.target.value || 'all'); pagination.resetPage(); }} />
             </div>
 
             {canImportExport && <Button
@@ -283,6 +298,7 @@ export const CatalogView: React.FC = () => {
                     if (search || selectedCategory !== 'all') {
                       setSearch('');
                       setSelectedCategory('all');
+                      pagination.resetPage();
                     } else {
                       setEditingProduct(null);
                       setIsFormOpen(true);
@@ -432,6 +448,7 @@ export const CatalogView: React.FC = () => {
       {activeMainTab === 'categories' && (
         <CategoriesPanel
           categories={categories}
+          onSearchChange={setCategorySearch}
           onAddCategory={async (cat) => {
             await catalogService.createCategory(cat);
             await loadMetadata();
@@ -450,8 +467,14 @@ export const CatalogView: React.FC = () => {
         />
       )}
 
+      {activeMainTab === 'categories' && <Pagination currentPage={categoryPagination.page} totalPages={categoryPagination.totalPages}
+        totalCount={categoryPagination.totalCount} pageSize={categoryPagination.pageSize} onPageChange={categoryPagination.goToPage} onPageSizeChange={categoryPagination.changePageSize} />}
+
       {/* تبويب وحدات القياس */}
       {activeMainTab === 'units' && <UnitsPanel units={units} />}
+
+      {activeMainTab === 'units' && <Pagination currentPage={unitPagination.page} totalPages={unitPagination.totalPages}
+        totalCount={unitPagination.totalCount} pageSize={unitPagination.pageSize} onPageChange={unitPagination.goToPage} onPageSizeChange={unitPagination.changePageSize} />}
 
       {/* نافذة إنشاء / تعديل صنف */}
       <ProductFormModal
