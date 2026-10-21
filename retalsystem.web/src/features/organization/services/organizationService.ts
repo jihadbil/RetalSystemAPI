@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/services/apiClient';
 import type { BranchDto, TenantSettingsDto } from '../types/organization.types';
+import type { PagedResult } from '../../../shared/types/api.types';
 
 export interface CreateBranchRequest {
   name: string;
@@ -57,6 +58,10 @@ export function buildTenantPayload(data: Partial<TenantSettingsDto>) {
 }
 
 export const organizationService = {
+  async getBranchesPage(pageNumber: number, pageSize: number): Promise<PagedResult<BranchDto>> {
+    const result = await apiClient.get<PagedResult<BranchApiDto>>('branches/paged', { pageNumber, pageSize });
+    return { ...result, items: result.items.map((b) => ({ ...b, phone: b.phones?.[0]?.phoneNumber || b.phone || '', address: b.address || '', isActive: b.isActive !== false })) };
+  },
   // الفروع
   async getBranches(): Promise<BranchDto[]> {
     try {

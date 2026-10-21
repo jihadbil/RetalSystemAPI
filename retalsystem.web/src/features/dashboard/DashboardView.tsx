@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { dashboardService } from './services/dashboardService';
 import type { DashboardSummary } from './types/dashboard.types';
 import { Card } from '../../shared/components/ui/Card';
@@ -33,24 +33,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
+  const requestVersion = useRef(0);
+  const invalidateRequest = useCallback(() => { requestVersion.current++; }, []);
   const fetchDashboard = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setData(null);
     setIsLoading(true);
     setDashboardError(null);
     try {
       const result = await dashboardService.getSummary(currentBranchId || undefined);
+      if (version !== requestVersion.current) return false;
       setData(result);
+      return true;
     } catch (err: unknown) {
+      if (version !== requestVersion.current) return false;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات ومؤشرات لوحة التحكم من الخادم';
       setDashboardError(msg);
       showError('خطأ في لوحة التحكم', msg);
+      return false;
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }, [currentBranchId, showError]);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+    return invalidateRequest;
+  }, [fetchDashboard, invalidateRequest]);
 
   const kpis = data?.kpis;
 
@@ -114,8 +123,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             variant="ghost"
             size="md"
             onClick={() => {
-              fetchDashboard();
-              showSuccess('تم التحديث', 'تم تحديث مؤشرات لوحة التحكم بنجاح');
+              void fetchDashboard().then((success) => {
+                if (success) showSuccess('تم التحديث', 'تم تحديث مؤشرات لوحة التحكم بنجاح');
+              });
             }}
             title="تحديث البيانات"
           >

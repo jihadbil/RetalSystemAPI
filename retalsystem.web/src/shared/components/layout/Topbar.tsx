@@ -7,11 +7,10 @@ import {
   IconCashRegister,
   IconChevronDown,
   IconUser,
-  IconCheck,
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
-import { organizationService } from '../../../features/organization/services/organizationService';
-import type { BranchDto } from '../../../features/organization/types/organization.types';
+import { lookupService, type LookupOption } from '../../services/lookupService';
+import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 
 interface TopbarProps {
@@ -23,17 +22,20 @@ export const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar, onOpenPos }) =>
   const { user, logout, lockScreen, currentBranchId, switchBranch } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBranchMenu, setShowBranchMenu] = useState(false);
-  const [branches, setBranches] = useState<BranchDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
 
   useEffect(() => {
-    organizationService
-      .getBranches()
+    let cancelled = false;
+    lookupService
+      .list('branches')
       .then((list) => {
+        if (cancelled) return;
         setBranches(list.filter((b) => b.isActive));
       })
       .catch((err) => {
         console.error('Failed to load branches for Topbar:', err);
       });
+    return () => { cancelled = true; };
   }, []);
 
   const activeBranch = branches.find((b) => b.id === currentBranchId);
@@ -57,19 +59,19 @@ export const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar, onOpenPos }) =>
           {/* محول الفرع النشط للشاشات الكبيرة */}
           <button
             type="button"
-            onClick={() => branches.length > 1 && setShowBranchMenu(!showBranchMenu)}
-            disabled={branches.length <= 1}
+            onClick={() => branches.length > 0 && setShowBranchMenu(!showBranchMenu)}
+            disabled={branches.length === 0}
             className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
-              branches.length > 1
+              branches.length > 0
                 ? 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-700 cursor-pointer'
                 : 'bg-slate-50 border-slate-200/70 text-slate-700 cursor-default'
             }`}
-            title={branches.length > 1 ? 'انقر للتبديل بين فروع المنشأة' : 'الفرع النشط حالياً'}
+            title={branches.length > 0 ? 'انقر للتبديل بين فروع المنشأة' : 'الفرع النشط حالياً'}
           >
             <IconBuildingStore className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="text-slate-500 font-normal">الفرع:</span>
             <span className="text-emerald-800 font-bold">{branchDisplayName}</span>
-            {branches.length > 1 && (
+            {branches.length > 0 && (
               <IconChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 mr-0.5" />
             )}
           </button>
@@ -77,19 +79,19 @@ export const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar, onOpenPos }) =>
           {/* محول الفرع المدمج للهواتف */}
           <button
             type="button"
-            onClick={() => branches.length > 1 && setShowBranchMenu(!showBranchMenu)}
-            disabled={branches.length <= 1}
+            onClick={() => branches.length > 0 && setShowBranchMenu(!showBranchMenu)}
+            disabled={branches.length === 0}
             className="flex sm:hidden items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer"
             title={`الفرع الحالي: ${branchDisplayName}`}
           >
             <IconBuildingStore className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="text-[11px] text-emerald-800 font-bold max-w-[90px] truncate">{branchDisplayName}</span>
-            {branches.length > 1 && (
+            {branches.length > 0 && (
               <IconChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             )}
           </button>
 
-          {showBranchMenu && branches.length > 1 && (
+          {showBranchMenu && branches.length > 0 && (
             <>
               <div
                 className="fixed inset-0 z-40"
@@ -101,32 +103,8 @@ export const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar, onOpenPos }) =>
                   تبديل الفرع النشط
                 </div>
                 <div className="max-h-60 overflow-y-auto py-1">
-                  {branches.map((b) => {
-                    const isSelected = b.id === (currentBranchId || activeBranch?.id);
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => {
-                          switchBranch(b.id, b.name);
-                          setShowBranchMenu(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium text-right transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-50 text-emerald-800 font-bold'
-                            : 'text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span>{b.name}</span>
-                          {b.address && (
-                            <span className="text-[10px] text-slate-400 font-normal">{b.address}</span>
-                          )}
-                        </div>
-                        {isSelected && <IconCheck className="w-4 h-4 text-emerald-600 shrink-0 mr-2" />}
-                      </button>
-                    );
-                  })}
+                  <Select lookup={{ resource: 'branches' }} label="الفرع النشط" value={currentBranchId || ''}
+                    onLookupSelect={(option) => { switchBranch(option.id, option.name); setShowBranchMenu(false); }} />
                 </div>
               </div>
             </>

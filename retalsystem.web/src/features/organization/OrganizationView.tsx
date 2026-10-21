@@ -1,3 +1,6 @@
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { BranchDto, TenantSettingsDto } from './types/organization.types';
 import { organizationService } from './services/organizationService';
@@ -46,7 +49,7 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
 
   // الفروع
   const [branches, setBranches] = useState<BranchDto[]>([]);
-  const [, setIsLoadingBranches] = useState(false);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isBranchFormOpen, setIsBranchFormOpen] = useState(false);
   const [branchToEdit, setBranchToEdit] = useState<BranchDto | null>(null);
   const [branchToDelete, setBranchToDelete] = useState<BranchDto | null>(null);
@@ -58,33 +61,50 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
 
   const [orgError, setOrgError] = useState<string | null>(null);
 
+  const branchPagination = usePagination({ initialPageSize: 20 });
+  const { page: branchPage, pageSize: branchPageSize, setTotalCount: setBranchCount } = branchPagination;
+  const loadBranchesGate = useRequestGate();
+  useEffect(() => loadBranchesGate.invalidate, [loadBranchesGate, showError, branchPage, branchPageSize, setBranchCount]);
   const loadBranches = useCallback(async () => {
+    const isCurrent = loadBranchesGate.begin();
+    setBranches([]);
     try {
       setIsLoadingBranches(true);
       setOrgError(null);
-      const data = await organizationService.getBranches();
-      setBranches(data);
+      const data = await organizationService.getBranchesPage(branchPage, branchPageSize);
+      if (!isCurrent()) return;
+      setBranches(data.items); setBranchCount(data.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات الفروع';
       setOrgError(msg);
       showError('خطأ في تحميل الفروع', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoadingBranches(false);
+      }
     }
-  }, [showError]);
+  }, [loadBranchesGate, showError, branchPage, branchPageSize, setBranchCount]);
 
+  const loadProfileGate = useRequestGate();
+  useEffect(() => loadProfileGate.invalidate, [loadProfileGate, showError]);
   const loadProfile = useCallback(async () => {
+    const isCurrent = loadProfileGate.begin();
     try {
       setIsLoadingProfile(true);
       const data = await organizationService.getTenantProfile();
+      if (!isCurrent()) return;
       setTenantProfile(data);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات المنشأة';
       showError('خطأ في إعدادات المنشأة', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoadingProfile(false);
+      }
     }
-  }, [showError]);
+  }, [loadProfileGate, showError]);
 
   useEffect(() => {
     if (canViewBranches) loadBranches();
@@ -238,6 +258,9 @@ export const OrganizationView: React.FC<OrganizationViewProps> = ({ initialTab =
           </div>
         </div>
       )}
+
+      {activeTab === 'branches' && <Pagination currentPage={branchPagination.page} totalPages={branchPagination.totalPages}
+        totalCount={branchPagination.totalCount} pageSize={branchPagination.pageSize} onPageChange={branchPagination.goToPage} onPageSizeChange={branchPagination.changePageSize} isLoading={isLoadingBranches} />}
 
       {activeTab === 'settings' && tenantProfile && (
         <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
