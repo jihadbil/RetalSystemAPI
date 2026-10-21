@@ -1,4 +1,5 @@
-import { apiClient, ApiError } from '../../../shared/services/apiClient';
+import { apiClient } from '../../../shared/services/apiClient';
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
 import type { PagedResult } from '../../../shared/types/api.types';
 import type {
   WarehouseDto,
@@ -7,10 +8,6 @@ import type {
   StockTransferDto,
   StockQueryParams,
 } from '../types/stock.types';
-
-interface WarehouseListResponse {
-  items?: WarehouseDto[];
-}
 
 interface StockLevelApiItem {
   id?: string;
@@ -48,32 +45,33 @@ interface StockTransferApiItem extends Partial<StockTransferDto> {
 }
 
 export const stockService = {
+  warehouseOption(option: LookupOption): WarehouseDto {
+    return { ...option, branchId: option.branchId || '', isActive: option.isActive !== false };
+  },
+  async getWarehousePage(pageNumber: number, pageSize: number, branchId?: string): Promise<PagedResult<WarehouseDto>> {
+    return apiClient.get<PagedResult<WarehouseDto>>('warehouses/paged', { pageNumber, pageSize, branchId });
+  },
   async completeTransfer(id: string): Promise<StockTransferDto> {
     return apiClient.patch<StockTransferDto>(`stock-transfers/${id}/status`, 3);
   },
   async getQuantity(warehouseId: string, productId: string, barcodeId?: string): Promise<number> {
-    try {
-      const result = await apiClient.get<{ quantity: number }>(barcodeId
-        ? `stock/storge/${warehouseId}/barcode/${barcodeId}`
-        : `stock/showroom/${warehouseId}/product/${productId}`);
-      return result.quantity;
-    } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 404) return 0;
-      throw error;
-    }
+    const result = await apiClient.get<{ quantity: number }>('lookups/adjustment-quantity', { warehouseId, productId, barcodeId });
+    return result.quantity;
   },
   // المستودعات
-  async getWarehouses(branchId?: string): Promise<WarehouseDto[]> {
+  async getWarehouses(branchId?: string, selectedId?: string): Promise<WarehouseDto[]> {
     try {
-      const res = await apiClient.get<WarehouseDto[] | WarehouseListResponse>('warehouses/lookup', { branchId });
-      const list = Array.isArray(res) ? res : res.items || [];
+      const res = await lookupService.page('warehouses', { branchId, pageSize: 100 });
+      const list = res.items;
+      if (selectedId && !list.some((w) => w.id === selectedId)) {
+        const selected = await lookupService.page('warehouses', { id: selectedId, branchId, pageSize: 1 });
+        list.push(...selected.items);
+      }
       return list.map((w) => ({
         id: w.id,
         name: w.name,
-        branchId: w.branchId,
-        branchName: w.branchName,
+        branchId: w.branchId || '',
         type: w.type,
-        typeName: w.typeName,
         isActive: w.isActive !== false,
       }));
     } catch (err) {

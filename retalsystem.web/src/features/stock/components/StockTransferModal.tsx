@@ -1,11 +1,10 @@
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
 import type { WarehouseDto } from '../types/stock.types';
-import { catalogService } from '../../catalog/services/catalogService';
-import type { ProductDto } from '../../catalog/types/catalog.types';
 import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
 import { stockService } from '../services/stockService';
 
@@ -24,11 +23,13 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 }) => {
   const [sourceWarehouseId, setSourceWarehouseId] = useState('');
   const [destWarehouseId, setDestWarehouseId] = useState('');
-  const [products, setProducts] = useState<ProductDto[]>([]);
+
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [transferNumber, setDocumentNumber] = useState(() => createDocumentNumber('TRF'));
+  useEffect(() => { if (isOpen) setDocumentNumber(createDocumentNumber('TRF')); }, [isOpen]);
   const { product, barcodeId, setBarcodeId, error: barcodeError } = useProductBarcodes(selectedProductId, isOpen);
   const [error, setError] = useState('');
   const [destWarehouses, setDestWarehouses] = useState<WarehouseDto[]>([]);
@@ -58,16 +59,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
           setDestWarehouseId(warehouses[1].id);
         }
       }
-      catalogService
-        .getProducts({ pageNumber: 1, pageSize: 100 })
-        .then((res) => {
-          const prods = res.items || [];
-          setProducts(prods);
-          if (prods.length > 0) {
-            setSelectedProductId(prods[0].id);
-          }
-        })
-        .catch((err) => console.error('Failed to load products for transfer:', err));
+
     }
   }, [isOpen, warehouses]);
 
@@ -82,9 +74,6 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
     setIsLoading(true);
     try {
-      const transferNumber = `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
-        100 + Math.random() * 900
-      )}`;
       await onSave({
         transferNumber,
         transferDate: new Date().toISOString(),
@@ -123,7 +112,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         {(error || barcodeError) && <p className="text-xs text-rose-600">{error || barcodeError}</p>}
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="المستودع المصدر (من) *"
+            lookup={{ resource: 'warehouses' }} onLookupSelect={(option) => setDestWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع المصدر (من) *"
             value={sourceWarehouseId}
             onChange={(e) => setSourceWarehouseId(e.target.value)}
           >
@@ -135,7 +124,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
           </Select>
 
           <Select
-            label="المستودع المستلم (إلى) *"
+            lookup={{ resource: 'warehouses' }} onLookupSelect={(option) => setDestWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع المستلم (إلى) *"
             value={destWarehouseId}
             onChange={(e) => setDestWarehouseId(e.target.value)}
           >
@@ -150,15 +139,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         </div>
 
         <Select
-          label="الصنف المراد تحويله *"
+          lookup={{ resource: 'products' }} label="الصنف المراد تحويله *"
           value={selectedProductId}
           onChange={(e) => setSelectedProductId(e.target.value)}
         >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.code})
-            </option>
-          ))}
+<option value="">اختر الصنف</option>
         </Select>
 
         {needsBarcode && <Select label="الباركود / البديل *" value={barcodeId} onChange={(e) => setBarcodeId(e.target.value)}>

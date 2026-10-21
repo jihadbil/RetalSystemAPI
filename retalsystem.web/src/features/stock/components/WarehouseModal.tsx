@@ -1,11 +1,10 @@
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
-import { organizationService } from '../../organization/services/organizationService';
 import { useAuth } from '../../../shared/context/AuthContext';
-import type { BranchDto } from '../../organization/types/organization.types';
 import type { WarehouseDto } from '../types/stock.types';
 
 interface WarehouseModalProps {
@@ -19,20 +18,22 @@ export const WarehouseModal: React.FC<WarehouseModalProps> = ({ isOpen, onClose,
   const [name, setName] = useState('');
   const [branchId, setBranchId] = useState<string>('');
   const [type, setType] = useState<number>(1); // 1 = Storage, 2 = Showroom
-  const [branches, setBranches] = useState<BranchDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
       setName('');
       setType(1);
       setError(null);
       setIsLoadingBranches(true);
-      organizationService
-        .getBranches()
+      lookupService
+        .list('branches')
         .then((data) => {
+          if (cancelled) return;
           setBranches(data);
           if (currentBranchId && data.some((b) => b.id === currentBranchId)) {
             setBranchId(currentBranchId);
@@ -41,11 +42,13 @@ export const WarehouseModal: React.FC<WarehouseModalProps> = ({ isOpen, onClose,
           }
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load branches:', err);
           setError('فشل تحميل قائمة الفروع');
         })
-        .finally(() => setIsLoadingBranches(false));
+        .finally(() => { if (!cancelled) setIsLoadingBranches(false); });
     }
+    return () => { cancelled = true; };
   }, [isOpen, currentBranchId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,13 +123,13 @@ export const WarehouseModal: React.FC<WarehouseModalProps> = ({ isOpen, onClose,
         />
 
         <Select
-          label="الفرع التابع له *"
+          lookup={{ resource: 'branches' }} label="الفرع التابع له *"
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
           disabled={isLoadingBranches || branches.length === 0}
           options={branches.map((b) => ({
             value: b.id,
-            label: b.name + (b.address ? ` (${b.address})` : ''),
+            label: b.name,
           }))}
           helperText={isLoadingBranches ? 'جاري تحميل الفروع...' : undefined}
         />

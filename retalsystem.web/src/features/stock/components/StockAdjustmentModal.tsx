@@ -1,3 +1,4 @@
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
@@ -5,12 +6,9 @@ import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
 import type { WarehouseDto } from '../types/stock.types';
 import { AdjustmentType } from '../types/stock.types';
-import { catalogService } from '../../catalog/services/catalogService';
-import type { ProductDto } from '../../catalog/types/catalog.types';
 import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
 import { stockService } from '../services/stockService';
 
-import { useDebounce } from '../../../shared/hooks/useDebounce';
 
 interface StockAdjustmentModalProps {
   isOpen: boolean;
@@ -22,19 +20,23 @@ interface StockAdjustmentModalProps {
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   isOpen,
   onClose,
-  warehouses,
+  warehouses: initialWarehouses,
   onSave,
 }) => {
   const [warehouseId, setWarehouseId] = useState('');
   const [type, setType] = useState<AdjustmentType>(AdjustmentType.Shortage);
-  const [products, setProducts] = useState<ProductDto[]>([]);
-  const [productSearch, setProductSearch] = useState('');
-  const debouncedProductSearch = useDebounce(productSearch, 300);
+  const [warehouses, setWarehouses] = useState(initialWarehouses);
+  useEffect(() => { setWarehouses(initialWarehouses); }, [initialWarehouses]);
+
+
+
   const [selectedProductId, setSelectedProductId] = useState('');
   const [currentQty, setCurrentQty] = useState<number>(0);
   const [actualQty, setActualQty] = useState<number>(0);
   const [reason, setReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [adjustmentNumber, setDocumentNumber] = useState(() => createDocumentNumber('ADJ'));
+  useEffect(() => { if (isOpen) setDocumentNumber(createDocumentNumber('ADJ')); }, [isOpen]);
   const { product, barcodeId, setBarcodeId, error: barcodeError } = useProductBarcodes(selectedProductId, isOpen);
   const needsBarcode = warehouses.find((w) => w.id === warehouseId)?.type === 1;
   const [stockError, setStockError] = useState('');
@@ -56,29 +58,15 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   }, [isOpen, warehouseId, selectedProductId, needsBarcode, barcodeId]);
 
   useEffect(() => {
-    if (isOpen) {
-      if (warehouses.length > 0 && !warehouseId) {
-        setWarehouseId(warehouses[0].id);
-      }
-      catalogService
-        .getProducts({ pageNumber: 1, pageSize: 30, search: debouncedProductSearch.trim() || undefined })
-        .then((res) => {
-          const prods = res.items || [];
-          setProducts(prods);
-          if (prods.length > 0 && !prods.some((p) => p.id === selectedProductId)) {
-            setSelectedProductId(prods[0].id);
-          }
-        })
-        .catch((err) => console.error('Failed to load products:', err));
-    }
-  }, [isOpen, warehouses, warehouseId, debouncedProductSearch, selectedProductId]);
+    if (isOpen) setWarehouseId((previous) => initialWarehouses.some((warehouse) => warehouse.id === previous) ? previous : initialWarehouses[0]?.id || '');
+  }, [isOpen, initialWarehouses]);
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
+  const selectedProduct = product;
   const diff = actualQty - currentQty;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProductId) return;
+    if (!selectedProductId || !product) { setSubmitError('انتظر تحميل بيانات الصنف'); return; }
     if (loadingQuantity || stockError || !warehouseId || !Number.isInteger(actualQty) || actualQty < 0 || needsBarcode && !barcodeId) {
       setSubmitError('انتظر تحميل الرصيد، وحدد الباركود وأدخل كمية جرد صحيحة غير سالبة');
       return;
@@ -87,9 +75,6 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     setIsLoading(true);
     setSubmitError('');
     try {
-      const adjustmentNumber = `ADJ-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
-        100 + Math.random() * 900
-      )}`;
       await onSave({
         adjustmentNumber,
         adjustmentDate: new Date().toISOString(),
@@ -136,7 +121,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1">
         {(submitError || stockError || barcodeError) && <p className="text-xs text-rose-600">{submitError || stockError || barcodeError}</p>}
         <Select
-          label="المستودع *"
+          lookup={{ resource: 'warehouses' }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع *"
           value={warehouseId}
           onChange={(e) => setWarehouseId(e.target.value)}
         >
@@ -157,27 +142,14 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           <option value={AdjustmentType.Damage}>بضاعة تالفة / منتهية الصلاحية</option>
         </Select>
 
-        <Input
-          label="بحث في الأصناف (بالاسم أو الكود)"
-          placeholder="اكتب اسم الصنف أو كوده للبحث السريع..."
-          value={productSearch}
-          onChange={(e) => setProductSearch(e.target.value)}
-        />
+
 
         <Select
-          label="الصنف الخاضع للتسوية *"
+          lookup={{ resource: 'products' }} label="الصنف الخاضع للتسوية *"
           value={selectedProductId}
           onChange={(e) => setSelectedProductId(e.target.value)}
         >
-          {products.length === 0 ? (
-            <option value="">لا توجد أصناف مطابقة للبحث</option>
-          ) : (
-            products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.code})
-              </option>
-            ))
-          )}
+          <option value="">اختر الصنف</option>
         </Select>
 
         {needsBarcode && <Select label="الباركود / البديل *" value={barcodeId} onChange={(e) => setBarcodeId(e.target.value)}>

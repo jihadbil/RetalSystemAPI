@@ -1,3 +1,5 @@
+import { Select } from '../../shared/components/ui/Select';
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { stockService } from './services/stockService';
 import type {
@@ -36,7 +38,8 @@ export const StockView: React.FC = () => {
   const canViewLevels = hasPermission('Permissions.Stock.View');
   const canApproveTransfer = hasPermission(Permissions.StockTransfers.Approve);
   const canViewAdjustments = hasPermission(Permissions.StockAdjustments.View);
-  const canCreateAdjustment = hasPermission(Permissions.StockAdjustments.Create);
+  const canCreateAdjustment = hasPermission(Permissions.StockAdjustments.Create)
+    && hasPermission(Permissions.StockAdjustments.Approve);
   const canViewTransfers = hasPermission(Permissions.StockTransfers.View);
   const canCreateTransfer = hasPermission(Permissions.StockTransfers.Create);
   const canViewWarehouses = hasPermission(Permissions.Warehouses.View);
@@ -51,6 +54,18 @@ export const StockView: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
 
   // خطافات الترقيم الصفحي لكل تبويب
+  const warehousePagination = usePagination({ initialPageSize: 20 });
+  const { page: warehousePage, pageSize: warehousePageSize, setTotalCount: setWarehouseCount } = warehousePagination;
+  const [warehouseDirectory, setWarehouseDirectory] = useState<WarehouseDto[]>([]);
+  const directoryGate = useRequestGate();
+  useEffect(() => {
+    const isCurrent = directoryGate.begin();
+    setWarehouseDirectory([]);
+    if (activeTab === 'warehouses') void stockService.getWarehousePage(warehousePage, warehousePageSize, currentBranchId || undefined)
+      .then((result) => { if (isCurrent()) { setWarehouseDirectory(result.items); setWarehouseCount(result.totalCount); } })
+      .catch((error) => { if (isCurrent()) showError('تعذر تحميل المستودعات', error instanceof Error ? error.message : ''); });
+    return directoryGate.invalidate;
+  }, [activeTab, warehousePage, warehousePageSize, currentBranchId, directoryGate, setWarehouseCount, showError]);
   const stockPagination = usePagination({ initialPageSize: 10 });
   const adjPagination = usePagination({ initialPageSize: 10 });
   const trfPagination = usePagination({ initialPageSize: 10 });
@@ -87,6 +102,7 @@ export const StockView: React.FC = () => {
   const [stockError, setStockError] = useState<string | null>(null);
 
   const warehouseVersion = useRef(0);
+  const invalidateWarehouses = useCallback(() => { warehouseVersion.current++; }, []);
   const loadWarehouses = useCallback(async () => {
     const version = ++warehouseVersion.current;
     setWarehouses([]);
@@ -110,7 +126,11 @@ export const StockView: React.FC = () => {
     resetTransferPage();
   }, [debouncedSearch, resetAdjustmentPage, resetTransferPage]);
 
+  const stockVersion = useRef(0);
+  const invalidateStock = useCallback(() => { stockVersion.current++; }, []);
   const loadStockData = useCallback(async () => {
+    const version = ++stockVersion.current;
+    setStockLevels([]); setAdjustments([]); setTransfers([]);
     setIsLoading(true);
     setStockError(null);
     try {
@@ -137,6 +157,7 @@ export const StockView: React.FC = () => {
           },
           currentWh?.type
         );
+        if (version !== stockVersion.current) return;
         setStockLevels(res.items);
         setStockTotalCount(res.totalCount);
       } else if (activeTab === 'adjustments') {
@@ -146,6 +167,7 @@ export const StockView: React.FC = () => {
           warehouseId: selectedWarehouseId && selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
           search: debouncedSearch,
         });
+        if (version !== stockVersion.current) return;
         setAdjustments(res.items);
         setAdjustmentTotalCount(res.totalCount);
       } else if (activeTab === 'transfers') {
@@ -155,15 +177,17 @@ export const StockView: React.FC = () => {
           fromWarehouseId: selectedWarehouseId && selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
           search: debouncedSearch,
         });
+        if (version !== stockVersion.current) return;
         setTransfers(res.items);
         setTransferTotalCount(res.totalCount);
       }
     } catch (err: unknown) {
+      if (version !== stockVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات المخزون';
       setStockError(msg);
       showError('خطأ في تحميل المخزون', msg);
     } finally {
-      setIsLoading(false);
+      if (version === stockVersion.current) setIsLoading(false);
     }
   }, [
     activeTab,
@@ -184,11 +208,13 @@ export const StockView: React.FC = () => {
 
   useEffect(() => {
     loadWarehouses();
-  }, [loadWarehouses]);
+    return invalidateWarehouses;
+  }, [loadWarehouses, invalidateWarehouses]);
 
   useEffect(() => {
     loadStockData();
-  }, [loadStockData]);
+    return invalidateStock;
+  }, [loadStockData, invalidateStock]);
 
   const tabs = [
     ...(canViewLevels ? [{ id: 'levels', label: 'أرصدة المخزون والجرد', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: stockPagination.totalCount }] : []),
@@ -199,7 +225,7 @@ export const StockView: React.FC = () => {
       ? [{ id: 'transfers', label: 'التحويلات بين المخازن', icon: <IconArrowsExchange className="w-4 h-4" />, badge: trfPagination.totalCount }]
       : []),
     ...(canViewWarehouses
-      ? [{ id: 'warehouses', label: 'دليل المستودعات', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: warehouses.length }]
+      ? [{ id: 'warehouses', label: 'دليل المستودعات', icon: <IconBuildingWarehouse className="w-4 h-4" />, badge: warehousePagination.totalCount }]
       : []),
   ];
 
@@ -281,24 +307,10 @@ export const StockView: React.FC = () => {
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <span className="text-xs text-slate-500 whitespace-nowrap">المستودع المحدد:</span>
-              <select
+              <Select lookup={{ resource: 'warehouses', branchId: currentBranchId || undefined }} label="المستودع"
                 value={selectedWarehouseId}
-                onChange={(e) => {
-                  setSelectedWarehouseId(e.target.value);
-                  stockPagination.resetPage();
-                }}
-                className="h-10 px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none shrink-0"
-              >
-                {warehouses.length === 0 ? (
-                  <option value="">لا توجد مستودعات مسجلة</option>
-                ) : (
-                  warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({w.type === 1 ? 'مخزن رئيسي' : 'صالة عرض'})
-                    </option>
-                  ))
-                )}
-              </select>
+                onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])}
+                onChange={(event) => { setSelectedWarehouseId(event.target.value); stockPagination.resetPage(); }} />
             </div>
           </div>
 
@@ -521,7 +533,7 @@ export const StockView: React.FC = () => {
       {/* تبويب دليل المستودعات */}
       {activeTab === 'warehouses' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {warehouses.map((wh) => (
+          {warehouseDirectory.map((wh) => (
             <Card key={wh.id} className="hover:border-emerald-300 transition-colors">
               <div className="flex items-start justify-between">
                 <h4 className="text-sm font-bold text-slate-900">{wh.name}</h4>
@@ -545,6 +557,10 @@ export const StockView: React.FC = () => {
           ))}
         </div>
       )}
+
+      {activeTab === 'warehouses' && <Pagination currentPage={warehousePagination.page} totalPages={warehousePagination.totalPages}
+        totalCount={warehousePagination.totalCount} pageSize={warehousePagination.pageSize}
+        onPageChange={warehousePagination.goToPage} onPageSizeChange={warehousePagination.changePageSize} />}
 
       {/* النوافذ المنبثقة */}
       <StockAdjustmentModal
@@ -595,6 +611,7 @@ export const StockView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل إضافة المستودع';
             showError('خطأ أثناء إضافة المستودع', msg);
+            throw err;
           }
         }}
       />
