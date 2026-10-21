@@ -1,3 +1,4 @@
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
@@ -11,8 +12,8 @@ interface QuickProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   prefillBarcode?: string;
-  categories: CategoryDto[];
-  units: UnitDto[];
+  categories: Pick<CategoryDto, 'id' | 'name'>[];
+  units: Pick<UnitDto, 'id' | 'name'>[];
   onProductCreated: (product: ProductDto) => void;
 }
 
@@ -38,7 +39,7 @@ export const QuickProductModal: React.FC<QuickProductModalProps> = ({
     if (isOpen) {
       setName('');
       setBarCode(prefillBarcode || '');
-      setCode(prefillBarcode ? `PRD-${prefillBarcode}` : `PRD-${Date.now().toString().slice(-6)}`);
+      setCode(createDocumentNumber('PRD'));
       setCostPrice(0);
       setSalePrice(0);
       setError(null);
@@ -64,7 +65,7 @@ export const QuickProductModal: React.FC<QuickProductModalProps> = ({
     try {
       const created = await catalogService.createProduct({
         name: name.trim(),
-        code: code.trim() || `PRD-${Date.now().toString().slice(-6)}`,
+        code: code.trim() || createDocumentNumber('PRD'),
         categoryId,
         defaultUnitId: defaultUnitId || undefined,
         costPrice: Number(costPrice) || 0,
@@ -142,26 +143,26 @@ export const QuickProductModal: React.FC<QuickProductModalProps> = ({
 
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="التصنيف *"
+            lookup={{ resource: 'categories' }} label="التصنيف *"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             required
           >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.parentCategoryName ? `${c.parentCategoryName} ← ${c.name}` : c.name}
+                {c.name}
               </option>
             ))}
           </Select>
 
           <Select
-            label="وحدة القياس الافتراضية"
+            lookup={{ resource: 'units' }} label="وحدة القياس الافتراضية"
             value={defaultUnitId}
             onChange={(e) => setDefaultUnitId(e.target.value)}
           >
             {units.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.symbol})
+                {u.name}
               </option>
             ))}
           </Select>

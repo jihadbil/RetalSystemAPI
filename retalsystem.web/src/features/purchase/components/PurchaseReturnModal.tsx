@@ -1,21 +1,16 @@
+import { lookupService, type LookupOption, type ReturnSourceInvoice } from '../../../shared/services/lookupService';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
 import { stockService } from '../../stock/services/stockService';
-import { supplierService } from '../../suppliers/services/supplierService';
-import { accountingService } from '../../accounting/services/accountingService';
-import { catalogService } from '../../catalog/services/catalogService';
-import { purchaseService } from '../services/purchaseService';
-import type { PurchaseInvoiceDto } from '../types/purchase.types';
 import { purchaseReturnLines } from '../../../shared/utils/returnLines';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { useProductBarcodes } from '../../catalog/hooks/useProductBarcodes';
 import { useAuth } from '../../../shared/context/AuthContext';
 import type { WarehouseDto } from '../../stock/types/stock.types';
-import type { SupplierDto } from '../../suppliers/types/supplier.types';
-import type { SafeDto } from '../../accounting/types/accounting.types';
 import type { ProductDto } from '../../catalog/types/catalog.types';
 import { IconPlus, IconTrash, IconArrowBackUp } from '@tabler/icons-react';
 
@@ -39,8 +34,8 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
   const { currentBranchId } = useAuth();
 
   const [invoiceId, setInvoiceId] = useState('');
-  const [invoices, setInvoices] = useState<PurchaseInvoiceDto[]>([]);
-  const [originalInvoice, setOriginalInvoice] = useState<PurchaseInvoiceDto | null>(null);
+  const [invoices, setInvoices] = useState<ReturnSourceInvoice[]>([]);
+  const [originalInvoice, setOriginalInvoice] = useState<ReturnSourceInvoice | null>(null);
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const debouncedInvoiceSearch = useDebounce(invoiceSearch, 300);
   const [loadingInvoice, setLoadingInvoice] = useState(false);
@@ -60,8 +55,8 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
 
   // Dropdown lists
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
-  const [safes, setSafes] = useState<SafeDto[]>([]);
+  const [suppliers, setSuppliers] = useState<LookupOption[]>([]);
+  const [safes, setSafes] = useState<LookupOption[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
 
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -77,7 +72,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    void purchaseService.getInvoices({ pageNumber: 1, pageSize: 100, branchId: currentBranchId || undefined, search: debouncedInvoiceSearch || undefined })
+    void lookupService.page<ReturnSourceInvoice>('purchase-return-invoices', { pageNumber: 1, pageSize: 100, branchId: currentBranchId || undefined, search: debouncedInvoiceSearch || undefined })
       .then((result) => { if (!cancelled) setInvoices(result.items.filter((invoice) => [1, 2, 3].includes(invoice.status))); })
       .catch(() => { if (!cancelled) setError('تعذر تحميل الفواتير الأصلية'); });
     return () => { cancelled = true; };
@@ -87,9 +82,15 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
     if (!isOpen || !invoiceId) { setLoadingInvoice(false); return; }
     let cancelled = false;
     setLoadingInvoice(true);
-    void purchaseService.getInvoiceById(invoiceId).then((invoice) => {
+    void lookupService.page<ReturnSourceInvoice>('purchase-return-invoices', { id: invoiceId, pageSize: 1 }).then((result) => {
+      if (!result.items[0]) throw new Error('الفاتورة غير متاحة للإرجاع');
+      return result.items[0];
+    }).then(async (invoice) => {
+      const available = await stockService.getWarehouses(invoice.branchId, invoice.warehouseId);
+      if (!available.some((warehouse) => warehouse.id === invoice.warehouseId)) throw new Error('مستودع الفاتورة الأصلية غير متاح للإرجاع');
       if (cancelled) return;
       if (![1, 2, 3].includes(invoice.status)) throw new Error('الفاتورة غير مرحلة أو ملغاة');
+      setWarehouses(available);
       setOriginalInvoice(invoice); setWarehouseId(invoice.warehouseId || ''); setSupplierId(invoice.supplierId || '');
     }).catch((err: unknown) => {
       if (!cancelled) setError(err instanceof Error ? err.message : 'تعذر تحميل الفاتورة');
@@ -98,11 +99,11 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
   }, [isOpen, invoiceId]);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
-      const rand = Math.floor(100 + Math.random() * 900);
-      setReturnNumber(`PRTN-${dateStr.replace(/-/g, '')}-${rand}`);
+      setReturnNumber(createDocumentNumber('PRTN'));
       setReturnDate(dateStr);
       setInvoiceId(''); setOriginalInvoice(null); setInvoiceSearch('');
       setItems([]);
@@ -115,11 +116,12 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
       setIsLoadingData(true);
       Promise.all([
         stockService.getWarehouses(currentBranchId || undefined),
-        supplierService.getAll(),
-        accountingService.getSafes(currentBranchId || undefined, undefined, true),
-        catalogService.getProducts(),
+        lookupService.list('suppliers'),
+        lookupService.list('safes', currentBranchId || undefined),
+        lookupService.page<ProductDto>('products'),
       ])
         .then(([whs, supps, sfs, prods]) => {
+          if (cancelled) return;
           const availableWarehouses = whs.filter((w) => w.isActive && w.type === 1);
           setWarehouses(availableWarehouses); setWarehouseId(availableWarehouses[0]?.id || '');
 
@@ -133,11 +135,13 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
           setProducts(productList.filter((p) => p.isActive));
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load purchase return modal dropdowns:', err);
           setError('فشل تحميل القوائم الأساسية لمرتجع المشتريات');
         })
-        .finally(() => setIsLoadingData(false));
+        .finally(() => { if (!cancelled) setIsLoadingData(false); });
     }
+    return () => { cancelled = true; };
   }, [isOpen, currentBranchId]);
 
   const handleAddItem = () => {
@@ -150,7 +154,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
     }
     if (!canReturnWithoutInvoice) { setError('اختر الفاتورة الأصلية'); return; }
     if (needsBarcode && !barcodeId) { setError('اختر باركود الصنف'); return; }
-    const prod = products.find((p) => p.id === selectedProductId);
+    const prod = selectedProduct;
     if (!prod) return;
 
     if (items.some((i) => i.productId === prod.id && i.productBarCodeId === (needsBarcode ? barcodeId : undefined))) {
@@ -300,7 +304,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
           />
 
           <Select
-            label="المورد *"
+            lookup={originalInvoice ? undefined : { resource: 'suppliers' }} label="المورد *"
             disabled={!!invoiceId}
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
@@ -311,7 +315,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Select
-            label="المستودع المسحوب منه *"
+            lookup={{ resource: 'warehouses', branchId: currentBranchId || undefined }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع المسحوب منه *"
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
             options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
@@ -347,12 +351,12 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
         {paymentMethod !== 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="الخزينة المستلمة للمبلغ *"
+              lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة المستلمة للمبلغ *"
               value={refundSafeId}
               onChange={(e) => setRefundSafeId(e.target.value)}
               options={safes.map((s) => ({
                 value: s.id,
-                label: `${s.name} (الرصيد: ${s.currentBalance.toLocaleString('ar-LY')} د.ل)`,
+                label: s.name,
               }))}
             />
             <Input
@@ -381,7 +385,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
 
           <div className="flex gap-2">
             <div className="flex-1">
-              <Select
+              <Select lookup={invoiceId ? undefined : { resource: 'products' }} label="الصنف"
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(e.target.value)}
                 options={[

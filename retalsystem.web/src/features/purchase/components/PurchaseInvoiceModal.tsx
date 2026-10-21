@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
+import { allocatePurchaseLine, purchaseLineTotal } from '../utils/purchasePriceAllocation';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
@@ -6,17 +9,10 @@ import { Select } from '../../../shared/components/ui/Select';
 import { QuickProductModal } from './QuickProductModal';
 import { QuickUnitModal } from './QuickUnitModal';
 import { stockService } from '../../stock/services/stockService';
-import { supplierService } from '../../suppliers/services/supplierService';
-import { accountingService } from '../../accounting/services/accountingService';
-import { organizationService } from '../../organization/services/organizationService';
-import { catalogService } from '../../catalog/services/catalogService';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { Permissions } from '../../../shared/auth/permissions';
 import type { WarehouseDto } from '../../stock/types/stock.types';
-import type { SupplierDto } from '../../suppliers/types/supplier.types';
-import type { SafeDto } from '../../accounting/types/accounting.types';
-import type { BranchDto } from '../../organization/types/organization.types';
-import type { ProductDto, CategoryDto, UnitDto } from '../../catalog/types/catalog.types';
+import type { ProductDto } from '../../catalog/types/catalog.types';
 import {
   PurchaseInvoiceStatus,
   PurchasePaymentMethod,
@@ -36,17 +32,6 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 
-interface MasterDataCache {
-  branches: BranchDto[];
-  suppliers: SupplierDto[];
-  warehouses: WarehouseDto[];
-  safes: SafeDto[];
-  categories: CategoryDto[];
-  units: UnitDto[];
-}
-
-let masterDataCache: MasterDataCache | null = null;
-
 interface PurchaseInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,16 +48,19 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   onUpdate,
 }) => {
   const { currentBranchId, hasPermission } = useAuth();
+  const lookupVersion = useRef(0);
+  const invalidateLookup = useCallback(() => { lookupVersion.current++; }, []);
+  useEffect(() => invalidateLookup, [isOpen, invalidateLookup]);
   const canCreateProduct = hasPermission(Permissions.Products.Create);
   const canCreateUnit = hasPermission(Permissions.Units.Create);
 
   // ════════ Master Data Lists ════════
-  const [branches, setBranches] = useState<BranchDto[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
+  const [suppliers, setSuppliers] = useState<LookupOption[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
-  const [safes, setSafes] = useState<SafeDto[]>([]);
-  const [categories, setCategories] = useState<CategoryDto[]>([]);
-  const [units, setUnits] = useState<UnitDto[]>([]);
+  const [safes, setSafes] = useState<LookupOption[]>([]);
+  const [categories, setCategories] = useState<LookupOption[]>([]);
+  const [units, setUnits] = useState<LookupOption[]>([]);
 
   // ════════ Invoice Main Fields ════════
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -87,6 +75,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   // ════════ Items Table State ════════
   const [items, setItems] = useState<CreatePurchaseInvoiceItemRequest[]>([]);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [taxAmount, setTaxAmount] = useState<number>(0);
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [isPaidManuallyModified, setIsPaidManuallyModified] = useState(false);
 
@@ -128,6 +117,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   // ── 1. Initialize Master Data on Open ──
   useEffect(() => {
     if (!isOpen) return;
+    let cancelled = false;
 
     if (invoiceToEdit) {
       setInvoiceNumber(invoiceToEdit.invoiceNumber || '');
@@ -143,6 +133,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
       setPaymentSafeId(invoiceToEdit.paymentSafeId || '');
       setNotes(invoiceToEdit.notes || '');
       setDiscountAmount(invoiceToEdit.discountAmount || 0);
+      setTaxAmount(invoiceToEdit.taxAmount || 0);
       setPaidAmount(invoiceToEdit.paidAmount || 0);
       setIsPaidManuallyModified(true);
       resetProductForm();
@@ -178,18 +169,14 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
     } else {
       const now = new Date();
       const dateFormatted = now.toISOString().slice(0, 10);
-      const randCode = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-        now.getDate()
-      ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(
-        now.getMinutes()
-      ).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
-      setInvoiceNumber(`PINV-${randCode}`);
+      setInvoiceNumber(createDocumentNumber('PINV'));
       setInvoiceDate(dateFormatted);
       setPaymentMethod(PurchasePaymentMethod.Cash);
       setNotes('');
       setItems([]);
       setDiscountAmount(0);
+      setTaxAmount(0);
       setPaidAmount(0);
       setIsPaidManuallyModified(false);
       resetProductForm();
@@ -197,12 +184,12 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
     }
 
     const applyMasterData = (
-      bList: BranchDto[],
-      sList: SupplierDto[],
+      bList: LookupOption[],
+      sList: LookupOption[],
       wList: WarehouseDto[],
-      sfList: SafeDto[],
-      cList: CategoryDto[],
-      uList: UnitDto[]
+      sfList: LookupOption[],
+      cList: LookupOption[],
+      uList: LookupOption[]
     ) => {
       setBranches(bList);
       const activeSuppliers = sList.filter((s) => s.isActive);
@@ -238,43 +225,27 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
       }
     };
 
-    if (masterDataCache) {
-      applyMasterData(
-        masterDataCache.branches,
-        masterDataCache.suppliers,
-        masterDataCache.warehouses,
-        masterDataCache.safes,
-        masterDataCache.categories,
-        masterDataCache.units
-      );
-    } else {
       setIsLoadingData(true);
       Promise.all([
-        organizationService.getBranches().catch(() => []),
-        supplierService.getAll().catch(() => []),
-        stockService.getWarehouses().catch(() => []),
-        accountingService.getSafes().catch(() => []),
-        catalogService.getCategories().catch(() => []),
-        catalogService.getUnits().catch(() => []),
+        lookupService.list('branches').catch(() => []),
+        lookupService.list('suppliers').catch(() => []),
+        stockService.getWarehouses(undefined, invoiceToEdit?.warehouseId),
+        lookupService.list('safes').catch(() => []),
+        canCreateProduct ? lookupService.list('categories') : Promise.resolve([]),
+        canCreateProduct ? lookupService.list('units') : Promise.resolve([]),
       ])
         .then(([bList, sList, wList, sfList, cList, uList]) => {
-          masterDataCache = {
-            branches: bList,
-            suppliers: sList,
-            warehouses: wList,
-            safes: sfList,
-            categories: cList,
-            units: uList,
-          };
+          if (cancelled) return;
           applyMasterData(bList, sList, wList, sfList, cList, uList);
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load initial purchase invoice master data:', err);
           setFormError('تعذر تحميل بيانات الفروع أو المستودعات أو الموردين');
         })
-        .finally(() => setIsLoadingData(false));
-    }
-  }, [isOpen, invoiceToEdit, currentBranchId]);
+        .finally(() => { if (!cancelled) setIsLoadingData(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, invoiceToEdit, currentBranchId, canCreateProduct]);
 
   // ── Reload safes when selected branch changes ──
   const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
@@ -286,9 +257,11 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
 
   useEffect(() => {
     if (!isOpen || !branchId) return;
-    accountingService
-      .getSafes(branchId, undefined, true)
+    let cancelled = false;
+    lookupService
+      .list('safes', branchId)
       .then((sfList) => {
+        if (cancelled) return;
         setSafes(sfList);
         setPaymentSafeId((prev) => {
           if (prev && sfList.some((s) => s.id === prev)) return prev;
@@ -296,10 +269,12 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         });
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [isOpen, branchId]);
 
   // ── Helper to reset item entry form ──
   function resetProductForm() {
+    lookupVersion.current++; setIsSearchingBarcode(false);
     setSelectedProduct(null);
     setSearchBarcode('');
     setPreviousCostPrice(0);
@@ -320,6 +295,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   // ── 2. On Product Selected / Loaded: Calculate Packaging & Flavors ──
   const handleProductLoaded = useCallback(
     (product: ProductDto, scannedBarcode?: string) => {
+      lookupVersion.current++; setIsSearchingBarcode(false);
       setSelectedProduct(product);
       setBarcodeSearchMessage(null);
 
@@ -401,12 +377,14 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
   // ── 3. Barcode Lookup ──
   const handleLookupBarcode = async () => {
     if (!searchBarcode.trim()) return;
+    const version = ++lookupVersion.current;
     setIsSearchingBarcode(true);
     setBarcodeSearchMessage(null);
 
     try {
       const trimmed = searchBarcode.trim();
-      const product = await catalogService.getByBarCode(trimmed);
+      const product = await lookupService.barcode(trimmed);
+      if (version !== lookupVersion.current) return;
       if (product && product.id) {
         handleProductLoaded(product, trimmed);
       } else {
@@ -414,10 +392,11 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         setBarcodeSearchMessage(`لم يتم العثور على صنف بالباركود: ${trimmed}`);
       }
     } catch {
+      if (version !== lookupVersion.current) return;
       setSelectedProduct(null);
       setBarcodeSearchMessage(`لم يتم العثور على صنف بالباركود: ${searchBarcode.trim()}`);
     } finally {
-      setIsSearchingBarcode(false);
+      if (version === lookupVersion.current) setIsSearchingBarcode(false);
     }
   };
 
@@ -436,7 +415,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
 
   // ── 5. Calculated Values ──
   const factor = unitsPerPackage > 0 ? unitsPerPackage : 1;
-  const totalPieceQuantity = Math.max(1, packageQuantity * factor);
+  const totalPieceQuantity = Number((packageQuantity * factor).toFixed(4));
   const calculatedPieceCost = factor > 0 ? invoiceEnteredPrice / factor : invoiceEnteredPrice;
 
   // Profit Analytics
@@ -495,7 +474,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               productBarCodeId: b.productBarCodeId,
               packageQuantity: b.packageQuantity,
               unitsPerPackage: factor,
-              quantity: b.packageQuantity * factor,
+              quantity: Number((b.packageQuantity * factor).toFixed(4)),
               unitPrice: calculatedPieceCost,
             }))
         : selectedProduct.barCodes && selectedProduct.barCodes.length > 0
@@ -523,7 +502,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         ? `${packageQuantity} ${selectedUnitOption?.name || 'عبوة'} × ${factor} حبة`
         : `${totalPieceQuantity} قطعة`;
 
-    const lineTotal = Math.max(0, totalPieceQuantity * calculatedPieceCost - itemDiscount);
+    const lineTotal = 0; // Computed from the exact package price below.
 
     const newItem: CreatePurchaseInvoiceItemRequest = {
       productId: selectedProduct.id,
@@ -546,6 +525,12 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
       packagingSummary,
     };
 
+    try {
+      newItem.lineTotal = purchaseLineTotal(newItem);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'تعذر توزيع سعر العبوة');
+      return;
+    }
     setItems((prev) => [...prev, newItem]);
     resetProductForm();
   };
@@ -557,12 +542,12 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
 
   // ── 9. Totals Calculation ──
   const subTotal = useMemo(() => {
-    return items.reduce((sum, item) => sum + item.lineTotal, 0);
+    return Number(items.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(4));
   }, [items]);
 
   const totalAmount = useMemo(() => {
-    return Math.max(0, subTotal - discountAmount);
-  }, [subTotal, discountAmount]);
+    return Math.max(0, Number((subTotal - discountAmount + taxAmount).toFixed(4)));
+  }, [subTotal, discountAmount, taxAmount]);
 
   // Adjust paid amount if payment method is cash/card and user hasn't manually edited it
   useEffect(() => {
@@ -615,19 +600,18 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         paymentMethod,
         subTotal,
         discountAmount,
-        taxAmount: 0,
+        taxAmount,
         totalAmount,
         paidAmount,
         paymentSafeId: paymentSafeId || undefined,
         notes: notes.trim() || undefined,
-        items: items.map((i) => ({
-          productId: i.productId,
-          productBarCodeId: i.productBarCodeId,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          discountAmount: i.discountAmount,
-          breakdowns: i.breakdowns,
-        })),
+        items: items.flatMap((item) => {
+          // Existing posted lines already have an authoritative four-decimal price.
+          if (item.unitsPerPackage === 1 && Number.isInteger(item.packageQuantity))
+            return [{ productId: item.productId, productBarCodeId: item.productBarCodeId, quantity: item.quantity,
+              unitPrice: item.unitPrice, discountAmount: item.discountAmount, breakdowns: item.breakdowns }];
+          return allocatePurchaseLine(item);
+        }),
       };
 
       if (invoiceToEdit && onUpdate) {
@@ -657,7 +641,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
         subtitle={
           invoiceToEdit
             ? 'تعديل أو استكمال إدخال الأصناف والمبالغ ثم حفظها كمسودة أو إغلاقها وترحيلها'
-            : 'إدخال بضائع الموردين وتفكيك العبوات واحتساب الأرباح والترحيل الفوري للمخازن'
+            : 'إدخال البضائع وترحيلها. توزّع فروق التقريب على الوحدات مع الحفاظ على إجمالي العبوة.'
         }
         size="4xl"
         footer={
@@ -674,14 +658,15 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               <Button variant="secondary" size="md" onClick={onClose} disabled={isSubmitting || isLoadingData}>
                 إلغاء النافذة
               </Button>
-              {canCreateProduct && <Button
+              <span className="text-xs text-slate-600">يُرحّل الحفظ المخزون والحسابات فوراً.</span>
+              <Button
                 variant="outline"
                 size="md"
                 onClick={() => handleSubmit(PurchaseInvoiceStatus.Pending)}
                 disabled={isSubmitting || isLoadingData || items.length === 0}
               >
-                {invoiceToEdit ? 'حفظ التعديلات (معلقة)' : 'حفظ كمسودة معلقة'}
-              </Button>}
+                حفظ وترحيل بالمبلغ المدفوع
+              </Button>
               <Button
                 variant="primary"
                 size="md"
@@ -690,7 +675,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 isLoading={isSubmitting || isLoadingData}
                 disabled={items.length === 0}
               >
-                إغلاق وترحيل الفاتورة للمخازن
+                ترحيل وسداد كامل
               </Button>
             </div>
           </div>
@@ -748,7 +733,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               />
 
               <Select
-                label="الفرع المستلم *"
+                lookup={{ resource: 'branches' }} label="الفرع المستلم *"
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
                 disabled={Boolean(invoiceToEdit)}
@@ -762,7 +747,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               </Select>
 
               <Select
-                label="المورد *"
+                lookup={{ resource: 'suppliers' }} label="المورد *"
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
                 disabled={Boolean(invoiceToEdit)}
@@ -776,7 +761,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               </Select>
 
               <Select
-                label="المستودع / الصالة المستلمة *"
+                lookup={{ resource: 'warehouses', branchId: branchId }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع / الصالة المستلمة *"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
                 disabled={Boolean(invoiceToEdit)}
@@ -814,14 +799,14 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
               />
 
               <Select
-                label="الخزينة / الحساب للسداد"
+                lookup={{ resource: 'safes', branchId }} label="الخزينة / الحساب للسداد"
                 value={paymentSafeId}
                 onChange={(e) => setPaymentSafeId(e.target.value)}
                 disabled={paymentMethod === PurchasePaymentMethod.Credit || Boolean(invoiceToEdit?.paymentSafeId)}
               >
                 {safes.map((sf) => (
                   <option key={sf.id} value={sf.id}>
-                    {sf.name} ({sf.currentBalance?.toFixed(2) ?? '0.00'} د.ل)
+                    {sf.name}
                   </option>
                 ))}
               </Select>
@@ -1241,7 +1226,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
 
           {/* ════════ 4. FINANCIAL TOTALS SUMMARY ════════ */}
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 items-center">
               <div>
                 <span className="block text-[11px] font-medium text-slate-500">المجموع الفرعي:</span>
                 <span className="text-base font-extrabold text-slate-900 num-ltr">
@@ -1263,6 +1248,16 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                   isLtr
                 />
               </div>
+
+              <Input
+                label="الضريبة"
+                type="number"
+                step="0.0001"
+                min="0"
+                value={taxAmount}
+                onChange={(e) => setTaxAmount(Number(e.target.value))}
+                isLtr
+              />
 
               <div className="col-span-2 sm:col-span-1">
                 <span className="block text-[11px] font-bold text-emerald-800">الصافي المطلوب:</span>

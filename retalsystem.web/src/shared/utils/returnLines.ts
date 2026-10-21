@@ -1,5 +1,4 @@
-import type { SalesInvoiceDto } from '../../features/sales/types/sales.types';
-import type { PurchaseInvoiceDto } from '../../features/purchase/types/purchase.types';
+import type { ReturnSourceInvoice } from '../services/lookupService';
 
 export interface ReturnLine {
   key: string;
@@ -24,7 +23,7 @@ function groupLines(lines: Omit<ReturnLine, 'key'>[]): ReturnLine[] {
 }
 
 // Prices are estimates for display; the server values returns from the original document.
-export function salesReturnLines(invoice: SalesInvoiceDto): ReturnLine[] {
+export function salesReturnLines<T extends Pick<ReturnSourceInvoice, 'items' | 'totalAmount'>>(invoice: T): ReturnLine[] {
   let weights = (invoice.items || []).map((item) => Math.max(0, item.quantity * item.unitPrice - item.discountAmount));
   if (weights.every((weight) => weight === 0)) weights = (invoice.items || []).map((item) => item.quantity);
   const sum = weights.reduce((a, b) => a + b, 0);
@@ -36,7 +35,7 @@ export function salesReturnLines(invoice: SalesInvoiceDto): ReturnLine[] {
   })));
 }
 
-export function purchaseReturnLines(invoice: PurchaseInvoiceDto): ReturnLine[] {
+export function purchaseReturnLines<T extends Pick<ReturnSourceInvoice, 'items' | 'totalAmount'>>(invoice: T): ReturnLine[] {
   const lots = invoice.items.flatMap((item) => {
     const price = item.unitPrice ?? item.unitCost ?? 0;
     const amount = item.lineTotal ?? item.quantity * price - item.discountAmount;

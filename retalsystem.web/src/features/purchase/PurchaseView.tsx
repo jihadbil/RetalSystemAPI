@@ -434,6 +434,7 @@ export const PurchaseView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل حفظ فاتورة المشتريات';
             showError('خطأ أثناء حفظ الفاتورة', msg);
+            throw err;
           }
         }}
         onUpdate={async (id, data) => {
@@ -451,6 +452,7 @@ export const PurchaseView: React.FC = () => {
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'فشل تحديث فاتورة المشتريات';
             showError('خطأ أثناء تعديل الفاتورة', msg);
+            throw err;
           }
         }}
       />

@@ -24,20 +24,24 @@ export const PurchaseInvoiceDetailsModal: React.FC<PurchaseInvoiceDetailsModalPr
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setInvoice(null);
     if (isOpen && invoiceId) {
       setIsLoading(true);
       setError(null);
       purchaseService
         .getInvoiceById(invoiceId)
-        .then((data) => setInvoice(data))
+        .then((data) => { if (!cancelled) setInvoice(data); })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load purchase invoice details:', err);
           setError('تعذر تحميل تفاصيل الفاتورة من الخادم');
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => { if (!cancelled) setIsLoading(false); });
     } else {
       setInvoice(null);
     }
+    return () => { cancelled = true; };
   }, [isOpen, invoiceId]);
 
   if (!isOpen) return null;

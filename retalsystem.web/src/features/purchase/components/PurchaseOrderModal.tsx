@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
+import { createDocumentNumber } from '../../../shared/utils/documentNumber';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { Select } from '../../../shared/components/ui/Select';
-import { organizationService } from '../../organization/services/organizationService';
 import { stockService } from '../../stock/services/stockService';
-import { supplierService } from '../../suppliers/services/supplierService';
-import { catalogService } from '../../catalog/services/catalogService';
 import { useAuth } from '../../../shared/context/AuthContext';
-import type { BranchDto } from '../../organization/types/organization.types';
 import type { WarehouseDto } from '../../stock/types/stock.types';
-import type { SupplierDto } from '../../suppliers/types/supplier.types';
 import type { ProductDto } from '../../catalog/types/catalog.types';
 import type { CreatePurchaseOrderRequest } from '../types/purchase.types';
 import { IconPlus, IconTrash, IconShoppingCart, IconBarcode, IconAlertCircle } from '@tabler/icons-react';
@@ -42,9 +39,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
   const [supplierId, setSupplierId] = useState('');
 
   // Dropdown lists
-  const [branches, setBranches] = useState<BranchDto[]>([]);
+  const [branches, setBranches] = useState<LookupOption[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
+  const [suppliers, setSuppliers] = useState<LookupOption[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
 
   // Item entry
@@ -59,12 +56,15 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const productRequestVersion = useRef(0);
 
   useEffect(() => {
+    productRequestVersion.current += 1;
     if (!isOpen) return;
+    let cancelled = false;
 
     const now = new Date();
-    setOrderNumber(`PO-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setOrderNumber(createDocumentNumber('PO'));
     setOrderDate(now.toISOString().slice(0, 10));
 
     const exp = new Date();
@@ -82,12 +82,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
 
     setIsLoadingData(true);
     Promise.all([
-      organizationService.getBranches().catch(() => []),
+      lookupService.list('branches').catch(() => []),
       stockService.getWarehouses().catch(() => []),
-      supplierService.getAll().catch(() => []),
-      catalogService.getProducts({ pageNumber: 1, pageSize: 200 }).catch(() => ({ items: [] })),
+      lookupService.list('suppliers').catch(() => []),
+      lookupService.page<ProductDto>('products', { pageNumber: 1, pageSize: 200 }).catch(() => ({ items: [] })),
     ])
       .then(([bList, wList, sList, pResult]) => {
+        if (cancelled) return;
         setBranches(bList);
         const activeWarehouses = wList.filter((w) => w.isActive);
         setWarehouses(activeWarehouses);
@@ -102,10 +103,12 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
         if (activeSuppliers.length > 0) setSupplierId(activeSuppliers[0].id);
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error('Failed to load purchase order dependencies:', err);
         setFormError('تعذر تحميل البيانات المساعدة من الخادم');
       })
-      .finally(() => setIsLoadingData(false));
+      .finally(() => { if (!cancelled) setIsLoadingData(false); });
+    return () => { cancelled = true; };
   }, [isOpen, currentBranchId]);
 
   const branchWarehouses = warehouses.filter((warehouse) => warehouse.branchId === branchId);
@@ -116,35 +119,33 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
   }, [isOpen, branchId, warehouses]);
 
   // Product selection handler
+  const applyProduct = (product: ProductDto, scannedBarcode?: string) => {
+    const barcode = product.barCodes?.find((item) => item.barCode.toLowerCase() === scannedBarcode?.toLowerCase())
+      || product.barCodes?.[0];
+    setSelectedProductId(product.id);
+    setSelectedProduct(product);
+    setSelectedBarcodeId(barcode?.id || '');
+    setSearchBarcode(barcode?.barCode || '');
+    setUnitPrice(product.costPrice || 0);
+  };
+
   const handleSelectProduct = async (prodId: string) => {
+    const version = ++productRequestVersion.current;
     setSelectedProductId(prodId);
+    setSelectedProduct(null);
+    setSelectedBarcodeId('');
+    setSearchBarcode('');
+    setUnitPrice(0);
     if (!prodId) {
-      setSelectedProduct(null);
-      setSelectedBarcodeId('');
-      setUnitPrice(0);
       return;
     }
 
     try {
-      const fullProd = await catalogService.getProductById(prodId);
-      setSelectedProduct(fullProd);
-
-      const defaultBarcode = (fullProd.barCodes && fullProd.barCodes.length > 0) ? fullProd.barCodes[0] : null;
-      if (defaultBarcode) {
-        setSelectedBarcodeId(defaultBarcode.id || '');
-        setSearchBarcode(defaultBarcode.barCode || '');
-      } else {
-        setSelectedBarcodeId('');
-        setSearchBarcode('');
-      }
-
-      setUnitPrice(fullProd.costPrice || 0);
+      const fullProd = await lookupService.product(prodId);
+      if (version !== productRequestVersion.current) return;
+      applyProduct(fullProd);
     } catch {
-      const p = products.find((x) => x.id === prodId);
-      setSelectedProduct(p || null);
-      if (p) {
-        setUnitPrice(p.costPrice || 0);
-      }
+      if (version === productRequestVersion.current) setFormError('تعذر تحميل تفاصيل الصنف والباركودات');
     }
   };
 
@@ -152,28 +153,28 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
   const handleBarcodeSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || !searchBarcode.trim()) return;
     e.preventDefault();
+    const version = ++productRequestVersion.current;
+    const scannedBarcode = searchBarcode.trim();
+    setSelectedProduct(null);
+    setSelectedProductId('');
+    setSelectedBarcodeId('');
 
     try {
-      const found = await catalogService.getByBarCode(searchBarcode.trim());
+      const found = await lookupService.barcode(scannedBarcode);
+      if (version !== productRequestVersion.current) return;
       if (found) {
-        await handleSelectProduct(found.id);
-        const matchedBc = found.barCodes?.find(
-          (b) => b.barCode.toLowerCase() === searchBarcode.trim().toLowerCase()
-        );
-        if (matchedBc) {
-          setSelectedBarcodeId(matchedBc.id || '');
-        }
+        applyProduct(found, scannedBarcode);
       } else {
         setFormError(`لم يتم العثور على صنف بالباركود: ${searchBarcode}`);
       }
     } catch {
-      setFormError('خطأ أثناء البحث عن الباركود');
+      if (version === productRequestVersion.current) setFormError('خطأ أثناء البحث عن الباركود');
     }
   };
 
   // Add Item to order
   const handleAddItem = () => {
-    if (!selectedProduct || !selectedProductId) {
+    if (!selectedProduct || selectedProduct.id !== selectedProductId) {
       setFormError('يرجى اختيار صنف أولاً');
       return;
     }
@@ -332,7 +333,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
           />
 
           <Select
-            label="الفرع الطالب *"
+            lookup={{ resource: 'branches' }} label="الفرع الطالب *"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             options={branches.map((b) => ({ value: b.id, label: b.name }))}
@@ -340,7 +341,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
           />
 
           <Select
-            label="المستودع المستلم"
+            lookup={{ resource: 'warehouses', branchId: branchId }} onLookupSelect={(option) => setWarehouses((previous) => [...previous.filter((warehouse) => warehouse.id !== option.id), stockService.warehouseOption(option)])} label="المستودع المستلم"
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
             options={[
@@ -351,7 +352,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
           />
 
           <Select
-            label="المورد المستهدف"
+            lookup={{ resource: 'suppliers' }} label="المورد المستهدف"
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
             options={[
@@ -380,7 +381,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, 
             </div>
 
             <div className="sm:col-span-4">
-              <Select
+              <Select lookup={{ resource: 'products' }} label="الصنف"
                 value={selectedProductId}
                 onChange={(e) => handleSelectProduct(e.target.value)}
                 options={[
