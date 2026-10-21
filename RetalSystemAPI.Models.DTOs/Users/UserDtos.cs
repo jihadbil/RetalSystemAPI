@@ -57,6 +57,9 @@ public class UserDetailsDto : UserSummaryDto
 /// </summary>
 public class CreateUserDto
 {
+    /// <summary>حالة تفعيل الحساب عند إنشائه.</summary>
+    public bool IsActive { get; set; } = true;
+
     /// <summary>اسم الدخول المطلوب</summary>
     public string UserName { get; set; } = string.Empty;
 

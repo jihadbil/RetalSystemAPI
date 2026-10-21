@@ -242,7 +242,8 @@ public class AuthService : IAuthService
         // حساب وقت وتاريخ انتهاء صلاحية التوكن بالتوقيت العالمي UTC
         var expiresAt = DateTime.UtcNow.AddHours(expiryHours);
         // جلب قائمة أسماء الأدوار المسندة للمستخدم من Identity
-        var roles = await _userManager.GetRolesAsync(user);
+        var resolvedPermissions = await UserPermissionResolver.ResolveAsync(user, _userManager, _roleManager);
+        var roles = resolvedPermissions.Roles;
         // بناء قائمة المطالبات (Claims) الأساسية لبيانات الجلسة
         var claims = new List<Claim>
         {
@@ -271,83 +272,7 @@ public class AuthService : IAuthService
             claims.Add(new Claim(ClaimTypes.Email, user.Email));
         }
 
-        // استخراج وتجميع كافة الصلاحيات الممنوحة للمستخدم بدون تكرار
-        var permissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        // التحقق مما إذا كان المستخدم يملك دور مسؤول عام أو مسؤول نظام
-        bool isPlatformAdmin = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
-        bool isTenantAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-        // فحص حالة المسؤول لمنحه كافة الصلاحيات مباشرة
-        if (isPlatformAdmin || isTenantAdmin)
-        {
-            // إضافة كافة أكواد الصلاحيات المعرفة في النظام تلقائياً
-            foreach (var perm in AppPermissions.GetAllPermissionCodes())
-            {
-                if (isTenantAdmin && perm == Permissions.Roles.Manage)
-                {
-                    continue;
-                }
-
-                // إدراج الصلاحية في المجموعة
-                permissions.Add(perm);
-            }
-        }
-        else
-        {
-            // جلب مطالبات المستخدم المباشرة المخزنة في قاعدة البيانات
-            var userClaims = await _userManager.GetClaimsAsync(user);
-            // التحقق مما إذا كانت صلاحيات المستخدم مخصصة بشكل يدوي
-            bool isCustomized = userClaims.Any(c => c.Type == "Permissions.Customized" && c.Value == "true");
-            // فحص حالة التخصيص
-            if (isCustomized)
-            {
-                // في حالة التخصيص، يتم اعتماد صلاحياته المباشرة المخصصة له فقط
-                foreach (var c in userClaims.Where(uc => uc.Type == Permissions.ClaimType))
-                {
-                    // التحقق من صلاحية القيمة
-                    if (!string.IsNullOrWhiteSpace(c.Value))
-                    {
-                        // إضافة الصلاحية المخصصة
-                        permissions.Add(c.Value);
-                    }
-                }
-            }
-            else
-            {
-                // في حالة عدم التخصيص، يرث المستخدم صلاحيات كافة أدواره المسندة
-                foreach (var roleName in roles)
-                {
-                    // جلب كائن الدور بالاسم
-                    var role = await _roleManager.FindByNameAsync(roleName);
-                    // التحقق من وجود الدور
-                    if (role != null)
-                    {
-                        // جلب مطالبات وصلاحيات هذا الدور
-                        var roleClaims = await _roleManager.GetClaimsAsync(role);
-                        // المرور على مطالبات الصلاحيات الخاصة بالدور
-                        foreach (var c in roleClaims.Where(rc => rc.Type == Permissions.ClaimType))
-                        {
-                            // التحقق من وجود قيمة للصلاحية
-                            if (!string.IsNullOrWhiteSpace(c.Value))
-                            {
-                                // إضافة الصلاحية المستمدة من الدور
-                                permissions.Add(c.Value);
-                            }
-                        }
-                    }
-                }
-
-                // إضافة أي صلاحيات مباشرة فردية إن وجدت للمستخدم
-                foreach (var c in userClaims.Where(uc => uc.Type == Permissions.ClaimType))
-                {
-                    // التحقق من صحة القيمة
-                    if (!string.IsNullOrWhiteSpace(c.Value))
-                    {
-                        // إدراج الصلاحية المباشرة
-                        permissions.Add(c.Value);
-                    }
-                }
-            }
-        }
+        var permissions = resolvedPermissions.EffectivePermissions;
 
         // تضمين كافة الصلاحيات المجمعة داخل مطالبات التوكن JWT
         foreach (var perm in permissions)
