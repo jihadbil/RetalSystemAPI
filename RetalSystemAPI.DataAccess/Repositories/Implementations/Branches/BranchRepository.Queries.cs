@@ -7,6 +7,19 @@ using RetalSystemAPI.Models.Branchs;
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 public partial class BranchRepository
 {
+    public async Task<bool> HasOperationalHistoryAsync(Guid id, CancellationToken ct = default)
+    {
+        var tenantId = _context.CurrentTenantId;
+        return await _context.Warehouses.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.Safes.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.PurchaseOrders.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.Expenses.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.CustomerTransactions.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.SupplierTransactions.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.PosTerminals.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct)
+            || await _context.CashSessions.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.BranchId == id, ct);
+    }
+
     public async Task<bool> IsActiveForTenantAsync(Guid branchId, Guid currentTenantId, CancellationToken ct = default)
     {
         return await _context.Set<Branch>().AsNoTracking().AnyAsync(e => e.Id == branchId && e.TenantId == currentTenantId && e.IsActive, ct);

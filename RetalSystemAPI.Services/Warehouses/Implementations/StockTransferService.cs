@@ -190,14 +190,13 @@ public class StockTransferService : IStockTransferService
             return ServiceResult<StockTransferResponseDto>.Failure("لا يمكن تعديل أمر تحويل تم ترحيله وتنفيذه بالفعل", ErrorCodes.StockTransferInvalidStatus);
         }
 
-        // تحديث ملاحظات التحويل
-        transfer.Notes = dto.Notes;
-        // في حال تم طلب تغيير حالة أمر التحويل
+        // تغيير الحالة محصور في مسار الاعتماد الذي يتحقق من صلاحية Approve.
         if (dto.Status != transfer.Status)
         {
-            // استدعاء دالة تحديث الحالة لإجراء العمليات المخزنية اللازمة
-            return await UpdateStatusAsync(id, dto.Status, ct);
+            return ServiceResult<StockTransferResponseDto>.Failure("استخدم مسار اعتماد التحويل لتغيير حالته", ErrorCodes.ValidationError);
         }
+
+        transfer.Notes = dto.Notes;
 
         // وسم السجل للتحديث
         _unitOfWork.StockTransfers.Update(transfer);
@@ -257,7 +256,7 @@ public class StockTransferService : IStockTransferService
                 if (barcodeIds.Count > 0)
                 {
                     // تجميع إجمالي الكميات المطلوبة لكل باركود
-                    var barcodeTotals = transfer.Items.Where(i => i.ProductBarCodeId.HasValue).GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+                    var barcodeTotals = transfer.Items.Where(i => i.ProductBarCodeId.HasValue).GroupBy(i => i.ProductBarCodeId!.Value).ToDictionary(g => g.Key, g => g.Sum(x => (long)x.Quantity));
                     // استرجاع أرصدة المصدر المتتبعة للباركودات
                     var sourceStocksByBarcode = (await _unitOfWork.Stock.GetStorageForUpdateAsync(fromWh.Id, barcodeIds, ct)).ToDictionary(s => s.ProductBarcodeId);
                     // فحص رصيد كل باركود ومقارنته بالكمية المطلوبة
@@ -280,7 +279,7 @@ public class StockTransferService : IStockTransferService
                 if (productIds.Count > 0)
                 {
                     // تجميع إجمالي الكميات المطلوبة لكل منتج
-                    var productTotals = transfer.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+                    var productTotals = transfer.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => (long)x.Quantity));
                     // استرجاع أرصدة الصالة المتتبعة
                     var sourceStocksByProduct = (await _unitOfWork.Stock.GetShowroomForUpdateAsync(fromWh.Id, productIds, ct)).ToDictionary(s => s.ProductId);
                     // مقارنة رصيد كل صنف بالكمية المطلوبة
@@ -294,6 +293,26 @@ public class StockTransferService : IStockTransferService
                         }
                     }
                 }
+            }
+
+            // افحص سعة الوجهة قبل تعديل أي رصيد، بما يشمل البنود المتكررة.
+            if (toWh.Type == WarehouseType.Storge)
+            {
+                var totals = transfer.Items.GroupBy(i => i.ProductBarCodeId!.Value)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
+                var stocks = (await _unitOfWork.Stock.GetStorageForUpdateAsync(toWh.Id, totals.Keys.ToList(), ct))
+                    .ToDictionary(s => s.ProductBarcodeId);
+                if (totals.Any(t => t.Value > int.MaxValue - (long)(stocks.GetValueOrDefault(t.Key)?.Quantity ?? 0)))
+                    return ServiceResult<StockTransferResponseDto>.Failure("الكمية تتجاوز سعة المخزون في المستودع الوجهة", ErrorCodes.ValidationError);
+            }
+            else
+            {
+                var totals = transfer.Items.GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
+                var stocks = (await _unitOfWork.Stock.GetShowroomForUpdateAsync(toWh.Id, totals.Keys.ToList(), ct))
+                    .ToDictionary(s => s.ProductId);
+                if (totals.Any(t => t.Value > int.MaxValue - (long)(stocks.GetValueOrDefault(t.Key)?.Quantity ?? 0)))
+                    return ServiceResult<StockTransferResponseDto>.Failure("الكمية تتجاوز سعة المخزون في الصالة الوجهة", ErrorCodes.ValidationError);
             }
 
             // 2. تنفيذ خصم الكميات من المستودع المصدر
@@ -357,7 +376,7 @@ public class StockTransferService : IStockTransferService
                     if (targetStocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
                     {
                         // زيادة الكمية
-                        stock.Quantity += item.Quantity;
+                        stock.Quantity = checked(stock.Quantity + item.Quantity);
                     }
                     else
                     {
@@ -390,7 +409,7 @@ public class StockTransferService : IStockTransferService
                     if (targetStocksByProduct.TryGetValue(item.ProductId, out var stock))
                     {
                         // زيادة الكمية
-                        stock.Quantity += item.Quantity;
+                        stock.Quantity = checked(stock.Quantity + item.Quantity);
                     }
                     else
                     {

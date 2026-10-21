@@ -9,6 +9,9 @@ namespace RetalSystemAPI.Models.DTOs.Warehouses;
 /// </summary>
 public class WarehouseSummaryDto : BaseDto
 {
+    /// <summary>معرف الفرع التابع له المستودع.</summary>
+    public Guid BranchId { get; set; }
+
     /// <summary>اسم المستودع</summary>
     public string Name { get; set; } = null!;
 

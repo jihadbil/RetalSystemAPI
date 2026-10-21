@@ -103,38 +103,49 @@ public class WarehouseService : IWarehouseService
         var warehouse = _mapper.Map<Warehouse>(dto);
         // تعيين حالة النشاط افتراضياً بنشط
         warehouse.IsActive = dto.IsActive;
-        // إضافة كيان المستودع إلى المستودع
-        await _unitOfWork.Warehouses.AddAsync(warehouse, ct);
-        // حفظ التغييرات للحصول على المعرف المنشأ
-        await _unitOfWork.SaveChangesAsync(ct);
-        // توليد أسطر المخزون التلقائية الافتتاحية للمخزن الجديد
-        if (warehouse.Type == WarehouseType.Storge)
+        await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            // جلب معرفات كافة الباركودات المسجلة
-            var allBarCodeIds = await _unitOfWork.Products.GetBarcodeIdsAsync(ct);
-            // إنشاء سجل رصيد افتتاحي لكل باركود بكمية صفرية
-            var newStocks = allBarCodeIds.Select(bcId => new StorgeStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductBarcodeId = bcId, Quantity = 0, MinStockLevel = 0 }).ToList();
-            // إضافة سجلات الأرصدة كدفعة واحدة
-            await _unitOfWork.Stock.AddStorgeStocksAsync(newStocks, ct);
-            // حفظ التغييرات في حال وجود سجلات
-            if (newStocks.Count > 0)
+            // إضافة كيان المستودع إلى المستودع
+            await _unitOfWork.Warehouses.AddAsync(warehouse, ct);
+            // حفظ التغييرات للحصول على المعرف المنشأ
+            await _unitOfWork.SaveChangesAsync(ct);
+            // توليد أسطر المخزون التلقائية الافتتاحية للمخزن الجديد
+            if (warehouse.Type == WarehouseType.Storge)
             {
-                await _unitOfWork.SaveChangesAsync(ct);
+                // جلب معرفات كافة الباركودات المسجلة
+                var allBarCodeIds = await _unitOfWork.Products.GetBarcodeIdsAsync(ct);
+                // إنشاء سجل رصيد افتتاحي لكل باركود بكمية صفرية
+                var newStocks = allBarCodeIds.Select(bcId => new StorgeStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductBarcodeId = bcId, Quantity = 0, MinStockLevel = 0 }).ToList();
+                // إضافة سجلات الأرصدة كدفعة واحدة
+                await _unitOfWork.Stock.AddStorgeStocksAsync(newStocks, ct);
+                // حفظ التغييرات في حال وجود سجلات
+                if (newStocks.Count > 0)
+                {
+                    await _unitOfWork.SaveChangesAsync(ct);
+                }
             }
+            else if (warehouse.Type == WarehouseType.Show)
+            {
+                // جلب معرفات كافة المنتجات المسجلة لصالة العرض
+                var allProductIds = await _unitOfWork.Products.GetIdsAsync(ct);
+                // إنشاء سجل رصيد افتتاحي لكل منتج بكمية صفرية
+                var newStocks = allProductIds.Select(pId => new ShowroomStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductId = pId, Quantity = 0, MinStockLevel = 0 }).ToList();
+                // إضافة سجلات الأرصدة كدفعة واحدة
+                await _unitOfWork.Stock.AddShowroomStocksAsync(newStocks, ct);
+                // حفظ التغييرات في حال وجود سجلات
+                if (newStocks.Count > 0)
+                {
+                    await _unitOfWork.SaveChangesAsync(ct);
+                }
+            }
+
+            await _unitOfWork.CommitTransactionAsync(ct);
         }
-        else if (warehouse.Type == WarehouseType.Show)
+        catch
         {
-            // جلب معرفات كافة المنتجات المسجلة لصالة العرض
-            var allProductIds = await _unitOfWork.Products.GetIdsAsync(ct);
-            // إنشاء سجل رصيد افتتاحي لكل منتج بكمية صفرية
-            var newStocks = allProductIds.Select(pId => new ShowroomStock { TenantId = warehouse.TenantId, WarehouseId = warehouse.Id, ProductId = pId, Quantity = 0, MinStockLevel = 0 }).ToList();
-            // إضافة سجلات الأرصدة كدفعة واحدة
-            await _unitOfWork.Stock.AddShowroomStocksAsync(newStocks, ct);
-            // حفظ التغييرات في حال وجود سجلات
-            if (newStocks.Count > 0)
-            {
-                await _unitOfWork.SaveChangesAsync(ct);
-            }
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            throw;
         }
 
         // إعادة جلب المستودع مع بيانات الفرع
@@ -207,6 +218,9 @@ public class WarehouseService : IWarehouseService
             // إرجاع خطأ احتواء المستودع على مخزون
             return ServiceResult.Failure("لا يمكن حذف المخزن/الصالة لوجود كميات مخزونية مسجلة بها", ErrorCodes.WarehouseHasStock);
         }
+
+        if (await _unitOfWork.Warehouses.HasDocumentReferencesAsync(id, ct))
+            return ServiceResult.Failure("لا يمكن حذف مستودع مرتبط بمستندات؛ يمكن تعطيله مع الاحتفاظ بالسجل التاريخي", ErrorCodes.ValidationError);
 
         // تطبيق الحذف المنطقي للمستودع
         _unitOfWork.Warehouses.SoftDelete(warehouse);

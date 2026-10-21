@@ -192,6 +192,9 @@ public class BranchService : IBranchService
             return ServiceResult.Failure("لا يمكن حذف الفرع لوجود مستخدمين نشطين مرتبطين به", ErrorCodes.BranchHasUsers);
         }
 
+        if (await _unitOfWork.Branches.HasOperationalHistoryAsync(id, ct))
+            return ServiceResult.Failure("لا يمكن حذف فرع مرتبط بمخازن أو عمليات مالية؛ استخدم التعطيل للحفاظ على سجله", ErrorCodes.ValidationError);
+
         // تطبيق الحذف المنطقي للفرع
         _unitOfWork.Branches.SoftDelete(branch);
         // حفظ التغييرات في قاعدة البيانات

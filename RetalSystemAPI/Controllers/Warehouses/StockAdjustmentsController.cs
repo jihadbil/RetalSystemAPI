@@ -136,6 +136,7 @@ public class StockAdjustmentsController : BaseApiController
     /// <returns>بيانات التسوية المنشأة مصحوبة بكود 201 Created عند النجاح.</returns>
     [HttpPost]
     [HasPermission(Permissions.StockAdjustments.Create)]
+    [HasPermission(Permissions.StockAdjustments.Approve)]
     public async Task<IActionResult> Create([FromBody] CreateStockAdjustmentDto dto, CancellationToken ct)
     {
         // استدعاء خدمة التسويات الجردية لإنشاء التسوية وتطبيق ضبط المخزون الفوري

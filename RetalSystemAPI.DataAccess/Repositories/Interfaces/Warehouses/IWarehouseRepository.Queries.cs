@@ -13,4 +13,5 @@ public partial interface IWarehouseRepository
     Task<PageResult<Warehouse>> SearchAsync(WarehouseQuery request, CancellationToken ct = default);
     Task<bool> NameExistsAsync(string name, Guid branchId, CancellationToken ct = default);
     Task<bool> NameExistsAsync(string name, Guid branchId, Guid id, CancellationToken ct = default);
+    Task<bool> HasDocumentReferencesAsync(Guid id, CancellationToken ct = default);
 }
