@@ -5,6 +5,7 @@ vi.mock('./shared/services/apiClient', async (importOriginal) => ({ ...await imp
 
 import { customerService } from './features/customers/services/customerService';
 import { supplierService } from './features/suppliers/services/supplierService';
+import { userService } from './features/users/services/userService';
 import { organizationService } from './features/organization/services/organizationService';
 import { buildCustomerPayload } from './features/customers/services/customerService';
 import { buildSupplierPayload } from './features/suppliers/services/supplierService';
@@ -35,6 +36,27 @@ describe('feature audit regression contracts', () => {
     transport.get.mockResolvedValue({ items: [{ id: 'customer', name: 'Customer', primaryPhone: '0912345678', phoneCount: 1 }] });
     const result = await customerService.getPaged();
     expect(result.items[0].phone).toBe('0912345678');
+  });
+
+  it('requests customers with debt without restricting them to inactive accounts', async () => {
+    transport.get.mockResolvedValue({ items: [] });
+    await customerService.getPaged(1, 10, undefined, undefined, true);
+    expect(transport.get).toHaveBeenCalledWith('customers/paged', { pageNumber: 1, pageSize: 10, hasBalance: 'true' });
+  });
+
+  it('requests supplier filters from the server before pagination', async () => {
+    transport.get.mockResolvedValue({ items: [] });
+    await supplierService.getPaged(2, 10, 'supplier', true, true);
+    expect(transport.get).toHaveBeenCalledWith('suppliers/paged', {
+      pageNumber: 2, pageSize: 10, search: 'supplier', isActive: 'true', hasBalance: 'true',
+    });
+  });
+
+  it('sends the inactive state when creating a disabled account', async () => {
+    transport.post.mockResolvedValue({ id: 'user', userName: 'disabled', isActive: false });
+    const user = await userService.create({ userName: 'disabled', password: 'Password123!', role: 'Cashier', isActive: false });
+    expect(transport.post).toHaveBeenCalledWith('users', expect.objectContaining({ isActive: false }));
+    expect(user.isActive).toBe(false);
   });
 
   it('maps edited tenant UI fields back to the backend names', async () => {
@@ -74,6 +96,15 @@ describe('feature audit regression contracts', () => {
     transport.post.mockResolvedValue({ id: 'sale', invoiceNumber: 'POS-1' });
     await posService.checkout({ warehouseId: 'storage', paymentMethod: 3, paymentSafeId: 'bank-2' });
     expect(transport.post).toHaveBeenCalledWith('pos-sales', expect.objectContaining({ paymentSafeId: 'bank-2' }));
+  });
+
+  it('preserves the caller checkout key across a lost response and retry', async () => {
+    const request = { invoiceNumber: 'POS-stable-attempt', warehouseId: 'storage', paymentMethod: 3, paymentSafeId: 'bank' };
+    transport.post.mockRejectedValueOnce(new Error('Lost response')).mockResolvedValueOnce({ id: 'sale', invoiceNumber: request.invoiceNumber });
+    await expect(posService.checkout(request)).rejects.toThrow('Lost response');
+    await expect(posService.checkout(request)).resolves.toEqual({ id: 'sale', invoiceNumber: request.invoiceNumber });
+    expect(transport.post.mock.calls.map((call) => call[1].invoiceNumber)).toEqual([request.invoiceNumber, request.invoiceNumber]);
+    expect(request.invoiceNumber).toBe('POS-stable-attempt');
   });
 
   it('sends the received and completed status values to posting actions', async () => {
