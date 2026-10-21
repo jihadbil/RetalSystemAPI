@@ -37,6 +37,8 @@ public interface ISupplierService
     /// <returns>نتيجة مجزأة تحتوي على ملخصات الموردين وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default);
 
+    Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search, bool? isActive, bool hasBalance, CancellationToken ct = default);
+
     /// <summary>
     /// إنشاء مورد جديد مع التحقق من عدم تكرار الاسم وحفظ هواتفه.
     /// </summary>

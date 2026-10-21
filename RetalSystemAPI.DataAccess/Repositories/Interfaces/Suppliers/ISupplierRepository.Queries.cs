@@ -10,4 +10,5 @@ public partial interface ISupplierRepository
     Task<PageResult<Supplier>> SearchAsync(SupplierQuery request, CancellationToken ct = default);
     Task<bool> NameExistsAsync(string name, CancellationToken ct = default);
     Task<bool> NameExistsAsync(string name, Guid id, CancellationToken ct = default);
+    Task<bool> HasFinancialHistoryAsync(Guid id, CancellationToken ct = default);
 }

@@ -7,6 +7,14 @@ using RetalSystemAPI.Models.Customers;
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 public partial class CustomerRepository
 {
+    public async Task<bool> HasFinancialHistoryAsync(Guid id, CancellationToken ct = default)
+    {
+        var tenantId = _context.CurrentTenantId;
+        return await _context.SalesInvoices.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.CustomerId == id, ct)
+            || await _context.SalesReturns.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.CustomerId == id, ct)
+            || await _context.CustomerTransactions.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.CustomerId == id, ct);
+    }
+
     public async Task<Customer?> GetDetailsAsync(Guid id, CancellationToken ct = default)
     {
         return await SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(id)).AsNoTracking().FirstOrDefaultAsync(ct);
@@ -19,7 +27,9 @@ public partial class CustomerRepository
 
     public async Task<PageResult<Customer>> SearchAsync(CustomerQuery request, CancellationToken ct = default)
     {
-        return await QueryPaging.ReadAsync(SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(request.Type, request.IsActive, request.Search)), request, ct);
+        var query = SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(request.Type, request.IsActive, request.Search));
+        if (request.HasBalance) query = query.Where(customer => customer.CurrentBalance > 0);
+        return await QueryPaging.ReadAsync(query, request, ct);
     }
 
     public async Task<bool> CodeExistsAsync(string code, CancellationToken ct = default)

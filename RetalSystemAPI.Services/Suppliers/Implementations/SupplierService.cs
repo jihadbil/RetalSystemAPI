@@ -65,11 +65,14 @@ public class SupplierService : ISupplierService
     }
 
     /// <inheritdoc/>
-    public async Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default)
+    public Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default) =>
+        GetPagedAsync(pageNumber, pageSize, search, null, false, ct);
+
+    public async Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search, bool? isActive, bool hasBalance, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المخصصة بالبحث والترتيب
         // تنفيذ استعلام الصفحة المجزأة مع إجمالي العدد
-        var(items, totalCount) = await _unitOfWork.Suppliers.SearchAsync(new SupplierQuery { Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var(items, totalCount) = await _unitOfWork.Suppliers.SearchAsync(new SupplierQuery { Search = search, IsActive = isActive, HasBalance = hasBalance, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل قائمة العناصر المسترجعة إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<SupplierSummaryDto>>(items);
         // بناء كائن النتيجة المجزأة الموحد
@@ -178,6 +181,9 @@ public class SupplierService : ISupplierService
         // تطبيق الحذف المنطقي للمورد
         if (supplier.CurrentBalance != 0)
             return ServiceResult.Failure("لا يمكن حذف مورد لديه رصيد قائم؛ استخدم التعطيل حتى تسوية حسابه", ErrorCodes.ValidationError);
+
+        if (await _unitOfWork.Suppliers.HasFinancialHistoryAsync(id, ct))
+            return ServiceResult.Failure("لا يمكن حذف مورد له سجل مالي؛ استخدم التعطيل للحفاظ على مستنداته وكشف حسابه", ErrorCodes.ValidationError);
 
         _unitOfWork.Suppliers.SoftDelete(supplier);
         // حفظ التغييرات في قاعدة البيانات

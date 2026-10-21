@@ -65,10 +65,12 @@ public class SuppliersController : BaseApiController
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] bool hasBalance = false,
         CancellationToken ct = default)
     {
         // استدعاء خدمة الموردين لجلب صفحة الموردين بناءً على معايير البحث والترقيم
-        var result = await _supplierService.GetPagedAsync(pageNumber, pageSize, search, ct);
+        var result = await _supplierService.GetPagedAsync(pageNumber, pageSize, search, isActive, hasBalance, ct);
 
         // تحويل وإرجاع النتيجة كاستجابة HTTP
         return ToActionResult(result);

@@ -66,11 +66,14 @@ public class CustomerService : ICustomerService
     }
 
     /// <inheritdoc/>
-    public async Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
+    public Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default) =>
+        GetPagedAsync(pageNumber, pageSize, type, isActive, search, false, ct);
+
+    public async Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المخصصة بالترقيم والفلترة
         // جلب عناصر الصفحة المحددة وإجمالي عدد السجلات
-        var(items, totalCount) = await _unitOfWork.Customers.SearchAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var(items, totalCount) = await _unitOfWork.Customers.SearchAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search, HasBalance = hasBalance, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل قائمة الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<CustomerSummaryDto>>(items);
         // بناء كائن الصفحة الموحد
@@ -214,6 +217,9 @@ public class CustomerService : ICustomerService
         // تطبيق الحذف المنطقي للعميل
         if (customer.CurrentBalance != 0)
             return ServiceResult.Failure("لا يمكن حذف عميل لديه رصيد قائم؛ استخدم التعطيل حتى تسوية حسابه", ErrorCodes.ValidationError);
+
+        if (await _unitOfWork.Customers.HasFinancialHistoryAsync(id, ct))
+            return ServiceResult.Failure("لا يمكن حذف عميل له سجل مالي؛ استخدم التعطيل للحفاظ على مستنداته وكشف حسابه", ErrorCodes.ValidationError);
 
         _unitOfWork.Customers.SoftDelete(customer);
         // حفظ التغييرات في قاعدة البيانات

@@ -57,10 +57,13 @@ public class SafeService : ISafeService
     /// <summary>
     /// استرجاع قائمة بكافة الخزائن المسجلة لدى المستأجر.
     /// </summary>
-    public async Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(CancellationToken ct = default)
+    public Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(CancellationToken ct = default)
+        => GetAllAsync(null, null, null, ct);
+
+    public async Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(Guid? branchId, SafeType? type, bool? isActive, CancellationToken ct = default)
     {
         // جلب كافة الخزائن من قاعدة البيانات
-        var safes = await _unitOfWork.Accounting.GetAllSafesAsync(ct);
+        var safes = await _unitOfWork.Accounting.GetAllSafesAsync(branchId, type, isActive, ct);
         // تحويل القائمة لكائنات ملخصات DTO وإرجاعها
         return ServiceResult<IReadOnlyList<SafeSummaryDto>>.Success(_mapper.Map<IReadOnlyList<SafeSummaryDto>>(safes));
     }

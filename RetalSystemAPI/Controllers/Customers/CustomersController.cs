@@ -77,10 +77,11 @@ public class CustomersController : BaseApiController
         [FromQuery] CustomerType? type = null,
         [FromQuery] bool? isActive = null,
         [FromQuery] string? search = null,
+        [FromQuery] bool hasBalance = false,
         CancellationToken ct = default)
     {
         // استدعاء خدمة العملاء لجلب صفحة العملاء المحددة مع تطبيق معايير التصفية
-        var result = await _customerService.GetPagedAsync(pageNumber, pageSize, type, isActive, search, ct);
+        var result = await _customerService.GetPagedAsync(pageNumber, pageSize, type, isActive, search, hasBalance, ct);
 
         // تحويل وإرجاع النتيجة كاستجابة HTTP
         return ToActionResult(result);

@@ -31,9 +31,13 @@ public class SafesController : BaseApiController
     /// </summary>
     [HttpGet]
     [HasPermission(Permissions.Safes.View)]
-    public async Task<IActionResult> GetAll(CancellationToken ct = default)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid? branchId = null,
+        [FromQuery] RetalSystemAPI.Models.Enums.SafeType? type = null,
+        [FromQuery] bool? isActive = null,
+        CancellationToken ct = default)
     {
-        var result = await _safeService.GetAllAsync(ct);
+        var result = await _safeService.GetAllAsync(branchId, type, isActive, ct);
         return ToActionResult(result);
     }
 

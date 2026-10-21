@@ -1,6 +1,7 @@
 using RetalSystemAPI.DataAccess.Queries;
 using RetalSystemAPI.DataAccess.QueryResults;
 using RetalSystemAPI.Models.Accounting;
+using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Interfaces;
 /// <summary>
@@ -15,6 +16,7 @@ public interface IAccountingRepository
     Task<Safe?> GetSafeWithDetailsAsync(Guid id, CancellationToken ct = default);
     /// <summary>جلب كافة الخزائن</summary>
     Task<IReadOnlyList<Safe>> GetAllSafesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Safe>> GetAllSafesAsync(Guid? branchId, SafeType? type, bool? isActive, CancellationToken ct = default);
     /// <summary>جلب صفحة خزائن مجزأة مع الفلترة</summary>
     Task<PageResult<Safe>> SearchSafesAsync(SafeQuery request, CancellationToken ct = default);
     /// <summary>التحقق من وجود خزينة بنفس الاسم في الفرع</summary>

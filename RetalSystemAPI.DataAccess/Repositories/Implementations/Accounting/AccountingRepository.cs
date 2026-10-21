@@ -5,6 +5,7 @@ using RetalSystemAPI.DataAccess.Context;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Common;
+using RetalSystemAPI.Models.Enums;
 
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 /// <summary>
@@ -32,9 +33,16 @@ public class AccountingRepository : IAccountingRepository
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<Safe>> GetAllSafesAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<Safe>> GetAllSafesAsync(CancellationToken ct = default)
+        => GetAllSafesAsync(null, null, null, ct);
+
+    public async Task<IReadOnlyList<Safe>> GetAllSafesAsync(Guid? branchId, SafeType? type, bool? isActive, CancellationToken ct = default)
     {
-        return await _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).ToListAsync(ct);
+        var query = _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).AsQueryable();
+        if (branchId.HasValue) query = query.Where(s => s.BranchId == branchId.Value);
+        if (type.HasValue) query = query.Where(s => s.Type == type.Value);
+        if (isActive.HasValue) query = query.Where(s => s.IsActive == isActive.Value);
+        return await query.OrderBy(s => s.Name).ThenBy(s => s.Id).ToListAsync(ct);
     }
 
     /// <inheritdoc/>

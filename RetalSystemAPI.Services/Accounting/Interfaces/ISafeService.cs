@@ -29,6 +29,7 @@ public interface ISafeService
     /// <returns>قائمة ملخصات الخزائن النشطة والمسجلة</returns>
     // جلب كافة الخزائن والحسابات المصرفية المتاحة
     Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(CancellationToken ct = default);
+    Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(Guid? branchId, RetalSystemAPI.Models.Enums.SafeType? type, bool? isActive, CancellationToken ct = default);
 
     /// <summary>
     /// جلب صفحة بيانات مجزأة للخزائن مع إمكانية الفلترة حسب الفرع وحالة النشاط وكلمة البحث.

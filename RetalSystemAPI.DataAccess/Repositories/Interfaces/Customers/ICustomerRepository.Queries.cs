@@ -10,4 +10,5 @@ public partial interface ICustomerRepository
     Task<PageResult<Customer>> SearchAsync(CustomerQuery request, CancellationToken ct = default);
     Task<bool> CodeExistsAsync(string code, CancellationToken ct = default);
     Task<bool> CodeExistsAsync(string code, Guid id, CancellationToken ct = default);
+    Task<bool> HasFinancialHistoryAsync(Guid id, CancellationToken ct = default);
 }
