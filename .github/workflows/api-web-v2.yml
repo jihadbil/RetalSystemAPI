@@ -1,0 +1,96 @@
+name: API and web with SQL integration
+
+on:
+  push:
+    branches: [V2]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Start isolated SQL Server
+        shell: bash
+        run: |
+          set -euo pipefail
+          RETAL_TEST_PASSWORD="Retal!7A$(openssl rand -hex 24)"
+          echo "::add-mask::$RETAL_TEST_PASSWORD"
+          docker run --rm -d --name retal-ci-sql --memory 3g \
+            -p 127.0.0.1:1433:1433 \
+            -e ACCEPT_EULA=Y -e MSSQL_PID=Developer -e MSSQL_MEMORY_LIMIT_MB=2048 \
+            -e MSSQL_SA_PASSWORD="$RETAL_TEST_PASSWORD" \
+            mcr.microsoft.com/mssql/server:2022-latest
+          for attempt in {1..45}; do
+            if docker exec -e SQLCMDPASSWORD="$RETAL_TEST_PASSWORD" retal-ci-sql \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -Q 'SELECT 1' >/dev/null 2>&1; then
+              printf 'RETAL_TEST_SQLSERVER=Server=127.0.0.1,1433;Database=master;User Id=sa;Password=%s;Encrypt=True;TrustServerCertificate=True;\n' \
+                "$RETAL_TEST_PASSWORD" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'SQL Server did not become ready in time.' >&2
+          exit 1
+
+      - name: Restore API and test dependencies with security audit
+        run: dotnet restore tests/RetalSystemAPI.SecurityTests/RetalSystemAPI.SecurityTests.csproj -p:NuGetAudit=true -p:NuGetAuditMode=all -warnaserror
+
+      - name: Build and run backend tests against SQL Server
+        run: |
+          test -n "$RETAL_TEST_SQLSERVER"
+          dotnet test tests/RetalSystemAPI.SecurityTests/RetalSystemAPI.SecurityTests.csproj \
+            --configuration Release --no-restore -p:TreatWarningsAsErrors=true \
+            --logger 'trx;LogFileName=backend.trx' --results-directory artifacts
+
+      - name: Reject missing or skipped SQL integration tests
+        run: python3 scripts/verify_sql_test_results.py artifacts/backend.trx
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: artifacts/*.trx
+          if-no-files-found: warn
+
+      - name: Remove temporary SQL Server
+        if: always()
+        run: docker rm -f retal-ci-sql >/dev/null 2>&1 || true
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: retalsystem.web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: retalsystem.web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm audit --audit-level=moderate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-results
+          path: |
+            retalsystem.web/playwright-report/
+            retalsystem.web/test-results/
+          if-no-files-found: warn
