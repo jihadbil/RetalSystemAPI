@@ -1,3 +1,4 @@
+import { lookupService, type LookupOption } from '../../../shared/services/lookupService';
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Input } from '../../../shared/components/ui/Input';
@@ -5,8 +6,6 @@ import { Select } from '../../../shared/components/ui/Select';
 import { Button } from '../../../shared/components/ui/Button';
 import { CustomerDto } from '../types/customer.types';
 import { customerService } from '../services/customerService';
-import { accountingService } from '../../accounting/services/accountingService';
-import { SafeDto } from '../../accounting/types/accounting.types';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
 import { soundService } from '../../../shared/services/soundService';
@@ -29,7 +28,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
   const { showSuccess, showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [safes, setSafes] = useState<SafeDto[]>([]);
+  const [safes, setSafes] = useState<LookupOption[]>([]);
   const [amount, setAmount] = useState<number | ''>('');
   const [safeId, setSafeId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('1'); // 1: نقدي, 2: بنكي, 3: مدى
@@ -38,10 +37,12 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
-      accountingService
-        .getSafes()
+      lookupService
+        .list('safes')
         .then((data) => {
+          if (cancelled) return;
           const activeSafes = (data || []).filter((s) => s.isActive);
           setSafes(activeSafes);
           if (activeSafes.length > 0) {
@@ -49,9 +50,11 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           }
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to fetch safes:', err);
         });
     }
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   if (!customer) return null;
@@ -142,14 +145,14 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
-            label="الخزينة / الحساب المودع فيه *"
+            lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة / الحساب المودع فيه *"
             value={safeId}
             onChange={(e) => setSafeId(e.target.value)}
             options={
               safes.length > 0
                 ? safes.map((s) => ({
                     value: s.id,
-                    label: `${s.name} (${s.currentBalance.toLocaleString('ar-LY')} د.ل)`,
+                    label: `${s.name}`,
                   }))
                 : [{ value: '', label: 'لا توجد خزائن متاحة' }]
             }
@@ -163,7 +166,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
               { value: '1', label: 'نقداً (كاش)' },
               { value: '2', label: 'تحويل مصرفي' },
               { value: '3', label: 'بطاقة مصرفية / شبكة' },
-              { value: '4', label: 'صك / شيك مصرفي' },
+              { value: '5', label: 'صك / شيك مصرفي' },
             ]}
           />
         </div>

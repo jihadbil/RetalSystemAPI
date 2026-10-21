@@ -1,3 +1,4 @@
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { CustomerDto } from './types/customer.types';
 import { customerService } from './services/customerService';
@@ -62,29 +63,31 @@ export const CustomersView: React.FC = () => {
 
   const [customerError, setCustomerError] = useState<string | null>(null);
 
+  const loadDataGate = useRequestGate();
+  useEffect(() => loadDataGate.invalidate, [loadDataGate, pageNumber, pageSize, debouncedSearch, activeTab, showError]);
   const loadData = useCallback(async () => {
+    const isCurrent = loadDataGate.begin();
+    setCustomers([]);
     try {
       setIsLoading(true);
       setCustomerError(null);
-      const isActiveParam = activeTab === 'all' ? undefined : activeTab === 'active';
-      const result = await customerService.getPaged(pageNumber, pageSize, debouncedSearch, isActiveParam);
-
-      let items = result.items;
-      if (activeTab === 'with_balance') {
-        items = items.filter((c) => c.currentBalance > 0);
-      }
-
-      setCustomers(items);
+      const isActiveParam = activeTab === 'active' ? true : undefined;
+      const result = await customerService.getPaged(pageNumber, pageSize, debouncedSearch, isActiveParam, activeTab === 'with_balance');
+      if (!isCurrent()) return;
+      setCustomers(result.items);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل قائمة العملاء';
       setCustomerError(msg);
       showError('خطأ في تحميل العملاء', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoading(false);
+      }
     }
-  }, [pageNumber, pageSize, debouncedSearch, activeTab, showError]);
+  }, [loadDataGate, pageNumber, pageSize, debouncedSearch, activeTab, showError]);
 
   useEffect(() => {
     loadData();
@@ -144,7 +147,7 @@ export const CustomersView: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-white border border-rose-200/60 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-rose-500">إجمالي المديونيات المستحقة</span>
+            <span className="text-xs font-bold text-rose-500">رصيد عملاء الصفحة الحالية</span>
             <div className="text-2xl font-black text-rose-700 num-ltr text-right mt-1">
               {totalReceivables.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
               <span className="text-xs font-normal">د.ل</span>
@@ -184,7 +187,7 @@ export const CustomersView: React.FC = () => {
           <Input
             placeholder="بحث بالاسم، الجوال، أو الرقم الضريبي..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPageNumber(1); }}
             leftIcon={<IconSearch className="w-4 h-4 text-slate-400" />}
           />
         </div>
@@ -192,7 +195,7 @@ export const CustomersView: React.FC = () => {
         <div className="flex items-center gap-1.5 self-stretch sm:self-auto overflow-x-auto">
           <button
             type="button"
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setActiveTab('all'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'all'
                 ? 'bg-slate-900 text-white'
@@ -203,7 +206,7 @@ export const CustomersView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('with_balance')}
+            onClick={() => { setActiveTab('with_balance'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'with_balance'
                 ? 'bg-rose-600 text-white'
@@ -214,7 +217,7 @@ export const CustomersView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('active')}
+            onClick={() => { setActiveTab('active'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'active'
                 ? 'bg-emerald-600 text-white'
@@ -400,12 +403,12 @@ export const CustomersView: React.FC = () => {
         onSaved={loadData}
       />
 
-      <CustomerPaymentModal
+      {isPaymentOpen && <CustomerPaymentModal
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
         customer={customerToPay}
         onPaymentSuccess={loadData}
-      />
+      />}
 
       <CustomerStatementModal
         isOpen={isStatementOpen}

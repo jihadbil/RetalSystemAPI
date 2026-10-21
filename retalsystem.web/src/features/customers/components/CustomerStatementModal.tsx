@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { CustomerDto, CustomerStatementDto } from '../types/customer.types';
@@ -24,26 +24,32 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const requestVersion = useRef(0);
+  const invalidateRequest = useCallback(() => { requestVersion.current++; }, []);
   const loadStatement = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setStatement(null);
     if (!customer) return;
     try {
       setIsLoading(true);
       setErrorMsg(null);
       const data = await customerService.getStatement(customer.id, fromDate, toDate);
+      if (version !== requestVersion.current) return;
       setStatement(data);
     } catch (err: unknown) {
+      if (version !== requestVersion.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل كشف حساب العميل من الخادم';
       setErrorMsg(msg);
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }, [customer, fromDate, toDate]);
 
   useEffect(() => {
     if (!isOpen || !customer) return;
     const timer = window.setTimeout(() => { void loadStatement(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [isOpen, customer, loadStatement]);
+    return () => { window.clearTimeout(timer); invalidateRequest(); };
+  }, [isOpen, customer, loadStatement, invalidateRequest]);
 
   const handlePrint = () => {
     window.print();

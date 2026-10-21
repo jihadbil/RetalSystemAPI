@@ -1,3 +1,4 @@
+import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback } from 'react';
 import { SupplierDto } from './types/supplier.types';
 import { supplierService } from './services/supplierService';
@@ -63,30 +64,31 @@ export const SuppliersView: React.FC = () => {
 
   const [supplierError, setSupplierError] = useState<string | null>(null);
 
+  const loadDataGate = useRequestGate();
+  useEffect(() => loadDataGate.invalidate, [loadDataGate, pageNumber, pageSize, debouncedSearch, activeTab, showError]);
   const loadData = useCallback(async () => {
+    const isCurrent = loadDataGate.begin();
+    setSuppliers([]);
     try {
       setIsLoading(true);
       setSupplierError(null);
-      const result = await supplierService.getPaged(pageNumber, pageSize, debouncedSearch);
-
-      let items = result.items;
-      if (activeTab === 'with_balance') {
-        items = items.filter((s) => s.currentBalance > 0);
-      } else if (activeTab === 'active') {
-        items = items.filter((s) => s.isActive);
-      }
-
-      setSuppliers(items);
+      const result = await supplierService.getPaged(pageNumber, pageSize, debouncedSearch,
+        activeTab === 'active' ? true : undefined, activeTab === 'with_balance');
+      if (!isCurrent()) return;
+      setSuppliers(result.items);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل قائمة الموردين';
       setSupplierError(msg);
       showError('خطأ في تحميل الموردين', msg);
     } finally {
+      if (isCurrent()) {
       setIsLoading(false);
+      }
     }
-  }, [pageNumber, pageSize, debouncedSearch, activeTab, showError]);
+  }, [loadDataGate, pageNumber, pageSize, debouncedSearch, activeTab, showError]);
 
   useEffect(() => {
     loadData();
@@ -146,7 +148,7 @@ export const SuppliersView: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-white border border-amber-200/60 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-amber-600">إجمالي المستحقات للموردين (دائن)</span>
+            <span className="text-xs font-bold text-amber-600">رصيد موردي الصفحة الحالية</span>
             <div className="text-2xl font-black text-amber-800 num-ltr text-right mt-1">
               {totalPayables.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
               <span className="text-xs font-normal">د.ل</span>
@@ -186,7 +188,7 @@ export const SuppliersView: React.FC = () => {
           <Input
             placeholder="بحث باسم المورد، اسم الشركة، أو الهاتف..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPageNumber(1); }}
             leftIcon={<IconSearch className="w-4 h-4 text-slate-400" />}
           />
         </div>
@@ -194,7 +196,7 @@ export const SuppliersView: React.FC = () => {
         <div className="flex items-center gap-1.5 self-stretch sm:self-auto overflow-x-auto">
           <button
             type="button"
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setActiveTab('all'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'all'
                 ? 'bg-slate-900 text-white'
@@ -205,7 +207,7 @@ export const SuppliersView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('with_balance')}
+            onClick={() => { setActiveTab('with_balance'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'with_balance'
                 ? 'bg-amber-600 text-white'
@@ -216,7 +218,7 @@ export const SuppliersView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('active')}
+            onClick={() => { setActiveTab('active'); setPageNumber(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'active'
                 ? 'bg-emerald-600 text-white'
@@ -391,12 +393,12 @@ export const SuppliersView: React.FC = () => {
         onSaved={loadData}
       />
 
-      <SupplierPaymentModal
+      {isPaymentOpen && <SupplierPaymentModal
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
         supplier={supplierToPay}
         onPaymentSuccess={loadData}
-      />
+      />}
 
       <SupplierStatementModal
         isOpen={isStatementOpen}

@@ -64,11 +64,15 @@ export const supplierService = {
   async getPaged(
     pageNumber = 1,
     pageSize = 10,
-    search?: string
+    search?: string,
+    isActive?: boolean,
+    hasBalance = false
   ): Promise<PagedResult<SupplierDto>> {
     try {
       const params: Record<string, string | number> = { pageNumber, pageSize };
       if (search) params.search = search;
+      if (isActive !== undefined) params.isActive = String(isActive);
+      if (hasBalance) params.hasBalance = 'true';
 
       const result = await apiClient.get<PagedResult<SupplierApiDto>>('suppliers/paged', params);
       return { ...result, items: result.items.map(normalizeSupplier) };
