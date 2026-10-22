@@ -403,10 +403,7 @@ export const CatalogView: React.FC = () => {
                           <div className="flex items-center justify-center gap-1">
                             {canEditProduct && <button
                               type="button"
-                              onClick={() => {
-                                setEditingProduct(item);
-                                setIsFormOpen(true);
-                              }}
+                              onClick={() => { void handleEditProduct(item.id); }}
                               className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                               title="تعديل الصنف"
                             >

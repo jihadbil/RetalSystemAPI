@@ -36,7 +36,7 @@ public interface IProductService
     /// <param name="categoryId">معرف التصنيف للفلترة (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>صفحة نتائج تحتوي على عناصر المنتجات وإجمالي العدد</returns>
-    Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, string? search = null, CancellationToken ct = default);
 
     Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, string? search, CancellationToken ct = default);
 

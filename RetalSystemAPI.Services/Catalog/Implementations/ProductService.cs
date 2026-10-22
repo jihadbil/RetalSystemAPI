@@ -92,11 +92,11 @@ public class ProductService : IProductService
 
         // بناء مواصفة البحث بالاسم والباركود
         // جلب المنتجات المطابقة للبحث
-        var products = await _unitOfWork.Products.ListAsync(new ProductQuery { Search = query }, ct);
+        var products = await _unitOfWork.Products.SearchLookupAsync(query.Trim(), ct);
         // التطابق التام للباركود أولاً ثم الأسماء التي تبدأ بالكلمة ثم بقية النتائج مع حد أقصى 100 نتيجة
-        var ordered = products.OrderBy(p => p.ProductBarCodes.Any(b => b.BarCode == query) ? 0 : 1).ThenBy(p => p.Name.StartsWith(query) ? 0 : 1).ThenBy(p => p.Name).Take(100).ToList();
+        // Ranking and the limit are applied by the database before loading related rows.
         // تحويل النتائج المرتبة إلى DTOs
-        var dtos = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(ordered);
+        var dtos = _mapper.Map<IReadOnlyList<ProductSummaryDto>>(products);
         // إرجاع قائمة نتائج البحث بنجاح
         return ServiceResult<IReadOnlyList<ProductSummaryDto>>.Success(dtos);
     }

@@ -41,9 +41,9 @@ public class UpdateProductDto
 
     /// <summary>قائمة الباركودات المحدثة</summary>
     [NoNullItems]
-    public List<CreateProductBarCodeDto> BarCodes { get; set; } = new();
+    public List<CreateProductBarCodeDto>? BarCodes { get; set; }
 
     /// <summary>قائمة الوحدات المحدثة</summary>
     [NoNullItems]
-    public List<CreateProductUnitDto> Units { get; set; } = new();
+    public List<CreateProductUnitDto>? Units { get; set; }
 }
