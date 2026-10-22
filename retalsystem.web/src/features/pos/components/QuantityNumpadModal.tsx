@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { IconBackspace, IconCheck } from '@tabler/icons-react';
@@ -19,26 +19,31 @@ export const QuantityNumpadModal: React.FC<QuantityNumpadModalProps> = ({
   onConfirm,
 }) => {
   const [valStr, setValStr] = useState<string>(String(initialQuantity));
+  const replaceNextDigit = useRef(true);
 
   useEffect(() => {
     if (isOpen) {
       setValStr(String(initialQuantity));
+      replaceNextDigit.current = true;
     }
   }, [isOpen, initialQuantity]);
 
   const handleDigit = (digit: string) => {
-    if (valStr === '0' || valStr === String(initialQuantity)) {
+    if (valStr === '0' || replaceNextDigit.current) {
       setValStr(digit);
     } else {
       setValStr((prev) => (prev.length < 5 ? prev + digit : prev));
     }
+    replaceNextDigit.current = false;
   };
 
   const handleBackspace = () => {
+    replaceNextDigit.current = false;
     setValStr((prev) => (prev.length > 1 ? prev.slice(0, -1) : '0'));
   };
 
   const handleClear = () => {
+    replaceNextDigit.current = false;
     setValStr('0');
   };
 

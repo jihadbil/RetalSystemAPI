@@ -58,7 +58,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         }
 
         // تحويل الكيان إلى كائن استجابة DTO
-        var dto = _mapper.Map<SalesInvoiceResponseDto>(invoice);
+        var dto = await MapWithIssuerAsync(invoice, ct);
         // إرجاع النتيجة بنجاح
         return ServiceResult<SalesInvoiceResponseDto>.Success(dto);
     }
@@ -76,7 +76,7 @@ public class SalesInvoiceService : ISalesInvoiceService
         }
 
         // تحويل الكيان إلى DTO
-        var dto = _mapper.Map<SalesInvoiceResponseDto>(invoice);
+        var dto = await MapWithIssuerAsync(invoice, ct);
         // إرجاع النتيجة بنجاح
         return ServiceResult<SalesInvoiceResponseDto>.Success(dto);
     }

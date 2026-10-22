@@ -59,11 +59,7 @@ export const posService = {
 
   // حفظ قائمة المسودات محلياً
   saveDrafts(scope: string, drafts: PosDraft[]): void {
-    try {
-      localStorage.setItem(getDraftsStorageKey(scope), JSON.stringify(drafts));
-    } catch {
-      // إهمال أخطاء التخزين
-    }
+    localStorage.setItem(getDraftsStorageKey(scope), JSON.stringify(drafts));
   },
 
   // استرجاع المسودات المعلقة المحفوظة
