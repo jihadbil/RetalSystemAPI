@@ -82,6 +82,7 @@ export interface SalesInvoiceItemDto {
 }
 
 export interface SalesInvoiceDto {
+  issuer?: { name: string; taxNumber?: string; address?: string; phone?: string } | null;
   id: string;
   invoiceNumber: string;
   branchId?: string;

@@ -9,6 +9,8 @@ namespace RetalSystemAPI.Models.DTOs.Sales;
 /// </summary>
 public class SalesInvoiceResponseDto : BaseDto
 {
+    public InvoiceIssuerDto? Issuer { get; set; }
+
     /// <summary>رقم فاتورة المبيعات</summary>
     public string InvoiceNumber { get; set; } = null!;
 

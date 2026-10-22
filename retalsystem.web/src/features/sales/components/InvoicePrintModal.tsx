@@ -19,22 +19,27 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const { printDocument } = useThermalPrint();
   const [fullInvoice, setFullInvoice] = useState<SalesInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (isOpen && initialInvoice) {
-      if (!initialInvoice.items || initialInvoice.items.length === 0) {
-        setIsLoading(true);
-        salesService
-          .getInvoiceById(initialInvoice.id)
-          .then((data) => setFullInvoice(data))
-          .catch(() => setFullInvoice(initialInvoice))
-          .finally(() => setIsLoading(false));
-      } else {
-        setFullInvoice(initialInvoice);
-      }
-    } else {
-      setFullInvoice(null);
+    let cancelled = false;
+    setFullInvoice(null);
+    setLoadError(false);
+    if (!isOpen || !initialInvoice) {
+      setIsLoading(false);
+      return;
     }
+    if (initialInvoice.issuer && initialInvoice.items?.length) {
+      setFullInvoice(initialInvoice);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    salesService.getInvoiceById(initialInvoice.id)
+      .then((data) => { if (!cancelled) setFullInvoice(data); })
+      .catch(() => { if (!cancelled) setLoadError(true); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [isOpen, initialInvoice]);
 
   const invoice = fullInvoice || initialInvoice;
@@ -57,6 +62,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
             variant="primary"
             size="md"
             leftIcon={<IconPrinter className="w-4 h-4" />}
+            disabled={isLoading || loadError || !invoice.issuer?.name}
             onClick={() => printDocument()}
           >
             طباعة الفاتورة (A4)

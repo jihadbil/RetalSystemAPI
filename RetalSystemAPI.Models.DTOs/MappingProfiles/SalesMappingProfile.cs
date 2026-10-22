@@ -19,6 +19,7 @@ public class SalesMappingProfile : Profile
         // ── تحويلات فواتير المبيعات (Sales Invoice) ──────────────────────────
         // تكوين تحويل كيان فاتورة المبيعات إلى ناقل بيانات الاستجابة التفصيلي
         CreateMap<SalesInvoice, SalesInvoiceResponseDto>()
+            .ForMember(dest => dest.Issuer, opt => opt.Ignore())
             // إسقاط اسم الفرع
             .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : string.Empty))
             // إسقاط اسم المستودع
