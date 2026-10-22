@@ -173,13 +173,8 @@ public class StockTransferService : IStockTransferService
     {
         if (DtoValidation.GetError(dto) is { } validationError)
             return ServiceResult<StockTransferResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
-
-        // استعلام أمر التحويل بالمعرف
-        var transfer = await _unitOfWork.StockTransfers.GetDetailsAsync(id, ct);
-        // التحقق من وجود أمر التحويل
+        var transfer = await _unitOfWork.StockTransfers.GetDetailsForUpdateAsync(id, ct);
         if (transfer is null)
-        {
-            // إرجاع خطأ عدم وجود أمر التحويل
             return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);
         }
 
@@ -208,41 +203,29 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(responseDto);
     }
 
-    /// <inheritdoc/>
     public async Task<ServiceResult<StockTransferResponseDto>> UpdateStatusAsync(Guid id, StockTransferStatus status, CancellationToken ct = default)
+    {
+        var transfer = await _unitOfWork.StockTransfers.GetDetailsForUpdateAsync(id, ct);
+        if (transfer is null)
+            return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);
+        return await UpdateStatusCoreAsync(transfer, status, null, false, ct);
+    }
+
+    private async Task<ServiceResult<StockTransferResponseDto>> UpdateStatusCoreAsync(
+        StockTransfer transfer, StockTransferStatus status, string? notes, bool updateNotes, CancellationToken ct)
     {
         if (!Enum.IsDefined(status))
             return ServiceResult<StockTransferResponseDto>.Failure("حالة التحويل غير صحيحة", ErrorCodes.ValidationError);
-        // استعلام أمر التحويل ككيان متتبع (Tracked) لتعديل حالته وأرصدته مباشرة
-        var transfer = await _unitOfWork.StockTransfers.GetDetailsForUpdateAsync(id, ct);
-        // التحقق من وجود أمر التحويل
-        if (transfer is null)
-        {
-            // إرجاع خطأ عدم وجود أمر التحويل
-            return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);
-        }
+        if (transfer.Status is StockTransferStatus.Completed or StockTransferStatus.Cancelled ||
+            (transfer.Status == StockTransferStatus.Confirmed && status == StockTransferStatus.Draft))
+            return ServiceResult<StockTransferResponseDto>.Failure("لا يمكن تغيير حالة تحويل نهائي أو إعادته إلى مسودة", ErrorCodes.StockTransferInvalidStatus);
 
-        // منع إعادة ترحيل أمر منفذ مسبقاً
-        if (transfer.Status == StockTransferStatus.Completed)
-        {
-            // إرجاع خطأ عدم جواز التكرار
-            return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل منفذ ومرحل بالفعل مسبقاً", ErrorCodes.StockTransferInvalidStatus);
-        }
-
-        // في حال كان الانتقال إلى حالة الاكتمال (Completed) يتم تنفيذ المناقلة المخزنية
         if (status == StockTransferStatus.Completed)
         {
-            // استعلام بيانات المستودع المصدر
             var fromWh = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(transfer.FromWarehouseId, ct);
-            // استعلام بيانات المستودع الوجهة
             var toWh = await _unitOfWork.Warehouses.GetByIdForUpdateAsync(transfer.ToWarehouseId, ct);
-            // التحقق من وجود كلا المستودعين
-            if (fromWh == null || toWh == null)
-            {
-                // إرجاع خطأ عدم وجود المستودعات
+            if (fromWh is null || toWh is null)
                 return ServiceResult<StockTransferResponseDto>.Failure("أحد المستودعات غير موجود", ErrorCodes.WarehouseNotFound);
-            }
-
             var itemError = await ValidateItemsAsync(transfer.Items.Select(i => (i.ProductId, i.ProductBarCodeId, i.Quantity)), fromWh, toWh, ct);
             if (itemError is not null)
                 return ServiceResult<StockTransferResponseDto>.Failure(itemError, ErrorCodes.ValidationError);
@@ -318,36 +301,22 @@ public class StockTransferService : IStockTransferService
             // 2. تنفيذ خصم الكميات من المستودع المصدر
             if (fromWh.Type == WarehouseType.Storge)
             {
-                // استخراج معرفات الباركودات
-                var fromBarcodeIds = transfer.Items.Where(i => i.ProductBarCodeId.HasValue).Select(i => i.ProductBarCodeId!.Value).Distinct().ToList();
-                // تنفيذ الخصم في حال وجود باركودات
-                if (fromBarcodeIds.Count > 0)
+                if (fromWh.Type == WarehouseType.Storge) sourceStorage[item.ProductBarCodeId!.Value].Quantity -= item.Quantity;
+                else sourceShowroom[item.ProductId].Quantity -= item.Quantity;
+                if (toWh.Type == WarehouseType.Storge)
                 {
-                    // استرجاع قواميس أرصدة المصدر المتتبعة
-                    var sourceStocksByBarcode = (await _unitOfWork.Stock.GetStorageForUpdateAsync(fromWh.Id, fromBarcodeIds, ct)).ToDictionary(s => s.ProductBarcodeId);
-                    // خصم كل بند من رصيد المصدر
-                    foreach (var item in transfer.Items)
+                    var barcodeId = item.ProductBarCodeId!.Value;
+                    if (!targetStorage.TryGetValue(barcodeId, out var stock))
                     {
-                        // فحص وجود الباركود والرصيد
-                        if (item.ProductBarCodeId.HasValue && sourceStocksByBarcode.TryGetValue(item.ProductBarCodeId.Value, out var stock))
-                        {
-                            // طرح الكمية المحولة
-                            stock.Quantity -= item.Quantity;
-                        }
+                        stock = new StorgeStock { TenantId = transfer.TenantId, WarehouseId = toWh.Id, ProductBarcodeId = barcodeId };
+                        await _unitOfWork.Stock.AddStorgeStockAsync(stock, ct);
+                        targetStorage[barcodeId] = stock;
                     }
+                    stock.Quantity = checked(stock.Quantity + item.Quantity);
                 }
-            }
-            else if (fromWh.Type == WarehouseType.Show)
-            {
-                // استخراج معرفات المنتجات
-                var fromProductIds = transfer.Items.Select(i => i.ProductId).Distinct().ToList();
-                // تنفيذ الخصم لصالة العرض
-                if (fromProductIds.Count > 0)
+                else
                 {
-                    // استرجاع أرصدة الصالة
-                    var sourceStocksByProduct = (await _unitOfWork.Stock.GetShowroomForUpdateAsync(fromWh.Id, fromProductIds, ct)).ToDictionary(s => s.ProductId);
-                    // خصم كل بند من رصيد الصالة
-                    foreach (var item in transfer.Items)
+                    if (!targetShowroom.TryGetValue(item.ProductId, out var stock))
                     {
                         // فحص وجود رصيد الصنف
                         if (sourceStocksByProduct.TryGetValue(item.ProductId, out var stock))
@@ -427,20 +396,15 @@ public class StockTransferService : IStockTransferService
                         // حفظه بالقاموس
                         targetStocksByProduct[item.ProductId] = newStock;
                     }
+                    stock.Quantity = checked(stock.Quantity + item.Quantity);
                 }
             }
         }
-
-        // تحديث حالة أمر التحويل
         transfer.Status = status;
-        // حفظ كافة التغييرات وحركات المخزون في قاعدة البيانات
+        if (updateNotes) transfer.Notes = notes;
         await _unitOfWork.SaveChangesAsync(ct);
-        // إعادة جلب أمر التحويل مع التفاصيل
-        var updated = await _unitOfWork.StockTransfers.GetDetailsAsync(id, ct) ?? transfer;
-        // تحويل الكيان إلى DTO
-        var responseDto = _mapper.Map<StockTransferResponseDto>(updated);
-        // إرجاع النتيجة بنجاح
-        return ServiceResult<StockTransferResponseDto>.Success(responseDto);
+        var updated = await _unitOfWork.StockTransfers.GetDetailsAsync(transfer.Id, ct) ?? transfer;
+        return ServiceResult<StockTransferResponseDto>.Success(_mapper.Map<StockTransferResponseDto>(updated));
     }
 
     private async Task<string?> ValidateItemsAsync(IEnumerable<(Guid ProductId, Guid? BarcodeId, int Quantity)> items,
