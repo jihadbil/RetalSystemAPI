@@ -22,6 +22,19 @@ interface RequestOptions extends RequestInit {
   timeoutMs?: number;
 }
 
+function isJsonContentType(contentType: string | null): boolean {
+  return !!contentType && /^(?:application\/json|[\w.+-]+\/[\w.+-]+\+json)(?:\s*;|$)/i.test(contentType.trim());
+}
+
+function parseApiError(data: unknown, status: number, fallback: string): ApiError {
+  if (!data || typeof data !== 'object') return new ApiError(typeof data === 'string' && data ? data : fallback, status);
+  const problem = data as ProblemDetails;
+  const response = data as ApiResponse;
+  const errors = problem.errors ? Object.values(problem.errors).flat().filter((e) => typeof e === 'string') : [];
+  return new ApiError(errors[0] || response.message || problem.detail || problem.title || fallback,
+    status, problem.errorCode || response.errorCode, errors);
+}
+
 class ApiClient {
   private getAuthToken(): string | null {
     return localStorage.getItem('retal_token') || sessionStorage.getItem('retal_token');
@@ -102,31 +115,14 @@ class ApiClient {
 
       const contentType = response.headers.get('content-type');
       let data: unknown;
-      if (contentType && contentType.includes('application/json')) {
+      if (isJsonContentType(contentType)) {
         data = await response.json();
       } else {
         data = await response.text();
       }
 
       if (!response.ok) {
-        // تفكيك أخطاء ValidationProblemDetails أو ApiResponse
-        const prob = data as ProblemDetails;
-        const apiResp = data as ApiResponse;
-        
-        let errorMsg = 'حدث خطأ أثناء معالجة الطلب';
-        let errorsList: string[] = [];
-
-        if (prob && prob.errors) {
-          errorsList = Object.values(prob.errors).flat();
-          errorMsg = errorsList[0] || prob.title || errorMsg;
-        } else if (apiResp && apiResp.message) {
-          errorMsg = apiResp.message;
-          errorsList = apiResp.errors || [];
-        } else if (typeof data === 'string' && data.length > 0) {
-          errorMsg = data;
-        }
-
-        throw new ApiError(errorMsg, response.status, prob?.errorCode || apiResp?.errorCode, errorsList);
+        throw parseApiError(data, response.status, 'حدث خطأ أثناء معالجة الطلب');
       }
 
       // إذا كان الخادم يغلف بـ ApiResponse<T>
@@ -233,15 +229,10 @@ class ApiClient {
 
       if (!response.ok) {
         const contentType = response.headers.get('content-type') || '';
-        const data = contentType.includes('application/json')
+        const data = isJsonContentType(contentType)
           ? await response.json()
           : await response.text();
-        const apiResponse = data as ApiResponse;
-        const message =
-          (typeof data === 'string' && data) ||
-          apiResponse?.message ||
-          'تعذر تنزيل الملف من الخادم';
-        throw new ApiError(message, response.status, apiResponse?.errorCode, apiResponse?.errors);
+        throw parseApiError(data, response.status, 'تعذر تنزيل الملف من الخادم');
       }
 
       const disposition = response.headers.get('content-disposition') || '';
