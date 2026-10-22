@@ -57,6 +57,7 @@ public partial interface IProductRepository : IRepository<Product>
     Task<IReadOnlyList<ProductImage>> GetImagesAsync(Guid productId, CancellationToken ct = default);
     /// <summary>جلب صورة منتج بواسطة معرفها</summary>
     Task<ProductImage?> GetImageByIdAsync(Guid imageId, CancellationToken ct = default);
+    Task<ProductImage?> GetImageForDeletionAsync(Guid imageId, CancellationToken ct = default);
     /// <summary>حساب عدد صور المنتج</summary>
     Task<int> CountImagesAsync(Guid productId, CancellationToken ct = default);
 }

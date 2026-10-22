@@ -21,6 +21,7 @@ public partial interface IProductRepository
     Task<IReadOnlyList<ProductImage>> GetDefaultImagesForUpdateAsync(Guid productId, CancellationToken ct = default);
     Task<IReadOnlyList<ProductImage>> GetImagesForUpdateAsync(Guid productId, CancellationToken ct = default);
     Task<IReadOnlyList<Product>> ListAsync(ProductQuery request, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> SearchLookupAsync(string search, CancellationToken ct = default);
     Task<Product?> GetDetailsAsync(Guid id, CancellationToken ct = default);
     Task<PageResult<Product>> SearchAsync(ProductQuery request, CancellationToken ct = default);
     Task<ProductBarCode?> GetBarcodeByValueAsync(string barCode, CancellationToken ct = default);

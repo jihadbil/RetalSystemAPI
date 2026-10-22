@@ -161,6 +161,10 @@ public partial class ProductRepository : Repository<Product>, IProductRepository
     }
 
     /// <inheritdoc/>
+    public Task<ProductImage?> GetImageForDeletionAsync(Guid imageId, CancellationToken ct = default)
+        => _context.Set<ProductImage>().IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.Id == imageId && i.TenantId == _context.CurrentTenantId, ct);
+
     public async Task<int> CountImagesAsync(Guid productId, CancellationToken ct = default)
     {
         return await _context.Set<ProductImage>().CountAsync(i => i.ProductId == productId, ct);

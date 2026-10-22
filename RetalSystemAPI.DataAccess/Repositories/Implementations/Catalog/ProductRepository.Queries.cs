@@ -87,6 +87,14 @@ public partial class ProductRepository
         return await BuildProductList(request).AsNoTracking().AsSplitQuery().ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Product>> SearchLookupAsync(string search, CancellationToken ct = default)
+    {
+        return await BuildProductList(new ProductQuery { Search = search })
+            .OrderBy(p => p.ProductBarCodes.Any(b => b.BarCode == search) ? 0 : 1)
+            .ThenBy(p => p.Name.StartsWith(search) ? 0 : 1).ThenBy(p => p.Name).ThenBy(p => p.Id)
+            .Take(100).AsNoTracking().AsSplitQuery().ToListAsync(ct);
+    }
+
     public async Task<Product?> GetDetailsAsync(Guid id, CancellationToken ct = default)
     {
         return await SpecificationEvaluator<Product>.GetQuery(_context.Set<Product>(), new ProductWithDetailsSpec(id)).AsNoTracking().FirstOrDefaultAsync(ct);
