@@ -19,8 +19,8 @@ export enum PurchasePaymentMethod {
 
 export const PurchaseStatusLabels: Record<PurchaseInvoiceStatus, { text: string; color: string; bg: string }> = {
   [PurchaseInvoiceStatus.Draft]: { text: 'مسودة', color: 'text-slate-700', bg: 'bg-slate-100' },
-  [PurchaseInvoiceStatus.Pending]: { text: 'قيد الإدخال', color: 'text-amber-700', bg: 'bg-amber-50' },
-  [PurchaseInvoiceStatus.Paid]: { text: 'مغلقة ومرحلة', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  [PurchaseInvoiceStatus.Pending]: { text: 'مرحلة وغير مسددة', color: 'text-amber-700', bg: 'bg-amber-50' },
+  [PurchaseInvoiceStatus.Paid]: { text: 'مسددة بالكامل', color: 'text-emerald-700', bg: 'bg-emerald-50' },
   [PurchaseInvoiceStatus.PartiallyPaid]: { text: 'مسددة جزئياً', color: 'text-sky-700', bg: 'bg-sky-50' },
   [PurchaseInvoiceStatus.Cancelled]: { text: 'ملغاة', color: 'text-rose-700', bg: 'bg-rose-50' },
   [PurchaseInvoiceStatus.Voided]: { text: 'مبطلة', color: 'text-slate-500', bg: 'bg-slate-50' },

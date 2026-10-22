@@ -366,7 +366,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         var newTotal = newSubTotal - dto.DiscountAmount + dto.TaxAmount;
         if (newTotal < 0)
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("خصم الفاتورة يتجاوز قيمة البنود والضريبة", ErrorCodes.ValidationError);
-        var newPaid = dto.Status == InvoiceStatus.Paid ? newTotal : dto.PaidAmount;
+        var newPaid = dto.PaidAmount;
         if (newPaid < 0 || newPaid > newTotal)
             return ServiceResult<PurchaseInvoiceResponseDto>.Failure("المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة", ErrorCodes.ValidationError);
         var paidDelta = newPaid - oldPaid;
@@ -770,15 +770,20 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
     private static bool HasMoneyPrecision(decimal value) => decimal.Round(value, 4) == value;
     private async Task<string?> ValidateItemsAsync(IReadOnlyCollection<CreatePurchaseInvoiceItemDto> items, CancellationToken ct)
     {
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var existingIds = (await _unitOfWork.Products.GetByIdsAsync(productIds, ct)).Select(p => p.Id).ToHashSet();
+        var barcodeIds = items.Where(i => i.ProductBarCodeId.HasValue).Select(i => i.ProductBarCodeId!.Value)
+            .Concat(items.SelectMany(i => i.Breakdowns ?? []).Select(b => b.ProductBarCodeId)).Distinct().ToList();
+        var barcodes = (await _unitOfWork.Products.GetBarcodesByIdsAsync(barcodeIds, ct)).ToDictionary(b => b.Id);
         foreach (var item in items)
         {
             if (!StockQuantity.IsValid(item.Quantity))
                 return "الكمية يجب أن تكون عدداً صحيحاً موجباً من أصغر وحدة (غرام أو قطعة)، ضمن الحد المسموح";
             if (!HasMoneyPrecision(item.UnitPrice) || !HasMoneyPrecision(item.DiscountAmount))
                 return "الأسعار والخصومات تدعم أربع منازل عشرية كحد أقصى";
-            if (!await _unitOfWork.Products.ExistsByIdAsync(item.ProductId, ct))
+            if (!existingIds.Contains(item.ProductId))
                 return "الصنف المحدد غير موجود";
-            if (item.ProductBarCodeId.HasValue && !await _unitOfWork.Products.BarcodeBelongsToProductAsync(item.ProductBarCodeId.Value, item.ProductId, ct))
+            if (item.ProductBarCodeId.HasValue && (!barcodes.TryGetValue(item.ProductBarCodeId.Value, out var barcode) || barcode.ProductId != item.ProductId))
                 return "الباركود لا ينتمي إلى الصنف المحدد";
             if (item.Breakdowns is not { Count: > 0 })
                 continue;
@@ -792,7 +797,7 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                     return "كمية التفصيل يجب أن تساوي عدد العبوات × معامل التحويل، وأن تمثل وحدات صغرى كاملة";
                 if (breakdown.UnitPrice < 0 || !HasMoneyPrecision(breakdown.UnitPrice))
                     return "سعر أصغر وحدة غير صحيح أو يتجاوز أربع منازل عشرية";
-                if (!await _unitOfWork.Products.BarcodeBelongsToProductAsync(breakdown.ProductBarCodeId, item.ProductId, ct))
+                if (!barcodes.TryGetValue(breakdown.ProductBarCodeId, out var breakdownBarcode) || breakdownBarcode.ProductId != item.ProductId)
                     return "باركود التفصيل لا ينتمي إلى الصنف المحدد";
                 breakdown.Quantity = baseQuantity;
                 total += baseQuantity;

@@ -205,7 +205,7 @@ public sealed class FinancialReconciliationService : IFinancialReconciliationSer
         foreach (var invoice in salesInvoices)
         {
             // هل الفاتورة ملغاة
-            var cancelled = invoice.Status is InvoiceStatus.Cancelled or InvoiceStatus.Voided;
+            var cancelled = invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled or InvoiceStatus.Voided;
             // التحقق من وجود خزينة دفع إذا كان هناك مدفوع نقدي للفواتير السارية
             if (!cancelled && invoice.PaidAmount > tolerance && !invoice.PaymentSafeId.HasValue)
                 // إضافة مشكلة عدم وجود خزينة للفاتورة المسددة
@@ -257,7 +257,7 @@ public sealed class FinancialReconciliationService : IFinancialReconciliationSer
         foreach (var invoice in purchaseInvoices)
         {
             // التحقق من حالة الإلغاء
-            var cancelled = invoice.Status is InvoiceStatus.Cancelled or InvoiceStatus.Voided;
+            var cancelled = invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled or InvoiceStatus.Voided;
             // التحقق من تعيين خزينة الدفع عند وجود دفع نقدي
             if (!cancelled && invoice.PaidAmount > tolerance && !invoice.PaymentSafeId.HasValue)
                 // تسجيل مشكلة عدم تعيين الخزينة

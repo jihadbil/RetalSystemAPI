@@ -440,12 +440,7 @@ export const PurchaseView: React.FC = () => {
         onUpdate={async (id, data) => {
           try {
             await purchaseService.updateInvoice(id, data);
-            showSuccess(
-              data.status === PurchaseInvoiceStatus.Paid ? 'تم إغلاق وترحيل الفاتورة' : 'تم حفظ التعديلات',
-              data.status === PurchaseInvoiceStatus.Paid
-                ? 'تم اعتماد وإغلاق الفاتورة وترحيل القيود المالية والمخزنية بنجاح'
-                : 'تم تحديث بيانات الفاتورة وبنودها المفتوحة بنجاح'
-            );
+            showSuccess('تم حفظ وترحيل التعديلات', 'تم تحديث المخزون والحسابات؛ حالة السداد محسوبة من المبلغ المدفوع');
             loadPurchaseData();
             setIsInvoiceModalOpen(false);
             setEditingInvoice(null);

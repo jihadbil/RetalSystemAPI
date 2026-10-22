@@ -671,7 +671,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({
                 variant="primary"
                 size="md"
                 leftIcon={<IconCheck className="w-4 h-4" />}
-                onClick={() => handleSubmit(PurchaseInvoiceStatus.Paid)}
+                onClick={() => handleSubmit(PurchaseInvoiceStatus.Pending)}
                 isLoading={isSubmitting || isLoadingData}
                 disabled={items.length === 0}
               >
