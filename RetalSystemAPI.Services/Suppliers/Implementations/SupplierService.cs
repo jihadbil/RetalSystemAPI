@@ -10,6 +10,8 @@ using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Suppliers.Interfaces;
 using RetalSystemAPI.Services.Accounting.Interfaces;
 
+using RetalSystemAPI.Models.Common;
+
 namespace RetalSystemAPI.Services.Suppliers.Implementations;
 /// <summary>
 /// تنفيذ خدمة إدارة الموردين، حساباتهم، وجهات الاتصال وأرقام الهواتف التابعة لهم.
@@ -76,9 +78,10 @@ public class SupplierService : ISupplierService
         // تحويل قائمة العناصر المسترجعة إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<SupplierSummaryDto>>(items);
         // بناء كائن النتيجة المجزأة الموحد
-        var pagedResult = PagedResult<SupplierSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
+        var summary = await _unitOfWork.Suppliers.GetBalanceSummaryAsync(new SupplierQuery { IsActive = isActive, HasDebt = hasDebt, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var pagedResult = PagedResult<SupplierSummaryDto, BalanceSummary>.Create(dtos, totalCount, pageNumber, pageSize, summary);
         // إرجاع النتيجة بنجاح
-        return ServiceResult<PagedResult<SupplierSummaryDto>>.Success(pagedResult);
+        return ServiceResult<PagedResult<SupplierSummaryDto, BalanceSummary>>.Success(pagedResult);
     }
 
     /// <inheritdoc/>
@@ -258,8 +261,16 @@ public class SupplierService : ISupplierService
         // حساب الرصيد قبل بداية الفترة
         decimal balanceBeforePeriod = filter.FromDate.HasValue ? await _unitOfWork.Suppliers.GetBalanceBeforeDateAsync(supplier.Id, filter.FromDate.Value, ct) : supplier.OpeningBalance;
         // جلب الحركات خلال الفترة
-        var transactions = await _unitOfWork.Suppliers.GetTransactionsByDateRangeAsync(supplier.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
-        var transactionDtos = _mapper.Map<List<SupplierTransactionResponseDto>>(transactions);
+        var transactions = await _unitOfWork.Suppliers.GetTransactionsByDateRangeAsync(supplier.Id, filter.FromDate, filter.ToDate, null, ct);
+        // Reconstruct balances in effective-date order, including all branches before filtering.
+        var runningBalance = balanceBeforePeriod;
+        foreach (var transaction in transactions)
+        {
+            runningBalance += transaction.CreditAmount - transaction.DebitAmount;
+            transaction.BalanceAfter = runningBalance;
+        }
+        var selected = filter.BranchId.HasValue ? transactions.Where(t => t.BranchId == filter.BranchId.Value) : transactions;
+        var transactionDtos = _mapper.Map<List<SupplierTransactionResponseDto>>(selected);
         var totalDebit = transactionDtos.Sum(t => t.DebitAmount);
         var totalCredit = transactionDtos.Sum(t => t.CreditAmount);
         var statement = new SupplierStatementDto

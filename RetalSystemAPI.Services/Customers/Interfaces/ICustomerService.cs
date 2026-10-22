@@ -6,6 +6,8 @@ using RetalSystemAPI.Models.DTOs.Customers;
 using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Services.Common.Models;
 
+using RetalSystemAPI.Models.Common;
+
 namespace RetalSystemAPI.Services.Customers.Interfaces;
 
 /// <summary>
@@ -41,7 +43,7 @@ public interface ICustomerService
     /// <param name="search">نص البحث الاختياري</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة مجزأة تحتوي على ملخصات العملاء وإجمالي العدد</returns>
-    Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, bool? hasDebt = null, CancellationToken ct = default);
 
     Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default);
 

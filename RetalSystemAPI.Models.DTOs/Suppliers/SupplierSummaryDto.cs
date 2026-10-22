@@ -8,6 +8,11 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class SupplierSummaryDto : BaseDto
 {
+    public string? CompanyName { get; set; }
+    public string? Email { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? Notes { get; set; }
+
     public bool IsActive { get; set; }
     public string? PrimaryPhone { get; set; }
     /// <summary>اسم المورد</summary>

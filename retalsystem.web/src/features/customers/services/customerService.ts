@@ -1,6 +1,6 @@
 import { apiClient } from '../../../shared/services/apiClient';
 import type { CustomerDto, CustomerStatementDto } from '../types/customer.types';
-import type { PagedResult } from '../../../shared/types/api.types';
+import type { PagedResultWithSummary, BalanceSummary } from '../../../shared/types/api.types';
 
 export interface CreateCustomerRequest {
   code?: string;
@@ -55,6 +55,8 @@ export function buildCustomerPayload(data: CreateCustomerRequest) {
     name: data.name.trim(), code: data.code || null, type: data.type ?? 1,
     email: data.email?.trim() || null, address: data.address?.trim() || null,
     creditLimit: data.creditLimit, isActive: data.isActive, phones,
+    taxNumber: data.taxNumber?.trim() || null, commercialRegister: data.commercialRegister?.trim() || null,
+    discountRate: data.discountRate, notes: data.notes?.trim() || null,
   };
 }
 
@@ -85,7 +87,8 @@ export const customerService = {
       if (isActive !== undefined) params.isActive = String(isActive);
       if (hasBalance) params.hasBalance = 'true';
 
-      const result = await apiClient.get<PagedResult<CustomerApiDto>>('customers/paged', params);
+      if (hasDebt !== undefined) params.hasDebt = String(hasDebt);
+      const result = await apiClient.get<PagedResultWithSummary<CustomerApiDto, BalanceSummary>>('customers/paged', params);
       return { ...result, items: result.items.map(normalizeCustomer) };
     } catch (err) {
       console.error('[customerService.getPaged] Failed to fetch paged customers:', err);

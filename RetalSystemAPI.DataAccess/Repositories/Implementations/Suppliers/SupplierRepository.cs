@@ -82,10 +82,22 @@ public partial class SupplierRepository : Repository<Supplier>, ISupplierReposit
         if (fromDate.HasValue)
             query = query.Where(t => t.TransactionDate >= fromDate.Value);
         if (toDate.HasValue)
-            query = query.Where(t => t.TransactionDate <= toDate.Value);
+        {
+            var end = toDate.Value;
+            if (end.TimeOfDay == TimeSpan.Zero && end.Date < DateTime.MaxValue.Date)
+            {
+                var exclusiveEnd = end.AddDays(1);
+                query = query.Where(t => t.TransactionDate < exclusiveEnd);
+            }
+            else
+            {
+                if (end.TimeOfDay == TimeSpan.Zero) end = DateTime.MaxValue;
+                query = query.Where(t => t.TransactionDate <= end);
+            }
+        }
         if (branchId.HasValue)
             query = query.Where(t => t.BranchId == branchId.Value);
-        return await query.OrderBy(t => t.TransactionDate).ThenBy(t => t.CreatedAt).ToListAsync(ct);
+        return await query.OrderBy(t => t.TransactionDate).ThenBy(t => t.CreatedAt).ThenBy(t => t.Id).ToListAsync(ct);
     }
 
     /// <inheritdoc/>

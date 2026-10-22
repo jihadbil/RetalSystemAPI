@@ -9,6 +9,16 @@ namespace RetalSystemAPI.Models.DTOs.Customers;
 /// </summary>
 public class UpdateCustomerDto
 {
+    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    public string? TaxNumber { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    public string? CommercialRegister { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string? Notes { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(0, 100)]
+    [MoneyAmount]
+    public decimal DiscountRate { get; set; }
+
     /// <summary>المعرف الفريد للعميل المطلوب تعديله</summary>
     [Required(ErrorMessage = "معرف العميل مطلوب")]
     public Guid Id { get; set; }

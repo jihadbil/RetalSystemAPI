@@ -9,6 +9,11 @@ namespace RetalSystemAPI.Models.DTOs.Customers;
 /// </summary>
 public class CustomerResponseDto : BaseDto
 {
+    public string? TaxNumber { get; set; }
+    public string? CommercialRegister { get; set; }
+    public string? Notes { get; set; }
+    public decimal DiscountRate { get; set; }
+
     /// <summary>اسم العميل</summary>
     public string Name { get; set; } = null!;
 

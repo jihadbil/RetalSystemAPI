@@ -49,6 +49,7 @@ export const SuppliersView: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [balanceSummary, setBalanceSummary] = useState({ totalDebt: 0, totalCredit: 0, withDebt: 0 });
 
   // النوافذ المنبثقة
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -95,8 +96,8 @@ export const SuppliersView: React.FC = () => {
   }, [loadData]);
 
   // إحصائيات سريعة
-  const totalPayables = suppliers.reduce((acc, s) => acc + (s.currentBalance || 0), 0);
-  const suppliersWithBalance = suppliers.filter((s) => s.currentBalance > 0).length;
+  const totalPayables = balanceSummary.totalDebt;
+  const suppliersWithBalance = balanceSummary.withDebt;
 
   const handleDelete = async () => {
     if (!supplierToDelete) return;
@@ -295,7 +296,7 @@ export const SuppliersView: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4 text-left num-ltr">
-                      {s.currentBalance > 0 ? (
+                      {s.currentBalance !== 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200/80">
                           {s.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} د.ل
                         </span>

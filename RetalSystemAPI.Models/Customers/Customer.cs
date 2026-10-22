@@ -12,6 +12,11 @@ namespace RetalSystemAPI.Models.Customers;
 // كلاس كيان العميل والزبون
 public class Customer : TenantBaseEntity
 {
+    public string? TaxNumber { get; set; }
+    public string? CommercialRegister { get; set; }
+    public string? Notes { get; set; }
+    public decimal DiscountRate { get; set; }
+
     /// <summary>
     /// اسم العميل أو اسم المؤسسة والشركة التجاري.
     /// </summary>

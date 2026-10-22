@@ -48,6 +48,7 @@ export interface CustomerStatementDto {
   fromDate?: string;
   toDate?: string;
   openingBalance: number;
+  balanceBeforePeriod: number;
   totalDebit: number;
   totalCredit: number;
   currentBalance: number;

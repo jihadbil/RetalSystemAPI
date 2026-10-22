@@ -10,6 +10,17 @@ namespace RetalSystemAPI.Models.DTOs.Customers;
 /// </summary>
 public class CreateCustomerDto
 {
+    public bool IsActive { get; set; } = true;
+    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    public string? TaxNumber { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    public string? CommercialRegister { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string? Notes { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(0, 100)]
+    [MoneyAmount]
+    public decimal DiscountRate { get; set; }
+
     /// <summary>اسم العميل أو المؤسسة</summary>
     [Required(ErrorMessage = "اسم العميل مطلوب")]
     [MaxLength(100, ErrorMessage = "اسم العميل يجب أن لا يتجاوز 100 حرف")]

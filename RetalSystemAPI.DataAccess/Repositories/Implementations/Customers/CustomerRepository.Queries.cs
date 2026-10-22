@@ -4,6 +4,8 @@ using RetalSystemAPI.DataAccess.QueryResults;
 using RetalSystemAPI.DataAccess.Specifications;
 using RetalSystemAPI.Models.Customers;
 
+using RetalSystemAPI.Models.Common;
+
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 public partial class CustomerRepository
 {
@@ -22,8 +24,23 @@ public partial class CustomerRepository
 
     public async Task<IReadOnlyList<Customer>> ListAsync(CustomerQuery request, CancellationToken ct = default)
     {
-        return await SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(request.Type, request.IsActive, request.Search)).AsNoTracking().AsSplitQuery().ToListAsync(ct);
+        return await BuildList(request).AsNoTracking().AsSplitQuery().ToListAsync(ct);
     }
+
+    private IQueryable<Customer> BuildList(CustomerQuery request)
+    {
+        var query = SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(request.Type, request.IsActive, request.Search));
+        if (request.HasDebt.HasValue) query = query.Where(x => (x.CurrentBalance > 0) == request.HasDebt.Value);
+        return query;
+    }
+
+    public async Task<BalanceSummary> GetBalanceSummaryAsync(CustomerQuery request, CancellationToken ct = default)
+        => await BuildList(request).AsNoTracking().GroupBy(x => 1).Select(g => new BalanceSummary
+        {
+            TotalDebt = g.Sum(x => x.CurrentBalance > 0 ? x.CurrentBalance : 0),
+            TotalCredit = g.Sum(x => x.CurrentBalance < 0 ? -x.CurrentBalance : 0),
+            WithDebt = g.Count(x => x.CurrentBalance > 0)
+        }).FirstOrDefaultAsync(ct) ?? new();
 
     public async Task<PageResult<Customer>> SearchAsync(CustomerQuery request, CancellationToken ct = default)
     {
@@ -34,11 +51,11 @@ public partial class CustomerRepository
 
     public async Task<bool> CodeExistsAsync(string code, CancellationToken ct = default)
     {
-        return await _context.Set<Customer>().AsNoTracking().AnyAsync(e => e.Code == code, ct);
+        return await _context.Set<Customer>().AsNoTracking().AnyAsync(e => e.Code != null && e.Code.Trim() == code, ct);
     }
 
     public async Task<bool> CodeExistsAsync(string code, Guid id, CancellationToken ct = default)
     {
-        return await _context.Set<Customer>().AsNoTracking().AnyAsync(e => e.Code == code && e.Id != id, ct);
+        return await _context.Set<Customer>().AsNoTracking().AnyAsync(e => e.Code != null && e.Code.Trim() == code && e.Id != id, ct);
     }
 }

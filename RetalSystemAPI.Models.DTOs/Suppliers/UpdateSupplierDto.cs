@@ -8,6 +8,16 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class UpdateSupplierDto
 {
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? CompanyName { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(150)]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string? Email { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    public string? TaxNumber { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string? Notes { get; set; }
+
     public bool IsActive { get; set; } = true;
     /// <summary>المعرف الفريد للمورد المطلوب تعديله</summary>
     [Required(ErrorMessage = "معرف المورد مطلوب")]

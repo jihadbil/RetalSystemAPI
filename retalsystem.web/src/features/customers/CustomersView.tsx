@@ -48,6 +48,7 @@ export const CustomersView: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [balanceSummary, setBalanceSummary] = useState({ totalDebt: 0, totalCredit: 0, withDebt: 0 });
 
   // النوافذ المنبثقة
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -94,8 +95,8 @@ export const CustomersView: React.FC = () => {
   }, [loadData]);
 
   // إحصائيات سريعة
-  const totalReceivables = customers.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
-  const customersWithDebt = customers.filter((c) => c.currentBalance > 0).length;
+  const totalReceivables = balanceSummary.totalDebt;
+  const customersWithDebt = balanceSummary.withDebt;
 
   const handleDelete = async () => {
     if (!customerToDelete) return;
@@ -305,7 +306,7 @@ export const CustomersView: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4 text-left num-ltr">
-                      {c.currentBalance > 0 ? (
+                      {c.currentBalance !== 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200/80">
                           {c.currentBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} د.ل
                         </span>

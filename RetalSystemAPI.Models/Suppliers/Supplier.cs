@@ -10,6 +10,11 @@ namespace RetalSystemAPI.Models.Suppliers;
 // كلاس كيان المورد التجاري
 public class Supplier : TenantBaseEntity
 {
+    public string? CompanyName { get; set; }
+    public string? Email { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? Notes { get; set; }
+
     /// <summary>
     /// اسم المورد التجاري أو اسم الشركة والمؤسسة الموردة.
     /// </summary>

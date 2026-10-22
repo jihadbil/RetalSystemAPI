@@ -1,6 +1,8 @@
 using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Accounting;
 using RetalSystemAPI.Models.Customers;
@@ -9,6 +11,8 @@ using RetalSystemAPI.Models.Enums;
 using RetalSystemAPI.Services.Common.Models;
 using RetalSystemAPI.Services.Customers.Interfaces;
 using RetalSystemAPI.Services.Accounting.Interfaces;
+
+using RetalSystemAPI.Models.Common;
 
 namespace RetalSystemAPI.Services.Customers.Implementations;
 /// <summary>
@@ -77,14 +81,16 @@ public class CustomerService : ICustomerService
         // تحويل قائمة الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<CustomerSummaryDto>>(items);
         // بناء كائن الصفحة الموحد
-        var pagedResult = PagedResult<CustomerSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
+        var summary = await _unitOfWork.Customers.GetBalanceSummaryAsync(new CustomerQuery { Type = type, IsActive = isActive, HasDebt = hasDebt, Search = search, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var pagedResult = PagedResult<CustomerSummaryDto, BalanceSummary>.Create(dtos, totalCount, pageNumber, pageSize, summary);
         // إرجاع النتيجة بنجاح
-        return ServiceResult<PagedResult<CustomerSummaryDto>>.Success(pagedResult);
+        return ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>.Success(pagedResult);
     }
 
     /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> CreateAsync(CreateCustomerDto dto, CancellationToken ct = default)
     {
+        dto.Code = string.IsNullOrWhiteSpace(dto.Code) ? null : dto.Code.Trim();
         if (DtoValidation.GetError(dto) is { } validationError)
             return ServiceResult<CustomerResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
@@ -117,7 +123,15 @@ public class CustomerService : ICustomerService
         // إضافة كيان العميل وهواتفه للمستودع
         await _unitOfWork.Customers.AddAsync(customer, ct);
         // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException sql &&
+            sql.Number is 2601 or 2627 && sql.Message.Contains("IX_Customers_TenantId_Code", StringComparison.OrdinalIgnoreCase))
+        {
+            return ServiceResult<CustomerResponseDto>.Failure("كود العميل مستخدم بالفعل", ErrorCodes.CustomerCodeExists);
+        }
         // إعادة جلب العميل المحفوظ مع هواتفه للتأكد من اكتمال البيانات
         var created = await _unitOfWork.Customers.GetDetailsAsync(customer.Id, ct) ?? customer;
         // تحويل الكيان إلى DTO
@@ -129,6 +143,7 @@ public class CustomerService : ICustomerService
     /// <inheritdoc/>
     public async Task<ServiceResult<CustomerResponseDto>> UpdateAsync(Guid id, UpdateCustomerDto dto, CancellationToken ct = default)
     {
+        dto.Code = string.IsNullOrWhiteSpace(dto.Code) ? null : dto.Code.Trim();
         if (DtoValidation.GetError(dto) is { } validationError)
             return ServiceResult<CustomerResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
@@ -160,6 +175,10 @@ public class CustomerService : ICustomerService
         customer.Code = dto.Code;
         // تحديث البريد الإلكتروني
         customer.Email = dto.Email;
+        customer.TaxNumber = dto.TaxNumber;
+        customer.CommercialRegister = dto.CommercialRegister;
+        customer.Notes = dto.Notes;
+        customer.DiscountRate = dto.DiscountRate;
         // تحديث العنوان
         customer.Address = dto.Address;
         // تحديث تصنيف ونوع العميل
@@ -193,7 +212,15 @@ public class CustomerService : ICustomerService
         // وسم كيان العميل للتحديث في المستودع
         _unitOfWork.Customers.Update(customer);
         // حفظ التعديلات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException sql &&
+            sql.Number is 2601 or 2627 && sql.Message.Contains("IX_Customers_TenantId_Code", StringComparison.OrdinalIgnoreCase))
+        {
+            return ServiceResult<CustomerResponseDto>.Failure("كود العميل مستخدم بالفعل", ErrorCodes.CustomerCodeExists);
+        }
         // إعادة جلب العميل المحدث مع بيانات الهواتف
         var updated = await _unitOfWork.Customers.GetDetailsAsync(id, ct) ?? customer;
         // تحويل الكيان إلى DTO
@@ -333,8 +360,16 @@ public class CustomerService : ICustomerService
         // حساب الرصيد قبل بداية الفترة
         decimal balanceBeforePeriod = filter.FromDate.HasValue ? await _unitOfWork.Customers.GetBalanceBeforeDateAsync(customer.Id, filter.FromDate.Value, ct) : customer.OpeningBalance;
         // جلب الحركات خلال الفترة
-        var transactions = await _unitOfWork.Customers.GetTransactionsByDateRangeAsync(customer.Id, filter.FromDate, filter.ToDate, filter.BranchId, ct);
-        var transactionDtos = _mapper.Map<List<CustomerTransactionResponseDto>>(transactions);
+        var transactions = await _unitOfWork.Customers.GetTransactionsByDateRangeAsync(customer.Id, filter.FromDate, filter.ToDate, null, ct);
+        // Reconstruct balances in effective-date order, including all branches before filtering.
+        var runningBalance = balanceBeforePeriod;
+        foreach (var transaction in transactions)
+        {
+            runningBalance += transaction.DebitAmount - transaction.CreditAmount;
+            transaction.BalanceAfter = runningBalance;
+        }
+        var selected = filter.BranchId.HasValue ? transactions.Where(t => t.BranchId == filter.BranchId.Value) : transactions;
+        var transactionDtos = _mapper.Map<List<CustomerTransactionResponseDto>>(selected);
         var totalDebit = transactionDtos.Sum(t => t.DebitAmount);
         var totalCredit = transactionDtos.Sum(t => t.CreditAmount);
         var statement = new CustomerStatementDto

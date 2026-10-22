@@ -112,9 +112,9 @@ export const CustomerStatementModal: React.FC<CustomerStatementModalProps> = ({
         {statement && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500">الرصيد الافتتاحي</span>
+              <span className="text-[11px] font-bold text-slate-500">الرصيد قبل الفترة</span>
               <div className="text-base font-black text-slate-800 num-ltr text-right mt-1">
-                {statement.openingBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
+                {statement.balanceBeforePeriod.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}{' '}
                 <span className="text-[10px] font-normal">د.ل</span>
               </div>
             </div>

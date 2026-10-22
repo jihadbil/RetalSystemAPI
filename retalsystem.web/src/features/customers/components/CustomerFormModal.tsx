@@ -185,7 +185,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           />
 
           <Input
-            label="نسبة الخصم التلقائي (%)"
+            label="نسبة الخصم المرجعية (%)"
             type="number"
             placeholder="0"
             value={formData.discountRate}

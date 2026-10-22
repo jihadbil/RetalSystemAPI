@@ -1,6 +1,6 @@
 import { apiClient } from '../../../shared/services/apiClient';
 import type { SupplierDto, SupplierStatementDto } from '../types/supplier.types';
-import type { PagedResult } from '../../../shared/types/api.types';
+import type { PagedResultWithSummary, BalanceSummary } from '../../../shared/types/api.types';
 
 export interface CreateSupplierRequest {
   phones?: SupplierDto['phones'];
@@ -45,7 +45,9 @@ export function buildSupplierPayload(data: CreateSupplierRequest) {
     if (phones.length) phones[0].phoneNumber = data.phone.trim();
     else phones.push({ phoneNumber: data.phone.trim() });
   } else if (phones.length) phones.splice(0, 1);
-  return { name: data.name.trim(), address: data.address?.trim() || null, isActive: data.isActive, phones };
+  return { name: data.name.trim(), address: data.address?.trim() || null, isActive: data.isActive, phones,
+    companyName: data.companyName?.trim() || null, email: data.email?.trim() || null,
+    taxNumber: data.taxNumber?.trim() || null, notes: data.notes?.trim() || null };
 }
 
 export const supplierService = {
@@ -74,7 +76,9 @@ export const supplierService = {
       if (isActive !== undefined) params.isActive = String(isActive);
       if (hasBalance) params.hasBalance = 'true';
 
-      const result = await apiClient.get<PagedResult<SupplierApiDto>>('suppliers/paged', params);
+      if (isActive !== undefined) params.isActive = String(isActive);
+      if (hasDebt !== undefined) params.hasDebt = String(hasDebt);
+      const result = await apiClient.get<PagedResultWithSummary<SupplierApiDto, BalanceSummary>>('suppliers/paged', params);
       return { ...result, items: result.items.map(normalizeSupplier) };
     } catch (err) {
       console.error('[supplierService.getPaged] Failed to fetch paged suppliers:', err);

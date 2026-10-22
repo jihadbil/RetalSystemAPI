@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using RetalSystemAPI.Models.DTOs.Suppliers;
 using RetalSystemAPI.Services.Common.Models;
 
+using RetalSystemAPI.Models.Common;
+
 namespace RetalSystemAPI.Services.Suppliers.Interfaces;
 
 /// <summary>
@@ -35,7 +37,7 @@ public interface ISupplierService
     /// <param name="search">نص البحث الاختياري</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة مجزأة تحتوي على ملخصات الموردين وإجمالي العدد</returns>
-    Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<SupplierSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, bool? isActive = null, bool? hasDebt = null, CancellationToken ct = default);
 
     Task<ServiceResult<PagedResult<SupplierSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, string? search, bool? isActive, bool hasBalance, CancellationToken ct = default);
 
