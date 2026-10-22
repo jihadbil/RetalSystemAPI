@@ -113,7 +113,7 @@ public class ProductImageService : IProductImageService
     public async Task<ServiceResult> RemoveImageAsync(Guid imageId, CancellationToken ct = default)
     {
         // استعلام الصورة بالمعرف
-        var imageEntity = await _unitOfWork.Products.GetImageByIdAsync(imageId, ct);
+        var imageEntity = await _unitOfWork.Products.GetImageForDeletionAsync(imageId, ct);
         // التحقق من وجود سجل الصورة
         if (imageEntity is null)
         {
@@ -121,14 +121,13 @@ public class ProductImageService : IProductImageService
             return ServiceResult.Failure("الصورة غير موجودة", ErrorCodes.ImageNotFound);
         }
 
-        // حذف الملف الفعلي للصورة من القرص المحلي عبر خدمة الملفات
-        await _fileUploadService.DeleteAsync(imageEntity.ImageUrl, ct);
-        // حذف سجل الصورة نهائياً من قاعدة البيانات
-        _unitOfWork.Products.HardDeleteImage(imageEntity);
-        // حفظ التغييرات
-        await _unitOfWork.SaveChangesAsync(ct);
-        // إرجاع نتيجة النجاح
-        return ServiceResult.Success();
+        // Persist a tombstone before removing the external file. Its URL remains available for retries.
+        if (!imageEntity.IsDeleted)
+        {
+            _unitOfWork.Products.SoftDeleteImage(imageEntity);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+        return await _fileUploadService.DeleteAsync(imageEntity.ImageUrl, ct);
     }
 
     /// <inheritdoc/>
