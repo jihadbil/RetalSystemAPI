@@ -56,7 +56,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className="text-xs text-slate-500 font-medium">
         عرض <span className="font-semibold text-slate-700 num-ltr">{startItem}</span> إلى{' '}
         <span className="font-semibold text-slate-700 num-ltr">{endItem}</span> من أصل{' '}
-        <span className="font-semibold text-slate-700 num-ltr">{totalCount}</span> سجل
+        <span className="font-semibold text-slate-700 num-ltr">{count}</span> سجل
       </div>
 
       <div className="flex items-center gap-2">
