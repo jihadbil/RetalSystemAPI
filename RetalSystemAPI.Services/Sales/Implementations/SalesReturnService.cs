@@ -268,6 +268,14 @@ public class SalesReturnService : ISalesReturnService
             }
         }
 
+        if (!Enum.IsDefined(warehouse.Type) || warehouse.BranchId != dto.BranchId)
+            return ServiceResult<SalesReturnResponseDto>.Failure("نوع مستودع المرتجع أو تبعيته للفرع غير صحيح", ErrorCodes.ValidationError);
+        if (warehouse.Type == WarehouseType.Storge && dto.Items.Any(i => !i.ProductBarCodeId.HasValue))
+            return ServiceResult<SalesReturnResponseDto>.Failure("يلزم تحديد باركود لكل بند مرتجع إلى المخزن", ErrorCodes.ValidationError);
+        var returnBarcodeIds = dto.Items.Where(i => i.ProductBarCodeId.HasValue).Select(i => i.ProductBarCodeId!.Value).Distinct().ToList();
+        var returnBarcodes = (await _unitOfWork.Products.GetBarcodesByIdsAsync(returnBarcodeIds, ct)).ToDictionary(b => b.Id);
+        if (dto.Items.Any(i => i.ProductBarCodeId.HasValue && (!returnBarcodes.TryGetValue(i.ProductBarCodeId.Value, out var barcode) || barcode.ProductId != i.ProductId)))
+            return ServiceResult<SalesReturnResponseDto>.Failure("باركود المرتجع لا يتبع الصنف المحدد", ErrorCodes.ValidationError);
         var returnProductIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
         var productsById = (await _unitOfWork.Products.GetByIdsAsync(returnProductIds, ct)).ToDictionary(p => p.Id);
         if (productsById.Count != returnProductIds.Count)
@@ -475,6 +483,8 @@ public class SalesReturnService : ISalesReturnService
             return ServiceResult.Failure("مرتجع المبيعات غير موجود", ErrorCodes.SalesReturnNotFound);
         }
 
+        var invoice = salesReturn.OriginalInvoiceId.HasValue
+            ? await _unitOfWork.SalesInvoices.GetDetailsForUpdateAsync(salesReturn.OriginalInvoiceId.Value, ct) : null;
         var customer = salesReturn.CustomerId.HasValue ? await _unitOfWork.Customers.GetByIdForUpdateAsync(salesReturn.CustomerId.Value, ct) : null;
         Safe? refundSafe = null;
         if (salesReturn.RefundedAmount > 0)
@@ -546,6 +556,11 @@ public class SalesReturnService : ISalesReturnService
             }
 
             // تطبيق الحذف المنطقي لسجل المرتجع
+            if (invoice is not null)
+            {
+                invoice.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.SalesInvoices.Update(invoice);
+            }
             _unitOfWork.SalesReturns.SoftDelete(salesReturn);
             if (customer is not null)
             {
