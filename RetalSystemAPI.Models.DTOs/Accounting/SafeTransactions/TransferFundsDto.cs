@@ -9,6 +9,10 @@ namespace RetalSystemAPI.Models.DTOs.Accounting.SafeTransactions;
 /// </summary>
 public class TransferFundsDto
 {
+    public DateTime? TransferDate { get; set; }
+    [MaxLength(100)]
+    public string? ReferenceNumber { get; set; }
+
     /// <summary>معرف الخزينة المحول منها (المصدر)</summary>
     [Required(ErrorMessage = "الخزينة المصدر مطلوبة")]
     [NotEmptyGuid]

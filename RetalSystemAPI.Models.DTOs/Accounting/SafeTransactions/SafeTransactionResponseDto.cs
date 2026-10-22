@@ -9,6 +9,8 @@ namespace RetalSystemAPI.Models.DTOs.Accounting.SafeTransactions;
 /// </summary>
 public class SafeTransactionResponseDto : BaseDto
 {
+    public string? ReferenceNumber { get; set; }
+
     /// <summary>رقم الحركة المالي الفريد</summary>
     public string TransactionNumber { get; set; } = null!;
 

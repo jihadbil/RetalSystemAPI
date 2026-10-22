@@ -10,6 +10,10 @@ namespace RetalSystemAPI.Models.DTOs.Accounting.SafeTransactions;
 /// </summary>
 public class CreateSafeTransactionDto
 {
+    public DateTime? TransactionDate { get; set; }
+    [MaxLength(100)]
+    public string? ReferenceNumber { get; set; }
+
     /// <summary>معرف الخزينة المستهدفة</summary>
     [Required(ErrorMessage = "معرف الخزينة مطلوب")]
     [NotEmptyGuid]

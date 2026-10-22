@@ -52,9 +52,10 @@ public class SafesController : BaseApiController
         [FromQuery] string? search = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] RetalSystemAPI.Models.Enums.SafeType? type = null,
         CancellationToken ct = default)
     {
-        var result = await _safeService.GetPagedAsync(branchId, isActive, search, pageNumber, pageSize, ct);
+        var result = await _safeService.GetPagedAsync(branchId, isActive, search, pageNumber, pageSize, type, ct);
         return ToActionResult(result);
     }
 

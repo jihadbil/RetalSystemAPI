@@ -1,4 +1,5 @@
 using System;
+using RetalSystemAPI.Models.Enums;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -48,6 +49,7 @@ public interface ISafeService
         string? searchTerm,
         int pageNumber = 1,
         int pageSize = 10,
+        SafeType? type = null,
         CancellationToken ct = default);
 
     /// <summary>

@@ -72,7 +72,7 @@ public class SafeService : ISafeService
     /// <summary>
     /// استرجاع صفحة مجزأة ومفلترة من ملخصات الخزائن.
     /// </summary>
-    public async Task<ServiceResult<PagedResult<SafeSummaryDto>>> GetPagedAsync(Guid? branchId, bool? isActive, string? searchTerm, int pageNumber = 1, int pageSize = 10, CancellationToken ct = default)
+    public async Task<ServiceResult<PagedResult<SafeSummaryDto>>> GetPagedAsync(Guid? branchId, bool? isActive, string? searchTerm, int pageNumber = 1, int pageSize = 10, SafeType? type = null, CancellationToken ct = default)
     {
         // تصحيح رقم الصفحة في حال كان أقل من 1
         if (pageNumber < 1)
@@ -81,7 +81,7 @@ public class SafeService : ISafeService
         if (pageSize < 1)
             pageSize = 10;
         // تنفيذ استعلام جلب الخزائن المجزأة من المستودع
-        var(items, totalCount) = await _unitOfWork.Accounting.SearchSafesAsync(new SafeQuery { BranchId = branchId, IsActive = isActive, SearchTerm = searchTerm, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var(items, totalCount) = await _unitOfWork.Accounting.SearchSafesAsync(new SafeQuery { BranchId = branchId, IsActive = isActive, Type = type, SearchTerm = searchTerm, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل الكيانات المقروءة إلى DTO
         var dtos = _mapper.Map<IReadOnlyList<SafeSummaryDto>>(items);
         // إنشاء كائن النتائج المجزأة متضمناً الإحصائيات
@@ -311,7 +311,7 @@ public class SafeService : ISafeService
         // تعيين الرصيد بعد الحركة
         transaction.BalanceAfter = safe.CurrentBalance;
         // تعيين تاريخ الحركة
-        transaction.TransactionDate = DateTime.UtcNow;
+        transaction.TransactionDate = dto.TransactionDate ?? DateTime.UtcNow;
         // تعيين نوع المستند كتسوية
         transaction.DocumentType = FinancialDocumentType.Adjustment;
         // تعيين معرف الوردية إن وجد
@@ -394,7 +394,8 @@ public class SafeService : ISafeService
                 Direction = TransactionDirection.Outbound,
                 Amount = dto.Amount,
                 BalanceAfter = fromSafe.CurrentBalance,
-                TransactionDate = DateTime.UtcNow,
+                TransactionDate = dto.TransferDate ?? DateTime.UtcNow,
+                ReferenceNumber = dto.ReferenceNumber,
                 DocumentType = FinancialDocumentType.SafeTransfer,
                 DocumentId = toSafe.Id,
                 Description = $"تحويل مالي صادر إلى [{toSafe.Name}]: {transferDesc}",
@@ -414,7 +415,8 @@ public class SafeService : ISafeService
                 Direction = TransactionDirection.Inbound,
                 Amount = dto.Amount,
                 BalanceAfter = toSafe.CurrentBalance,
-                TransactionDate = DateTime.UtcNow,
+                TransactionDate = dto.TransferDate ?? DateTime.UtcNow,
+                ReferenceNumber = dto.ReferenceNumber,
                 DocumentType = FinancialDocumentType.SafeTransfer,
                 DocumentId = fromSafe.Id,
                 Description = $"تحويل مالي وارد من [{fromSafe.Name}]: {transferDesc}",

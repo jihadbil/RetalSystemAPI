@@ -10,6 +10,8 @@ namespace RetalSystemAPI.Models.Accounting;
 // كلاس كيان حركة الخزينة المالية
 public class SafeTransaction : TenantBaseEntity
 {
+    public string? ReferenceNumber { get; set; }
+
     /// <summary>
     /// رقم الحركة المالي الفريد التسلسلي الصادر بالنظام.
     /// </summary>
