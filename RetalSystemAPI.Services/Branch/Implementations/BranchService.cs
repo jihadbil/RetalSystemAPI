@@ -196,6 +196,8 @@ public class BranchService : IBranchService
             return ServiceResult.Failure("لا يمكن حذف فرع مرتبط بمخازن أو عمليات مالية؛ استخدم التعطيل للحفاظ على سجله", ErrorCodes.ValidationError);
 
         // تطبيق الحذف المنطقي للفرع
+        if (await _unitOfWork.Branches.HasHistoricalReferencesAsync(id, ct))
+            return ServiceResult.Failure("السجل مرتبط بمستندات أو حركات محفوظة؛ استخدم التعطيل بدلاً من الحذف", ErrorCodes.ValidationError);
         _unitOfWork.Branches.SoftDelete(branch);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);

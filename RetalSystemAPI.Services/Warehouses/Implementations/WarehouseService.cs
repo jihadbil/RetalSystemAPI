@@ -223,6 +223,8 @@ public class WarehouseService : IWarehouseService
             return ServiceResult.Failure("لا يمكن حذف مستودع مرتبط بمستندات؛ يمكن تعطيله مع الاحتفاظ بالسجل التاريخي", ErrorCodes.ValidationError);
 
         // تطبيق الحذف المنطقي للمستودع
+        if (await _unitOfWork.Warehouses.HasDocumentReferencesAsync(id, ct))
+            return ServiceResult.Failure("المستودع مرتبط بمستندات محفوظة؛ يمكن تعطيله بدلاً من حذفه", ErrorCodes.ValidationError);
         _unitOfWork.Warehouses.SoftDelete(warehouse);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
