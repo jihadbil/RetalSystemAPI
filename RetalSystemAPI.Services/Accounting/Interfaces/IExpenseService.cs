@@ -28,7 +28,7 @@ public interface IExpenseService
     /// <param name="ct">رمز إلغاء العملية الإشعارية</param>
     /// <returns>قائمة مجزأة بملخصات المصروفات مع العدد الإجمالي</returns>
     // استرجاع سندات المصروفات وفق معايير الفلترة
-    Task<ServiceResult<PagedResult<ExpenseSummaryDto>>> GetPagedAsync(ExpenseFilterDto filter, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<ExpenseSummaryDto, decimal>>> GetPagedAsync(ExpenseFilterDto filter, CancellationToken ct = default);
 
     /// <summary>
     /// تسجيل سند مصروف تشغيلي جديد وخصم قيمته من رصيد الخزينة أو درج النقدية المعتمد آلياً.

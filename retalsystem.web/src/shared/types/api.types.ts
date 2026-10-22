@@ -19,6 +19,16 @@ export interface PagedResult<T> {
   hasNextPage: boolean;
 }
 
+export interface BalanceSummary {
+  totalDebt: number;
+  totalCredit: number;
+  withDebt: number;
+}
+
+export interface PagedResultWithSummary<T, TSummary> extends PagedResult<T> {
+  summary: TSummary;
+}
+
 export interface PaginationParams {
   pageNumber: number;
   pageSize: number;

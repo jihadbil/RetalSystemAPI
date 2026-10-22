@@ -56,7 +56,7 @@ public class ExpenseService : IExpenseService
     /// <summary>
     /// جلب صفحة سندات مصروفات مجزأة مع الفلترة حسب معايير الفرع، التصنيف، الخزينة، التواريخ وطريقة الدفع.
     /// </summary>
-    public async Task<ServiceResult<PagedResult<ExpenseSummaryDto>>> GetPagedAsync(ExpenseFilterDto filter, CancellationToken ct = default)
+    public async Task<ServiceResult<PagedResult<ExpenseSummaryDto, decimal>>> GetPagedAsync(ExpenseFilterDto filter, CancellationToken ct = default)
     {
         // التحقق من رقم الصفحة
         var pageNumber = filter.PageNumber < 1 ? 1 : filter.PageNumber;
@@ -67,9 +67,10 @@ public class ExpenseService : IExpenseService
         // تحويل الكيانات لملخصات DTO
         var dtos = _mapper.Map<IReadOnlyList<ExpenseSummaryDto>>(items);
         // بناء كائن النتائج المجزأة
-        var pagedResult = PagedResult<ExpenseSummaryDto>.Create(dtos, totalCount, pageNumber, pageSize);
+        var totalAmount = await _unitOfWork.Accounting.GetExpenseTotalAsync(new ExpenseQuery { BranchId = filter.BranchId, CategoryId = filter.ExpenseCategoryId, SafeId = filter.SafeId, PaymentMethod = filter.PaymentMethod, FromDate = filter.FromDate, ToDate = filter.ToDate, SearchTerm = filter.SearchTerm, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var pagedResult = PagedResult<ExpenseSummaryDto, decimal>.Create(dtos, totalCount, pageNumber, pageSize, totalAmount);
         // إرجاع النتيجة بنجاح
-        return ServiceResult<PagedResult<ExpenseSummaryDto>>.Success(pagedResult);
+        return ServiceResult<PagedResult<ExpenseSummaryDto, decimal>>.Success(pagedResult);
     }
 
     /// <inheritdoc/>

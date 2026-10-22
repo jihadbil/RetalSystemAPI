@@ -46,24 +46,29 @@ public class AccountingRepository : IAccountingRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<Safe>> ListSafesAsync(SafeQuery request, CancellationToken ct = default)
+        => await BuildSafes(request).OrderBy(s => s.Name).ThenBy(s => s.Id).ToListAsync(ct);
+
+    private IQueryable<Safe> BuildSafes(SafeQuery request)
+    {
+        var query = _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).AsQueryable();
+        if (request.BranchId.HasValue) query = query.Where(s => s.BranchId == request.BranchId.Value);
+        if (request.IsActive.HasValue) query = query.Where(s => s.IsActive == request.IsActive.Value);
+        if (request.Type.HasValue) query = query.Where(s => s.Type == request.Type.Value);
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.Trim();
+            query = query.Where(s => s.Name.Contains(term) || (s.BankAccountNumber != null && s.BankAccountNumber.Contains(term)) || (s.BankName != null && s.BankName.Contains(term)));
+        }
+        return query;
+    }
+
     public async Task<PageResult<Safe>> SearchSafesAsync(SafeQuery request, CancellationToken ct = default)
     {
-        var branchId = request.BranchId;
-        var isActive = request.IsActive;
-        var searchTerm = request.SearchTerm;
         var pageNumber = request.PageNumber;
         var pageSize = request.PageSize;
         Pagination.Normalize(ref pageNumber, ref pageSize);
-        var query = _context.Set<Safe>().AsNoTracking().Include(s => s.Branch).AsQueryable();
-        if (branchId.HasValue)
-            query = query.Where(s => s.BranchId == branchId.Value);
-        if (isActive.HasValue)
-            query = query.Where(s => s.IsActive == isActive.Value);
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim();
-            query = query.Where(s => s.Name.Contains(term) || (s.BankAccountNumber != null && s.BankAccountNumber.Contains(term)) || (s.BankName != null && s.BankName.Contains(term)));
-        }
+        var query = BuildSafes(request);
 
         int totalCount = await query.CountAsync(ct);
         var items = await query.OrderBy(s => s.Name).ThenBy(s => s.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -238,7 +243,7 @@ public class AccountingRepository : IAccountingRepository
     }
 
     /// <inheritdoc/>
-    public async Task<PageResult<Expense>> SearchExpensesAsync(ExpenseQuery request, CancellationToken ct = default)
+    private IQueryable<Expense> BuildExpenses(ExpenseQuery request)
     {
         var branchId = request.BranchId;
         var categoryId = request.CategoryId;
@@ -247,9 +252,6 @@ public class AccountingRepository : IAccountingRepository
         var fromDate = request.FromDate;
         var toDate = request.ToDate;
         var searchTerm = request.SearchTerm;
-        var pageNumber = request.PageNumber;
-        var pageSize = request.PageSize;
-        Pagination.Normalize(ref pageNumber, ref pageSize);
         var query = _context.Set<Expense>().AsNoTracking().Include(e => e.Branch).Include(e => e.ExpenseCategory).Include(e => e.Safe).AsQueryable();
         if (branchId.HasValue)
             query = query.Where(e => e.BranchId == branchId.Value);
@@ -269,6 +271,18 @@ public class AccountingRepository : IAccountingRepository
             query = query.Where(e => e.ExpenseNumber.Contains(term) || e.Description.Contains(term) || (e.BeneficiaryName != null && e.BeneficiaryName.Contains(term)));
         }
 
+        return query;
+    }
+
+    public async Task<decimal> GetExpenseTotalAsync(ExpenseQuery request, CancellationToken ct = default)
+        => await BuildExpenses(request).SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+
+    public async Task<PageResult<Expense>> SearchExpensesAsync(ExpenseQuery request, CancellationToken ct = default)
+    {
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
+        Pagination.Normalize(ref pageNumber, ref pageSize);
+        var query = BuildExpenses(request);
         int totalCount = await query.CountAsync(ct);
         var items = await query.OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.CreatedAt).ThenBy(e => e.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PageResult<Expense>(items, totalCount);

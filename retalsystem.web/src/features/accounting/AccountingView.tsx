@@ -23,6 +23,7 @@ import { Select } from '../../shared/components/ui/Select';
 import { Badge } from '../../shared/components/ui/Badge';
 import { Tabs, TabItem } from '../../shared/components/ui/Tabs';
 import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
+import { Pagination } from '../../shared/components/ui/Pagination';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { Pagination } from '../../shared/components/ui/Pagination';
 import { usePagination } from '../../shared/hooks/usePagination';
@@ -65,6 +66,15 @@ export const AccountingView: React.FC = () => {
 
   // بيانات المصروفات
   const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
+  const [expensePage, setExpensePage] = useState(1);
+  const [expensePageSize, setExpensePageSize] = useState(25);
+  const [expenseTotalCount, setExpenseTotalCount] = useState(0);
+  const [expenseTotalPages, setExpenseTotalPages] = useState(0);
+  const [totalExpensesAmount, setTotalExpensesAmount] = useState(0);
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [transactionPageSize, setTransactionPageSize] = useState(25);
+  const [transactionTotalCount, setTransactionTotalCount] = useState(0);
+  const [transactionTotalPages, setTransactionTotalPages] = useState(0);
   const [categories, setCategories] = useState<ExpenseCategoryDto[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
@@ -412,9 +422,14 @@ export const AccountingView: React.FC = () => {
                       {canEditSafe && <button
                         type="button"
                         title="تعديل الحساب"
-                        onClick={() => {
-                          setSafeToEdit(safe);
-                          setIsSafeFormOpen(true);
+                        onClick={async () => {
+                          try {
+                            const details = await accountingService.getSafeById(safe.id);
+                            setSafeToEdit(details);
+                            setIsSafeFormOpen(true);
+                          } catch (err) {
+                            showError('تعذر فتح الحساب', err instanceof Error ? err.message : 'فشل تحميل تفاصيل الحساب');
+                          }
                         }}
                         className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
                       >
@@ -478,14 +493,14 @@ export const AccountingView: React.FC = () => {
               <Input
                 placeholder="بحث برقم السند أو البيان..."
                 value={expenseSearch}
-                onChange={(e) => setExpenseSearch(e.target.value)}
+                onChange={(e) => { setExpenseSearch(e.target.value); setExpensePage(1); }}
                 leftIcon={<IconSearch className="w-4 h-4 text-slate-400" />}
               />
 
               <div className="w-48">
                 <Select lookup={{ resource: 'expense-categories' }} label="تصنيف المصروف"
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => { setSelectedCategory(e.target.value); setExpensePage(1); }}
                   options={[
                     { value: '', label: 'جميع بنود المصروفات' },
                     ...categories.map((c) => ({ value: c.id, label: c.name })),
@@ -566,6 +581,9 @@ export const AccountingView: React.FC = () => {
               </div>
             )}
           </div>
+          <Pagination currentPage={expensePage} totalPages={expenseTotalPages}
+            totalCount={expenseTotalCount} pageSize={expensePageSize}
+            onPageChange={setExpensePage} onPageSizeChange={(size) => { setExpensePageSize(size); setExpensePage(1); }} />
         </div>
       )}
 
@@ -584,7 +602,7 @@ export const AccountingView: React.FC = () => {
               <div className="w-72">
                 <Select lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة"
                   value={selectedSafeForTrx}
-                  onChange={(e) => setSelectedSafeForTrx(e.target.value)}
+                  onChange={(e) => { setSelectedSafeForTrx(e.target.value); setTransactionPage(1); }}
                   options={safes.map((s) => ({
                     value: s.id,
                     label: `${s.name} (${s.currentBalance.toLocaleString('ar-SA')} د.ل)`,
@@ -637,6 +655,9 @@ export const AccountingView: React.FC = () => {
               </table>
             </div>
           </div>
+          <Pagination currentPage={transactionPage} totalPages={transactionTotalPages}
+            totalCount={transactionTotalCount} pageSize={transactionPageSize}
+            onPageChange={setTransactionPage} onPageSizeChange={(size) => { setTransactionPageSize(size); setTransactionPage(1); }} />
         </div>
       )}
 

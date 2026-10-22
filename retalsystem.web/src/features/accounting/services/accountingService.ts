@@ -8,7 +8,7 @@ import type {
   PairingCodeDto,
 } from '../types/accounting.types';
 import { SafeType, TransactionDirection } from '../types/accounting.types';
-import type { PagedResult } from '../../../shared/types/api.types';
+import type { PagedResult, PagedResultWithSummary } from '../../../shared/types/api.types';
 
 export interface CreateSafeRequest {
   name: string;
@@ -104,6 +104,10 @@ export const accountingService = {
     }
   },
 
+  getSafeById(id: string): Promise<SafeDto> {
+    return apiClient.get<SafeDto>(`safes/${id}`);
+  },
+
   async createSafe(data: CreateSafeRequest): Promise<SafeDto> {
     try {
       return await apiClient.post<SafeDto>('safes', data);
@@ -149,6 +153,8 @@ export const accountingService = {
         toSafeId: request.toSafeId || request.destinationSafeId,
         amount: request.amount,
         description: request.description || request.notes || 'تحويل مالي بين الخزائن',
+        transferDate: request.transferDate,
+        referenceNumber: request.referenceNumber,
         notes: request.notes,
       };
       await apiClient.post('safes/transfer', payload);
@@ -220,7 +226,7 @@ export const accountingService = {
     safeId?: string,
     search?: string,
     branchId?: string
-  ): Promise<PagedResult<ExpenseDto>> {
+  ): Promise<PagedResultWithSummary<ExpenseDto, number>> {
     try {
       const params: Record<string, string | number> = { pageNumber, pageSize };
       if (categoryId) params.expenseCategoryId = categoryId;
@@ -228,7 +234,7 @@ export const accountingService = {
       if (search) params.searchTerm = search;
       if (branchId) params.branchId = branchId;
 
-      return await apiClient.get<PagedResult<ExpenseDto>>('expenses', params);
+      return await apiClient.get<PagedResultWithSummary<ExpenseDto, number>>('expenses', params);
     } catch (err) {
       console.error('[accountingService.getExpenses] Failed to fetch expenses:', err);
       throw err;

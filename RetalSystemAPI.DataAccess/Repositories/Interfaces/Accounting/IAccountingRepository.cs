@@ -65,6 +65,7 @@ public interface IAccountingRepository
     /// <summary>جلب كافة المصروفات</summary>
     Task<IReadOnlyList<Expense>> GetAllExpensesAsync(CancellationToken ct = default);
     /// <summary>جلب صفحة مصروفات مجزأة مع الفلترة المتقدمة</summary>
+    Task<decimal> GetExpenseTotalAsync(ExpenseQuery request, CancellationToken ct = default);
     Task<PageResult<Expense>> SearchExpensesAsync(ExpenseQuery request, CancellationToken ct = default);
     /// <summary>توليد رقم سند مصروف فريد</summary>
     Task<string> GenerateExpenseNumberAsync(CancellationToken ct = default);
