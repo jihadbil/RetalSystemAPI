@@ -16,7 +16,11 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "Customers"
-        builder.ToTable("Customers");
+        builder.ToTable("Customers", t => t.HasCheckConstraint("CK_Customers_DiscountRate", "[DiscountRate] >= 0 AND [DiscountRate] <= 100"));
+        builder.Property(x => x.TaxNumber).HasMaxLength(100);
+        builder.Property(x => x.CommercialRegister).HasMaxLength(100);
+        builder.Property(x => x.Notes).HasMaxLength(500);
+        builder.Property(x => x.DiscountRate).HasColumnType("decimal(7,4)").HasDefaultValue(0m);
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(c => c.Id);
 
@@ -70,7 +74,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         // إنشاء فهرس على عمود TenantId لتسريع تصفية العملاء حسب المستأجر
         builder.HasIndex(c => c.TenantId);
         // إنشاء فهرس مركب على (TenantId, Code) لتسريع البحث بكود العميل
-        builder.HasIndex(c => new { c.TenantId, c.Code });
+        builder.HasIndex(c => new { c.TenantId, c.Code }).IsUnique()
+            .HasFilter("[Code] IS NOT NULL AND [Code] <> N'' AND [IsDeleted] = 0");
         // إنشاء فهرس مركب على (TenantId, IsDeleted) لتحسين أداء مرشحات الحذف الناعم
         builder.HasIndex(c => new { c.TenantId, c.IsDeleted });
         // إنشاء فهرس مركب على (TenantId, IsDeleted, Name) لتسريع البحث بالاسم للعملاء النشطين

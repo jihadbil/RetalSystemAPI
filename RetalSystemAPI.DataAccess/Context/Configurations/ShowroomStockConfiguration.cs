@@ -16,7 +16,11 @@ public class ShowroomStockConfiguration : IEntityTypeConfiguration<ShowroomStock
     public void Configure(EntityTypeBuilder<ShowroomStock> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "ShowroomStocks"
-        builder.ToTable("ShowroomStocks");
+        builder.ToTable("ShowroomStocks", t =>
+        {
+            t.HasCheckConstraint("CK_ShowroomStocks_Quantity", "[Quantity] >= 0");
+            t.HasCheckConstraint("CK_ShowroomStocks_MinStockLevel", "[MinStockLevel] >= 0");
+        });
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(ss => ss.Id);
 

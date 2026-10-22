@@ -684,6 +684,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<DateTime>("PostedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -1297,6 +1301,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("CommercialRegister")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1311,6 +1319,11 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Property<decimal>("CurrentBalance")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("DiscountRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(7,4)")
                         .HasDefaultValue(0m);
 
                     b.Property<string>("Email")
@@ -1330,6 +1343,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("OpeningBalance")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
@@ -1340,6 +1357,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<string>("TaxNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid>("TenantId")
                         .IsConcurrencyToken()
@@ -1358,13 +1379,18 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("TenantId", "Code");
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasFilter("[Code] IS NOT NULL AND [Code] <> N'' AND [IsDeleted] = 0");
 
                     b.HasIndex("TenantId", "IsDeleted");
 
                     b.HasIndex("TenantId", "IsDeleted", "Name");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Customers_DiscountRate", "[DiscountRate] >= 0 AND [DiscountRate] <= 100");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Customers.CustomerPhone", b =>
@@ -2498,6 +2524,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -2508,6 +2538,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -2520,6 +2554,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("OpeningBalance")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,4)")
@@ -2530,6 +2568,10 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<string>("TaxNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid>("TenantId")
                         .IsConcurrencyToken()
@@ -2911,7 +2953,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("ShowroomStocks", (string)null);
+                    b.ToTable("ShowroomStocks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ShowroomStocks_MinStockLevel", "[MinStockLevel] >= 0");
+
+                            t.HasCheckConstraint("CK_ShowroomStocks_Quantity", "[Quantity] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.StockAdjustment", b =>
@@ -3250,7 +3297,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("StorgeStocks", (string)null);
+                    b.ToTable("StorgeStocks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StorgeStocks_MinStockLevel", "[MinStockLevel] >= 0");
+
+                            t.HasCheckConstraint("CK_StorgeStocks_Quantity", "[Quantity] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.Warehouse", b =>

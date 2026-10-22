@@ -17,6 +17,10 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "Suppliers"
         builder.ToTable("Suppliers");
+        builder.Property(x => x.CompanyName).HasMaxLength(200);
+        builder.Property(x => x.Email).HasMaxLength(150);
+        builder.Property(x => x.TaxNumber).HasMaxLength(100);
+        builder.Property(x => x.Notes).HasMaxLength(500);
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(s => s.Id);
 

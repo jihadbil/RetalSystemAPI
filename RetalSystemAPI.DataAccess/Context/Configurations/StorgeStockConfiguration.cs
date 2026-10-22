@@ -16,7 +16,11 @@ public class StorgeStockConfiguration : IEntityTypeConfiguration<StorgeStock>
     public void Configure(EntityTypeBuilder<StorgeStock> builder)
     {
         // تعيين اسم الجدول في قاعدة البيانات إلى "StorgeStocks"
-        builder.ToTable("StorgeStocks");
+        builder.ToTable("StorgeStocks", t =>
+        {
+            t.HasCheckConstraint("CK_StorgeStocks_Quantity", "[Quantity] >= 0");
+            t.HasCheckConstraint("CK_StorgeStocks_MinStockLevel", "[MinStockLevel] >= 0");
+        });
         // تعيين الخاصية Id كمفتاح أساسي (Primary Key) للجدول
         builder.HasKey(ss => ss.Id);
 

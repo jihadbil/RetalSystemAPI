@@ -20,6 +20,7 @@ public class SafeTransactionConfiguration : IEntityTypeConfiguration<SafeTransac
         });
         // تعيين المفتاح الأساسي
         builder.HasKey(st => st.Id);
+        builder.Property(st => st.ReferenceNumber).HasMaxLength(100);
 
         // رقم الحركة الفريد
         builder.Property(st => st.TransactionNumber)
