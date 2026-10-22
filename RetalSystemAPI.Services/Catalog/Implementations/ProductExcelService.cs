@@ -395,6 +395,15 @@ public class ProductExcelService : IProductExcelService
                     }
 
                     // التحقق من وجود الصنف في النظام
+                    if (ambiguousNames.Contains(name) && !barcodeMap.ContainsKey(barcode) &&
+                        !(Guid.TryParse(code, out var stableId) && existingProductIds.Contains(stableId)))
+                    {
+                        rowVal.Status = RowValidationStatus.Error;
+                        rowVal.Message = "اسم الصنف مكرر؛ حدد معرف الصنف أو باركوداً مسجلاً لتحديده";
+                        result.InvalidRows++;
+                        result.Rows.Add(rowVal);
+                        continue;
+                    }
                     bool productExists = false;
                     if (!string.IsNullOrWhiteSpace(barcode) && barcodeMap.ContainsKey(barcode))
                     {
@@ -931,6 +940,11 @@ public class ProductExcelService : IProductExcelService
                 productIdMap.TryGetValue(parsedGuid, out targetProduct);
             }
 
+            if (targetProduct == null && ambiguousNames.Contains(name))
+            {
+                result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, ErrorReason = "اسم الصنف مكرر؛ حدد معرف الصنف أو باركوداً مسجلاً" });
+                continue;
+            }
             if (targetProduct == null && productNameMap.TryGetValue(name, out var prodByName))
             {
                 targetProduct = prodByName;
@@ -1646,18 +1660,18 @@ public class ProductExcelService : IProductExcelService
 
     private class SingleSheetColumnMapping
     {
-        public int ItemCodeCol { get; set; } = 1;
-        public int NameCol { get; set; } = 2;
-        public int BarcodeCol { get; set; } = 3;
-        public int CategoryCol { get; set; } = 4;
-        public int UnitCol { get; set; } = 5;
-        public int ConversionFactorCol { get; set; } = 6;
-        public int CostPriceCol { get; set; } = 7;
-        public int SalePriceCol { get; set; } = 8;
-        public int ShowroomQtyCol { get; set; } = 9;
-        public int StorageQtyCol { get; set; } = 10;
-        public int MinStockCol { get; set; } = 11;
-        public int DescriptionCol { get; set; } = 12;
+        public int ItemCodeCol { get; set; }
+        public int NameCol { get; set; }
+        public int BarcodeCol { get; set; }
+        public int CategoryCol { get; set; }
+        public int UnitCol { get; set; }
+        public int ConversionFactorCol { get; set; }
+        public int CostPriceCol { get; set; }
+        public int SalePriceCol { get; set; }
+        public int ShowroomQtyCol { get; set; }
+        public int StorageQtyCol { get; set; }
+        public int MinStockCol { get; set; }
+        public int DescriptionCol { get; set; }
     }
 
     private SingleSheetColumnMapping DetectSingleSheetColumns(IXLWorksheet ws)
