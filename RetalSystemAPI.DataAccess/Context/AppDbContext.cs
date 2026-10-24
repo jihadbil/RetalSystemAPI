@@ -58,6 +58,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>جدول المستأجرين</summary>
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<UserLoginIdentifier> UserLoginIdentifiers => Set<UserLoginIdentifier>();
 
     /// <summary>جدول الفروع</summary>
     public DbSet<Branch> Branches => Set<Branch>();

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RetalSystemAPI.Models;
 using RetalSystemAPI.Models.Catalog;
+using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.Common;
 using RetalSystemAPI.Models.Purchase;
 
@@ -10,6 +11,20 @@ internal static class ModelIntegrityConfiguration
 {
     public static void Apply(ModelBuilder builder)
     {
+        // SQL Server lifecycle triggers serialize new branch references with branch deletion.
+        foreach (var entity in builder.Model.GetEntityTypes().Where(e => e.FindProperty("BranchId") != null).ToArray())
+            builder.Entity(entity.ClrType).ToTable(table =>
+            {
+                table.HasTrigger($"TR_{entity.GetTableName()}_LiveBranch");
+                table.UseSqlOutputClause(false);
+            });
+        builder.Entity<Branch>().ToTable(table =>
+        {
+            table.HasTrigger("TR_Branches_DeleteGuard");
+            table.UseSqlOutputClause(false);
+        });
+        builder.Entity<ApplicationUser>().ToTable(table => table.HasTrigger("TR_AspNetUsers_LoginIdentifiers"));
+
         foreach (var entity in builder.Model.GetEntityTypes()
             .Where(e => e.ClrType != typeof(Tenant) && typeof(TenantBaseEntity).IsAssignableFrom(e.ClrType)).ToArray())
             builder.Entity(entity.ClrType).Property(nameof(TenantBaseEntity.TenantId)).IsConcurrencyToken();

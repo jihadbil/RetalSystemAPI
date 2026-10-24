@@ -1,6 +1,8 @@
 using RetalSystemAPI.Models.DTOs.Common;
 using RetalSystemAPI.DataAccess.Queries;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using RetalSystemAPI.DataAccess.Services;
 using RetalSystemAPI.DataAccess.Repositories.Interfaces;
 using RetalSystemAPI.Models.Branchs;
 using RetalSystemAPI.Models.DTOs.Branch;
@@ -80,6 +82,9 @@ public class BranchService : IBranchService
         if (DtoValidation.GetError(dto) is { } validationError)
             return ServiceResult<BranchResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
+        if (await ValidatePhonesAsync(dto.Phones, null, ct) is { } phoneError)
+            return ServiceResult<BranchResponseDto>.Failure(phoneError, ErrorCodes.BranchPhoneExists);
+
         // التحقق من عدم تكرار اسم الفرع للمستأجر الحالي
         bool nameExists = await _unitOfWork.Branches.NameExistsAsync(dto.Name, ct);
         // في حال وجود فرع مسجل بنفس الاسم
@@ -103,7 +108,8 @@ public class BranchService : IBranchService
         // إضافة كيان الفرع وهواتفه إلى المستودع
         await _unitOfWork.Branches.AddAsync(branch, ct);
         // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        if (await SaveChangesAsync(ct) is { } failure)
+            return ServiceResult<BranchResponseDto>.Failure(failure.ErrorMessage!, failure.ErrorCode);
         // إعادة جلب الفرع المحفوظ مع أرقام هواتفه للتأكد من اكتمال البيانات
         var createdBranch = await _unitOfWork.Branches.GetDetailsAsync(branch.Id, ct) ?? branch;
         // تحويل الكيان المحفوظ إلى كائن استجابة DTO
@@ -119,7 +125,7 @@ public class BranchService : IBranchService
             return ServiceResult<BranchResponseDto>.Failure(validationError, ErrorCodes.ValidationError);
 
         // البحث عن الفرع الحالي مع هواتفه
-        var branch = await _unitOfWork.Branches.GetDetailsAsync(id, ct);
+        var branch = await _unitOfWork.Branches.GetWithPhonesForUpdateAsync(id, ct);
         // التحقق من وجود الفرع
         if (branch is null)
         {
@@ -136,26 +142,32 @@ public class BranchService : IBranchService
             return ServiceResult<BranchResponseDto>.Failure("اسم الفرع موجود بالفعل لدى فرع آخر", ErrorCodes.BranchNameExists);
         }
 
+        if (await ValidatePhonesAsync(dto.Phones, id, ct) is { } phoneError)
+            return ServiceResult<BranchResponseDto>.Failure(phoneError, ErrorCodes.BranchPhoneExists);
+
         // تحديث اسم الفرع
         branch.Name = dto.Name;
         // تحديث عنوان الفرع
         branch.Address = dto.Address;
         // تحديث حالة نشاط الفرع
         branch.IsActive = dto.IsActive;
-        // حذف كافة الهواتف القديمة للفرع لإعادة إنشائها بالبيانات المحدثة
-        foreach (var phone in branch.BranchPhones.ToList())
+        // Preserve unchanged numbers and IDs; retire removed numbers in the same save.
+        var pendingPhones = dto.Phones.ToDictionary(p => p.PhoneNumber, StringComparer.Ordinal);
+        foreach (var phone in branch.BranchPhones.Where(p => !p.IsDeleted).ToList())
         {
-            // حذف الهاتف فيزيائياً
-            _unitOfWork.Branches.HardDeletePhone(phone);
+            if (pendingPhones.Remove(phone.PhoneNumber, out var incoming))
+                phone.Name = string.IsNullOrWhiteSpace(incoming.Name) ? "الرئيسي" : incoming.Name;
+            else
+                _unitOfWork.Branches.SoftDeletePhone(phone);
         }
 
         // التحقق من وجود أرقام هواتف جديدة في الطلب
-        if (dto.Phones.Count > 0)
+        if (pendingPhones.Count > 0)
         {
             // إنشاء كيانات الهواتف الجديدة وربطها بالفرع
-            var newPhones = dto.Phones.Select(p => new BranchPhone { // تعيين معرف الفرع
+            var newPhones = pendingPhones.Values.Select(p => new BranchPhone { // تعيين معرف الفرع
  BranchId = id, // تعيين اسم جهة الاتصال أو المسمى
- Name = p.Name, // تعيين رقم الهاتف
+ Name = string.IsNullOrWhiteSpace(p.Name) ? "الرئيسي" : p.Name, // تعيين رقم الهاتف
  PhoneNumber = p.PhoneNumber }).ToList();
             // إضافة الهواتف الجديدة كمجموعة إلى المستودع
             await _unitOfWork.Branches.AddPhonesAsync(newPhones, ct);
@@ -164,7 +176,8 @@ public class BranchService : IBranchService
         // وسم الفرع للتحديث في المستودع
         _unitOfWork.Branches.Update(branch);
         // حفظ كافة التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        if (await SaveChangesAsync(ct) is { } failure)
+            return ServiceResult<BranchResponseDto>.Failure(failure.ErrorMessage!, failure.ErrorCode);
         // إعادة جلب الفرع المحدث مع هواتفه الجديدة
         var updatedBranch = await _unitOfWork.Branches.GetDetailsAsync(id, ct) ?? branch;
         // تحويل الكيان إلى DTO
@@ -177,7 +190,7 @@ public class BranchService : IBranchService
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // جلب الفرع مع هواتفه والمستخدمين المرتبطين به للتحقق
-        var branch = await _unitOfWork.Branches.GetDetailsForDeleteAsync(id, ct);
+        var branch = await _unitOfWork.Branches.GetWithPhonesForUpdateAsync(id, ct);
         // التحقق من وجود الفرع
         if (branch is null)
         {
@@ -186,21 +199,22 @@ public class BranchService : IBranchService
         }
 
         // التحقق من عدم ارتباط مستخدمين نشطين بهذا الفرع لمنع كسر التكامل المرجعي
-        if (branch.ApplicationUsers.Any())
+        if (await _unitOfWork.Branches.HasUsersAsync(id, ct))
         {
             // إرجاع خطأ يوضح وجود مستخدمين مرتبطين
             return ServiceResult.Failure("لا يمكن حذف الفرع لوجود مستخدمين نشطين مرتبطين به", ErrorCodes.BranchHasUsers);
         }
 
-        if (await _unitOfWork.Branches.HasOperationalHistoryAsync(id, ct))
-            return ServiceResult.Failure("لا يمكن حذف فرع مرتبط بمخازن أو عمليات مالية؛ استخدم التعطيل للحفاظ على سجله", ErrorCodes.ValidationError);
+        if (await _unitOfWork.Branches.HasDependenciesAsync(id, ct))
+            return ServiceResult.Failure("لا يمكن حذف الفرع لوجود مستودعات أو معاملات مرتبطة به؛ يمكن تعطيله بدلاً من حذفه.", ErrorCodes.BranchHasDependencies);
+
+        foreach (var phone in branch.BranchPhones.Where(p => !p.IsDeleted).ToList())
+            _unitOfWork.Branches.SoftDeletePhone(phone);
 
         // تطبيق الحذف المنطقي للفرع
-        if (await _unitOfWork.Branches.HasHistoricalReferencesAsync(id, ct))
-            return ServiceResult.Failure("السجل مرتبط بمستندات أو حركات محفوظة؛ استخدم التعطيل بدلاً من الحذف", ErrorCodes.ValidationError);
         _unitOfWork.Branches.SoftDelete(branch);
         // حفظ التغييرات في قاعدة البيانات
-        await _unitOfWork.SaveChangesAsync(ct);
+        if (await SaveChangesAsync(ct) is { } failure) return failure;
         // إرجاع نتيجة النجاح
         return ServiceResult.Success();
     }
@@ -225,5 +239,34 @@ public class BranchService : IBranchService
         await _unitOfWork.SaveChangesAsync(ct);
         // إرجاع نجاح العملية
         return ServiceResult.Success();
+    }
+
+    private async Task<string?> ValidatePhonesAsync(IReadOnlyCollection<BranchPhoneDto> phones, Guid? branchId, CancellationToken ct)
+    {
+        var numbers = phones.Select(p => p.PhoneNumber).ToArray();
+        return numbers.Distinct(StringComparer.Ordinal).Count() != numbers.Length ||
+            await _unitOfWork.Branches.PhonesExistAsync(numbers, branchId, ct)
+            ? "رقم هاتف الفرع مكرر أو مستخدم لدى فرع آخر" : null;
+    }
+
+    private async Task<ServiceResult?> SaveChangesAsync(CancellationToken ct)
+    {
+        try { await _unitOfWork.SaveChangesAsync(ct); return null; }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ServiceResult.Failure("تغيرت بيانات الفرع؛ يرجى إعادة تحميلها والمحاولة مجدداً", ErrorCodes.ConcurrencyError);
+        }
+        catch (DbUpdateException ex) when (SqlConstraintErrors.IsUniqueViolation(ex, "IX_Branches_TenantId_Name"))
+        {
+            return ServiceResult.Failure("اسم الفرع موجود بالفعل", ErrorCodes.BranchNameExists);
+        }
+        catch (DbUpdateException ex) when (SqlConstraintErrors.IsUniqueViolation(ex, "IX_BranchPhones_TenantId_PhoneNumber"))
+        {
+            return ServiceResult.Failure("رقم هاتف الفرع مستخدم بالفعل", ErrorCodes.BranchPhoneExists);
+        }
+        catch (DbUpdateException ex) when (SqlConstraintErrors.IsBranchInUse(ex))
+        {
+            return ServiceResult.Failure("لا يمكن حذف الفرع لوجود بيانات مرتبطة به", ErrorCodes.BranchHasDependencies);
+        }
     }
 }

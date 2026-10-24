@@ -252,10 +252,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("CashSessions", null, t =>
                         {
+                            t.HasTrigger("TR_CashSessions_LiveBranch");
+
                             t.HasCheckConstraint("CK_CashSessions_Amounts", "[OpeningFloat] >= 0 AND [ExpectedClosingBalance] >= 0 AND ([CountedClosingBalance] IS NULL OR [CountedClosingBalance] >= 0)");
 
                             t.HasCheckConstraint("CK_CashSessions_Status", "[Status] IN (1,2,3,4)");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Expense", b =>
@@ -344,10 +348,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("Expenses", null, t =>
                         {
+                            t.HasTrigger("TR_Expenses_LiveBranch");
+
                             t.HasCheckConstraint("CK_Expenses_Amount", "[Amount] > 0");
 
                             t.HasCheckConstraint("CK_Expenses_PaymentMethod", "[PaymentMethod] IN (1,2,3,5)");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.ExpenseCategory", b =>
@@ -536,7 +544,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.HasIndex("TenantId", "BranchId", "Name")
                         .IsUnique();
 
-                    b.ToTable("PosTerminals", (string)null);
+                    b.ToTable("PosTerminals", null, t =>
+                        {
+                            t.HasTrigger("TR_PosTerminals_LiveBranch");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.Safe", b =>
@@ -626,10 +639,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("Safes", null, t =>
                         {
+                            t.HasTrigger("TR_Safes_LiveBranch");
+
                             t.HasCheckConstraint("CK_Safes_Balances", "[OpeningBalance] >= 0 AND [CurrentBalance] >= 0");
 
                             t.HasCheckConstraint("CK_Safes_Type", "[Type] IN (1,2,3)");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Accounting.SafeTransaction", b =>
@@ -822,7 +839,14 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "BranchId");
 
-                    b.ToTable("AspNetUsers", (string)null);
+                    b.ToTable("AspNetUsers", null, t =>
+                        {
+                            t.HasTrigger("TR_AspNetUsers_LiveBranch");
+
+                            t.HasTrigger("TR_AspNetUsers_LoginIdentifiers");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Branchs.Branch", b =>
@@ -874,7 +898,16 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "IsActive");
 
-                    b.ToTable("Branches", (string)null);
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("Branches", null, t =>
+                        {
+                            t.HasTrigger("TR_Branches_DeleteGuard");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Branchs.BranchPhone", b =>
@@ -928,7 +961,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("BranchPhones", (string)null);
+                    b.ToTable("BranchPhones", null, t =>
+                        {
+                            t.HasTrigger("TR_BranchPhones_LiveBranch");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Catalog.Category", b =>
@@ -1541,6 +1579,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("CustomerTransactions", null, t =>
                         {
+                            t.HasTrigger("TR_CustomerTransactions_LiveBranch");
+
                             t.HasCheckConstraint("CK_CustomerTransactions_DebitCredit", "([DebitAmount] > 0 AND [CreditAmount] = 0) OR ([CreditAmount] > 0 AND [DebitAmount] = 0)");
 
                             t.HasCheckConstraint("CK_CustomerTransactions_DocumentType", "[DocumentType] BETWEEN 1 AND 13");
@@ -1549,6 +1589,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                             t.HasCheckConstraint("CK_CustomerTransactions_Type", "[TransactionType] BETWEEN 1 AND 6");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoice", b =>
@@ -1664,8 +1706,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("PurchaseInvoices", null, t =>
                         {
+                            t.HasTrigger("TR_PurchaseInvoices_LiveBranch");
+
                             t.HasCheckConstraint("CK_PurchaseInvoices_Amounts", "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseInvoiceItem", b =>
@@ -1888,7 +1934,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "WarehouseId");
 
-                    b.ToTable("PurchaseOrders", (string)null);
+                    b.ToTable("PurchaseOrders", null, t =>
+                        {
+                            t.HasTrigger("TR_PurchaseOrders_LiveBranch");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseOrderItem", b =>
@@ -2046,8 +2097,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("PurchaseReturns", null, t =>
                         {
+                            t.HasTrigger("TR_PurchaseReturns_LiveBranch");
+
                             t.HasCheckConstraint("CK_PurchaseReturns_TotalAmount", "[TotalAmount] >= 0");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Purchase.PurchaseReturnItem", b =>
@@ -2257,8 +2312,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("SalesInvoices", null, t =>
                         {
+                            t.HasTrigger("TR_SalesInvoices_LiveBranch");
+
                             t.HasCheckConstraint("CK_SalesInvoices_Amounts", "[SubTotal] >= 0 AND [DiscountAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] >= 0 AND [PaidAmount] >= 0 AND [RemainingAmount] >= 0 AND [PaidAmount] + [RemainingAmount] = [TotalAmount]");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesInvoiceItem", b =>
@@ -2436,8 +2495,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("SalesReturns", null, t =>
                         {
+                            t.HasTrigger("TR_SalesReturns_LiveBranch");
+
                             t.HasCheckConstraint("CK_SalesReturns_Amounts", "[TotalAmount] >= 0 AND [RefundedAmount] >= 0 AND [RefundedAmount] <= [TotalAmount]");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Sales.SalesReturnItem", b =>
@@ -2741,6 +2804,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.ToTable("SupplierTransactions", null, t =>
                         {
+                            t.HasTrigger("TR_SupplierTransactions_LiveBranch");
+
                             t.HasCheckConstraint("CK_SupplierTransactions_DebitCredit", "([DebitAmount] > 0 AND [CreditAmount] = 0) OR ([CreditAmount] > 0 AND [DebitAmount] = 0)");
 
                             t.HasCheckConstraint("CK_SupplierTransactions_DocumentType", "[DocumentType] BETWEEN 1 AND 13");
@@ -2749,6 +2814,8 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                             t.HasCheckConstraint("CK_SupplierTransactions_Type", "[TransactionType] BETWEEN 1 AND 6");
                         });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Tenant", b =>
@@ -2888,6 +2955,23 @@ namespace RetalSystemAPI.DataAccess.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Tenants", (string)null);
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.UserLoginIdentifier", b =>
+                {
+                    b.Property<string>("NormalizedValue")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("NormalizedValue");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLoginIdentifiers", (string)null);
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.ShowroomStock", b =>
@@ -3362,7 +3446,12 @@ namespace RetalSystemAPI.DataAccess.Migrations
 
                     b.HasIndex("TenantId", "IsDeleted");
 
-                    b.ToTable("Warehouses", (string)null);
+                    b.ToTable("Warehouses", null, t =>
+                        {
+                            t.HasTrigger("TR_Warehouses_LiveBranch");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -4359,6 +4448,17 @@ namespace RetalSystemAPI.DataAccess.Migrations
                     b.Navigation("Supplier");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("RetalSystemAPI.Models.UserLoginIdentifier", b =>
+                {
+                    b.HasOne("RetalSystemAPI.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("RetalSystemAPI.Models.Warehouses.ShowroomStock", b =>

@@ -14,6 +14,7 @@ public partial interface IBranchRepository : IRepository<Branch>
     void RemovePhone(BranchPhone phone);
     /// <summary>حذف نهائي لرقم هاتف فرع من قاعدة البيانات</summary>
     void HardDeletePhone(BranchPhone phone);
+    void SoftDeletePhone(BranchPhone phone);
     /// <summary>جلب أرقام هواتف الفرع المحددة</summary>
     Task<IReadOnlyList<BranchPhone>> GetPhonesAsync(Guid branchId, CancellationToken ct = default);
 }

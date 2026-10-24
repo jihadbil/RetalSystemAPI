@@ -99,6 +99,7 @@ public abstract class BaseApiController : ControllerBase
         ErrorCodes.UserAlreadyExists
         or ErrorCodes.TenantNameExists
         or ErrorCodes.BranchNameExists
+        or ErrorCodes.BranchPhoneExists
         or ErrorCodes.UnitNameExists
         or ErrorCodes.ProductUnitDuplicate
         or ErrorCodes.BarCodeDuplicate
@@ -118,6 +119,7 @@ public abstract class BaseApiController : ControllerBase
 
         // مطابقة حالات القيود المنطقية والعلاقات المانعة للحذف أو التعديل (422 Unprocessable Entity)
         ErrorCodes.BranchHasUsers
+        or ErrorCodes.BranchHasDependencies
         or ErrorCodes.CategoryHasProducts
         or ErrorCodes.UnitInUse
         or ErrorCodes.CategoryCircularRef

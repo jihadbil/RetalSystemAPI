@@ -62,6 +62,7 @@ public static class ServicesLayerExtensions
         // ── Services Registration ─────────────────────────────────
         // تسجيل خدمة إدارة المستأجرين بنطاق Scoped
         services.AddScoped<ITenantService, TenantService>();
+        services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
 
         // تسجيل خدمة المصادقة وتوليد التوكن بنطاق Scoped
         services.AddScoped<IAuthService, AuthService>();

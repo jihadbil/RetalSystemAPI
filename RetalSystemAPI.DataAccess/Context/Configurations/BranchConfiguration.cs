@@ -44,5 +44,6 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
         builder.HasIndex(b => b.TenantId);
         // إنشاء فهرس مركب على (TenantId, IsActive) لتسريع جلب الفروع النشطة لكل مستأجر
         builder.HasIndex(b => new { b.TenantId, b.IsActive });
+        builder.HasIndex(b => new { b.TenantId, b.Name }).IsUnique().HasFilter("[IsDeleted] = 0");
     }
 }

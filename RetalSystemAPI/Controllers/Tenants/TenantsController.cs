@@ -25,6 +25,7 @@ public class TenantsController : BaseApiController
     /// خدمة معالجة وإدارة المستأجرين في النظام.
     /// </summary>
     private readonly ITenantService _tenantService;
+    private readonly ITenantProvisioningService? _tenantProvisioningService;
 
     /// <summary>
     /// خدمة رفع ومعالجة الملفات والصور على الخادم.
@@ -38,12 +39,26 @@ public class TenantsController : BaseApiController
     /// <param name="fileUploadService">خدمة رفع ومعالجة الملفات.</param>
     public TenantsController(
         ITenantService tenantService,
-        RetalSystemAPI.Services.FileUpload.Interfaces.IFileUploadService fileUploadService)
+        RetalSystemAPI.Services.FileUpload.Interfaces.IFileUploadService fileUploadService,
+        ITenantProvisioningService? tenantProvisioningService = null)
     {
         // إسناد خدمة المستأجرين المحقونة
         _tenantService = tenantService;
         // إسناد خدمة رفع الملفات المحقونة
         _fileUploadService = fileUploadService;
+        _tenantProvisioningService = tenantProvisioningService;
+    }
+
+    [HttpPost("provision")]
+    [Authorize(Roles = "SuperAdmin")]
+    [HasPermission(Permissions.Tenants.Edit)]
+    public async Task<IActionResult> Provision([FromBody] ProvisionTenantDto dto, CancellationToken ct)
+    {
+        var result = await (_tenantProvisioningService ?? throw new InvalidOperationException("Tenant provisioning is not registered."))
+            .ProvisionAsync(dto, ct);
+        return result.IsSuccess
+            ? StatusCode(201, ApiResponse<ProvisionTenantResponseDto>.Ok(result.Data!, "تمت تهيئة المستأجر والفرع والمسؤول بنجاح"))
+            : ToActionResult(result);
     }
 
     /// <summary>

@@ -270,7 +270,7 @@ public class UserService : IUserService
                 // تجميع أخطاء التحقق
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 // إرجاع خطأ الإنشاء
-                return ServiceResult<UserSummaryDto>.Failure($"فشل إنشاء المستخدم: {errors}", ErrorCodes.ValidationError);
+                return ServiceResult<UserSummaryDto>.Failure($"فشل إنشاء المستخدم: {errors}", IdentityErrorCode(result));
             }
 
             // إسناد الدور المحدد للمستخدم إن تم تزويده
@@ -889,6 +889,7 @@ public class UserService : IUserService
          roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
 
     private static string IdentityErrorCode(IdentityResult result) =>
+        LoginIdentifierValidator.IsDuplicate(result) ? ErrorCodes.UserAlreadyExists :
         result.Errors.Any(e => e.Code == "ConcurrencyFailure") ? ErrorCodes.ConcurrencyError : ErrorCodes.ValidationError;
 
     private async Task<IdentityResult> InvalidateUserSessionsAsync(IEnumerable<ApplicationUser> users)

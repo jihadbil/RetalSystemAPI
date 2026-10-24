@@ -47,6 +47,8 @@ public static class ErrorCodes
 
     /// <summary>لا يمكن حذف الفرع لوجود مستخدمين نشطين مرتبطين به.</summary>
     public const string BranchHasUsers = "BRANCH_HAS_ACTIVE_USERS";
+    public const string BranchHasDependencies = "BRANCH_HAS_DEPENDENCIES";
+    public const string BranchPhoneExists = "BRANCH_PHONE_EXISTS";
 
     // ── Catalog (دليل المنتجات والتصنيفات) ──────────────────
     /// <summary>التصنيف المحدد غير موجود.</summary>

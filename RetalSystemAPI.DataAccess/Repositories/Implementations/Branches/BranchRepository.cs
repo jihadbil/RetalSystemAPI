@@ -37,6 +37,8 @@ public partial class BranchRepository : Repository<Branch>, IBranchRepository
         EntityPersistence.HardDelete(_context, phone);
     }
 
+    public void SoftDeletePhone(BranchPhone phone) => EntityPersistence.SoftDelete(_context, phone);
+
     /// <inheritdoc/>
     public async Task<IReadOnlyList<BranchPhone>> GetPhonesAsync(Guid branchId, CancellationToken ct = default)
     {

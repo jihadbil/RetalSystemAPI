@@ -14,4 +14,8 @@ public partial interface IBranchRepository
     Task<bool> NameExistsAsync(string name, Guid id, CancellationToken ct = default);
     Task<Branch?> GetDetailsForDeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> HasOperationalHistoryAsync(Guid id, CancellationToken ct = default);
+    Task<Branch?> GetWithPhonesForUpdateAsync(Guid id, CancellationToken ct = default);
+    Task<bool> HasUsersAsync(Guid id, CancellationToken ct = default);
+    Task<bool> HasDependenciesAsync(Guid id, CancellationToken ct = default);
+    Task<bool> PhonesExistAsync(IReadOnlyCollection<string> numbers, Guid? excludedBranchId = null, CancellationToken ct = default);
 }

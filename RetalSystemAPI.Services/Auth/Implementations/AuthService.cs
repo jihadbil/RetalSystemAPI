@@ -130,7 +130,8 @@ public class AuthService : IAuthService
             // تجميع رسائل أخطاء التحقق وقواعد كلمة المرور
             var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
             // إرجاع نتيجة فشل التحقق مع التفاصيل
-            return ServiceResult<AuthResponseDto>.Failure($"فشل إنشاء الحساب: {errors}", ErrorCodes.ValidationError);
+            return ServiceResult<AuthResponseDto>.Failure($"فشل إنشاء الحساب: {errors}",
+                LoginIdentifierValidator.IsDuplicate(createResult) ? ErrorCodes.UserAlreadyExists : ErrorCodes.ValidationError);
         }
 
         // 4. توليد رمز JWT وتجهيز بيانات الاستجابة للمستخدم الجديد

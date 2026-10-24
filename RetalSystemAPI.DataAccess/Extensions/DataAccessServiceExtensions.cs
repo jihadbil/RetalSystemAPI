@@ -36,6 +36,8 @@ public static class DataAccessServiceExtensions
         // ── HttpContext & User/Tenant Services ────────────────
         // تسجيل IHttpContextAccessor للتمكن من قراءة بيانات الطلب والمستخدم الحالي من أي مكان
         services.AddHttpContextAccessor();
+        services.AddScoped<TenantExecutionContext>();
+        services.AddScoped<ITenantExecutionScopeFactory, TenantExecutionScopeFactory>();
         // تسجيل خدمة استخراج معرف المستأجر بنطاق الطلب Scoped
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
         // تسجيل خدمة استخراج معرف المستخدم بنطاق الطلب Scoped
@@ -89,6 +91,8 @@ public static class DataAccessServiceExtensions
         .AddRoles<IdentityRole>()
         // ربط مخزن الهوية بسياق قاعدة البيانات AppDbContext
         .AddEntityFrameworkStores<AppDbContext>()
+        .AddUserStore<LoginIdentifierUserStore>()
+        .AddUserValidator<LoginIdentifierValidator>()
         // إضافة مزودي الرموز الافتراضية لاستعادة كلمات المرور وتأكيد الحسابات
         .AddDefaultTokenProviders();
 

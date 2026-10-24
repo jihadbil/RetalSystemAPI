@@ -164,14 +164,13 @@ public class TenantService : ITenantService
 
         // تعيين رابط الشعار الجديد
         tenant.LogoUrl = logoUrl;
+        // Build the response before persistence. No fallible response queries may follow a committed logo save.
+        var responseDto = _mapper.Map<TenantResponseDto>(tenant);
+        await PopulateTenantStatsAsync(responseDto, id, ct);
         // وسم السجل للتحديث
         _unitOfWork.Tenants.Update(tenant);
         // حفظ التغييرات في قاعدة البيانات
         await _unitOfWork.SaveChangesAsync(ct);
-        // تحويل الكيان إلى كائن الاستجابة
-        var responseDto = _mapper.Map<TenantResponseDto>(tenant);
-        // تعبئة إحصائيات المنشأة
-        await PopulateTenantStatsAsync(responseDto, id, ct);
         // إرجاع نتيجة النجاح
         return ServiceResult<TenantResponseDto>.Success(responseDto);
     }

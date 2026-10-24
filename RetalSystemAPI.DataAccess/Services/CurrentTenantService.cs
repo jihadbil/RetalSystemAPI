@@ -10,15 +10,17 @@ namespace RetalSystemAPI.DataAccess.Services;
 public class CurrentTenantService : ICurrentTenantService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly TenantExecutionContext? _executionContext;
 
     /// <summary>
     /// تهيئة الخدمة مع حقن IHttpContextAccessor للوصول إلى معلومات جلسة الطلب.
     /// </summary>
     /// <param name="httpContextAccessor">مزود الوصول إلى سياق الـ HTTP</param>
-    public CurrentTenantService(IHttpContextAccessor httpContextAccessor)
+    public CurrentTenantService(IHttpContextAccessor httpContextAccessor, TenantExecutionContext? executionContext = null)
     {
         // حفظ مرجع مزود سياق الطلب لاستخدامه لاحقاً في استخراج المطالبات
         _httpContextAccessor = httpContextAccessor;
+        _executionContext = executionContext;
     }
 
     /// <summary>
@@ -28,6 +30,7 @@ public class CurrentTenantService : ICurrentTenantService
     {
         get
         {
+            if (_executionContext?.TenantId is { } scopedTenantId) return scopedTenantId;
             // استخراج كائن المستخدم الرئيسي ClaimsPrincipal من سياق الطلب الحالي
             var user = _httpContextAccessor.HttpContext?.User;
             // إذا لم يكن هناك مستخدم أو سياق طلب، يتم إرجاع Guid.Empty فوراً
