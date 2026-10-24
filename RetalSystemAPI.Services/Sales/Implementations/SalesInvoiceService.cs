@@ -45,6 +45,20 @@ public class SalesInvoiceService : ISalesInvoiceService
         _permissions = permissions;
     }
 
+    private async Task<SalesInvoiceResponseDto> MapWithIssuerAsync(SalesInvoice invoice, CancellationToken ct)
+    {
+        var dto = _mapper.Map<SalesInvoiceResponseDto>(invoice);
+        var tenant = await _unitOfWork.Tenants.GetByIdAsync(invoice.TenantId, ct);
+        if (tenant is not null)
+            dto.Issuer = new InvoiceIssuerDto
+            {
+                Name = string.IsNullOrWhiteSpace(tenant.CommercialName) ? tenant.Name : tenant.CommercialName,
+                TaxNumber = tenant.TaxNumber,
+                Address = tenant.Address, Phone = tenant.PhoneNumber
+            };
+        return dto;
+    }
+
     /// <inheritdoc/>
     public async Task<ServiceResult<SalesInvoiceResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

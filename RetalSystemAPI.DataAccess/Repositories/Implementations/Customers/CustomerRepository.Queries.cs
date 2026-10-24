@@ -9,6 +9,8 @@ using RetalSystemAPI.Models.Common;
 namespace RetalSystemAPI.DataAccess.Repositories.Implementations;
 public partial class CustomerRepository
 {
+    public Task<bool> HasHistoricalReferencesAsync(Guid id, CancellationToken ct = default) => HasFinancialHistoryAsync(id, ct);
+
     public async Task<bool> HasFinancialHistoryAsync(Guid id, CancellationToken ct = default)
     {
         var tenantId = _context.CurrentTenantId;
@@ -44,7 +46,7 @@ public partial class CustomerRepository
 
     public async Task<PageResult<Customer>> SearchAsync(CustomerQuery request, CancellationToken ct = default)
     {
-        var query = SpecificationEvaluator<Customer>.GetQuery(_context.Set<Customer>(), new CustomerWithDetailsSpec(request.Type, request.IsActive, request.Search));
+        var query = BuildList(request);
         if (request.HasBalance) query = query.Where(customer => customer.CurrentBalance > 0);
         return await QueryPaging.ReadAsync(query, request, ct);
     }

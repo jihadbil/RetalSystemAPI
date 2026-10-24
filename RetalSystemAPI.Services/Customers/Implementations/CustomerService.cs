@@ -70,14 +70,17 @@ public class CustomerService : ICustomerService
     }
 
     /// <inheritdoc/>
-    public Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, CancellationToken ct = default) =>
-        GetPagedAsync(pageNumber, pageSize, type, isActive, search, false, ct);
+    public Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, CancellationToken ct) =>
+        GetPagedAsync(pageNumber, pageSize, type, isActive, search, null, ct);
 
-    public async Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default)
+    public Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default) =>
+        GetPagedAsync(pageNumber, pageSize, type, isActive, search, hasBalance ? true : (bool?)null, ct);
+
+    public async Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, bool? hasDebt = null, CancellationToken ct = default)
     {
         // تجهيز مواصفة الاستعلام المخصصة بالترقيم والفلترة
         // جلب عناصر الصفحة المحددة وإجمالي عدد السجلات
-        var(items, totalCount) = await _unitOfWork.Customers.SearchAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search, HasBalance = hasBalance, PageNumber = pageNumber, PageSize = pageSize }, ct);
+        var(items, totalCount) = await _unitOfWork.Customers.SearchAsync(new CustomerQuery { Type = type, IsActive = isActive, Search = search, HasDebt = hasDebt, PageNumber = pageNumber, PageSize = pageSize }, ct);
         // تحويل قائمة الكيانات إلى DTOs
         var dtos = _mapper.Map<IReadOnlyList<CustomerSummaryDto>>(items);
         // بناء كائن الصفحة الموحد

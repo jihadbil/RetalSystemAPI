@@ -176,7 +176,6 @@ public class StockTransferService : IStockTransferService
         var transfer = await _unitOfWork.StockTransfers.GetDetailsForUpdateAsync(id, ct);
         if (transfer is null)
             return ServiceResult<StockTransferResponseDto>.Failure("أمر التحويل المخزني غير موجود", ErrorCodes.StockTransferNotFound);
-        }
 
         // منع تعديل الأوامر التي تم اكتمالها وترحيلها فعلياً
         if (transfer.Status == StockTransferStatus.Completed)
@@ -301,31 +300,21 @@ public class StockTransferService : IStockTransferService
             // 2. تنفيذ خصم الكميات من المستودع المصدر
             if (fromWh.Type == WarehouseType.Storge)
             {
-                if (fromWh.Type == WarehouseType.Storge) sourceStorage[item.ProductBarCodeId!.Value].Quantity -= item.Quantity;
-                else sourceShowroom[item.ProductId].Quantity -= item.Quantity;
-                if (toWh.Type == WarehouseType.Storge)
-                {
-                    var barcodeId = item.ProductBarCodeId!.Value;
-                    if (!targetStorage.TryGetValue(barcodeId, out var stock))
-                    {
-                        stock = new StorgeStock { TenantId = transfer.TenantId, WarehouseId = toWh.Id, ProductBarcodeId = barcodeId };
-                        await _unitOfWork.Stock.AddStorgeStockAsync(stock, ct);
-                        targetStorage[barcodeId] = stock;
-                    }
-                    stock.Quantity = checked(stock.Quantity + item.Quantity);
-                }
-                else
-                {
-                    if (!targetShowroom.TryGetValue(item.ProductId, out var stock))
-                    {
-                        // فحص وجود رصيد الصنف
-                        if (sourceStocksByProduct.TryGetValue(item.ProductId, out var stock))
-                        {
-                            // طرح الكمية المحولة
-                            stock.Quantity -= item.Quantity;
-                        }
-                    }
-                }
+                var totals = transfer.Items.GroupBy(i => i.ProductBarCodeId!.Value)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
+                var source = (await _unitOfWork.Stock.GetStorageForUpdateAsync(fromWh.Id, totals.Keys.ToList(), ct))
+                    .ToDictionary(s => s.ProductBarcodeId);
+                foreach (var total in totals)
+                    source[total.Key].Quantity = checked(source[total.Key].Quantity - (int)total.Value);
+            }
+            else if (fromWh.Type == WarehouseType.Show)
+            {
+                var totals = transfer.Items.GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(i => (long)i.Quantity));
+                var source = (await _unitOfWork.Stock.GetShowroomForUpdateAsync(fromWh.Id, totals.Keys.ToList(), ct))
+                    .ToDictionary(s => s.ProductId);
+                foreach (var total in totals)
+                    source[total.Key].Quantity = checked(source[total.Key].Quantity - (int)total.Value);
             }
 
             // 3. تنفيذ إضافة الكميات إلى المستودع الوجهة
@@ -396,7 +385,6 @@ public class StockTransferService : IStockTransferService
                         // حفظه بالقاموس
                         targetStocksByProduct[item.ProductId] = newStock;
                     }
-                    stock.Quantity = checked(stock.Quantity + item.Quantity);
                 }
             }
         }

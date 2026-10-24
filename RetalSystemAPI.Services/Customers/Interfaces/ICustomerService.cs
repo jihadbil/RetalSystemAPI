@@ -45,7 +45,7 @@ public interface ICustomerService
     /// <returns>نتيجة مجزأة تحتوي على ملخصات العملاء وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, bool? hasDebt = null, CancellationToken ct = default);
 
-    Task<ServiceResult<PagedResult<CustomerSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default);
 
     /// <summary>
     /// إنشاء عميل جديد مع التحقق من عدم تكرار الكود وحفظ أرقام هواتفه.

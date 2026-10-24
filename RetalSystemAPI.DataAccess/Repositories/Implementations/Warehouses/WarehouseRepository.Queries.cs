@@ -56,16 +56,4 @@ public partial class WarehouseRepository
         return await _context.Set<Warehouse>().AsNoTracking().AnyAsync(e => e.Name == name && e.BranchId == branchId && e.Id != id, ct);
     }
 
-    public async Task<bool> HasDocumentReferencesAsync(Guid id, CancellationToken ct = default)
-    {
-        // Keep historical references, including archived documents, inside the current tenant.
-        var tenantId = _context.CurrentTenantId;
-        return await _context.SalesInvoices.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.SalesReturns.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.PurchaseInvoices.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.PurchaseReturns.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.PurchaseOrders.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.StockAdjustments.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && e.WarehouseId == id, ct)
-            || await _context.StockTransfers.IgnoreQueryFilters().AnyAsync(e => e.TenantId == tenantId && (e.FromWarehouseId == id || e.ToWarehouseId == id), ct);
-    }
 }

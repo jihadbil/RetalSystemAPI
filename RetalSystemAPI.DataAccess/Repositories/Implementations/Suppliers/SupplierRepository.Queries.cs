@@ -46,8 +46,7 @@ public partial class SupplierRepository
 
     public async Task<PageResult<Supplier>> SearchAsync(SupplierQuery request, CancellationToken ct = default)
     {
-        var query = SpecificationEvaluator<Supplier>.GetQuery(_context.Set<Supplier>(), new SupplierWithDetailsSpec(request.Search));
-        if (request.IsActive.HasValue) query = query.Where(supplier => supplier.IsActive == request.IsActive.Value);
+        var query = BuildList(request);
         if (request.HasBalance) query = query.Where(supplier => supplier.CurrentBalance > 0);
         return await QueryPaging.ReadAsync(query, request, ct);
     }

@@ -64,10 +64,10 @@ public class ProductService : IProductService
     }
 
     /// <inheritdoc/>
-    public Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, CancellationToken ct = default) =>
+    public Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, CancellationToken ct) =>
         GetPagedAsync(pageNumber, pageSize, categoryId, null, ct);
 
-    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, string? search, CancellationToken ct = default)
+    public async Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, string? search = null, CancellationToken ct = default)
     {
         // بناء مواصفة استعلام المنتجات للترقيم مع فلتر التصنيف
         // تنفيذ الاستعلام الصفحي لجلب سجلات الصفحة الحالية والعدد الإجمالي

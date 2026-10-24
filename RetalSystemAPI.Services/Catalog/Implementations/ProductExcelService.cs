@@ -395,15 +395,6 @@ public class ProductExcelService : IProductExcelService
                     }
 
                     // التحقق من وجود الصنف في النظام
-                    if (ambiguousNames.Contains(name) && !barcodeMap.ContainsKey(barcode) &&
-                        !(Guid.TryParse(code, out var stableId) && existingProductIds.Contains(stableId)))
-                    {
-                        rowVal.Status = RowValidationStatus.Error;
-                        rowVal.Message = "اسم الصنف مكرر؛ حدد معرف الصنف أو باركوداً مسجلاً لتحديده";
-                        result.InvalidRows++;
-                        result.Rows.Add(rowVal);
-                        continue;
-                    }
                     bool productExists = false;
                     if (!string.IsNullOrWhiteSpace(barcode) && barcodeMap.ContainsKey(barcode))
                     {
@@ -940,7 +931,7 @@ public class ProductExcelService : IProductExcelService
                 productIdMap.TryGetValue(parsedGuid, out targetProduct);
             }
 
-            if (targetProduct == null && ambiguousNames.Contains(name))
+            if (targetProduct == null && ambiguousProductNames.Contains(name))
             {
                 result.FailedRows.Add(new FailedRowDetailsDto { RowNumber = r, ItemCode = code, Name = name, BarCode = barcode, ErrorReason = "اسم الصنف مكرر؛ حدد معرف الصنف أو باركوداً مسجلاً" });
                 continue;
