@@ -1,4 +1,5 @@
 import { PosTerminalFormModal } from './components/PosTerminalFormModal';
+import { PosSessionPaymentsView } from './components/PosSessionPaymentsView';
 import { lookupService } from '../../shared/services/lookupService';
 import { useRequestGate } from '../../shared/hooks/useRequestGate';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -214,6 +215,7 @@ export const AccountingView: React.FC = () => {
     ...(canViewSafes ? [
       { id: 'transactions', label: 'كشف حركات الصندوق', icon: <IconArrowsExchange className="w-4 h-4" /> },
       { id: 'terminals', label: 'نقاط البيع والأدراج', icon: <IconDeviceDesktop className="w-4 h-4" /> },
+      { id: 'session-payments', label: 'حركات وتسوية الورديات', icon: <IconArrowsExchange className="w-4 h-4" /> },
     ] : []),
   ];
 
@@ -304,6 +306,7 @@ export const AccountingView: React.FC = () => {
 
       {/* تبويبات الشاشة */}
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      {activeTab === 'session-payments' && <PosSessionPaymentsView />}
 
       {accountingError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between gap-3 animate-fade-in">

@@ -1,10 +1,9 @@
 import { useRequestGate } from '../../../shared/hooks/useRequestGate';
 import { loadPendingCheckout, savePendingCheckout, settlePendingCheckout, withCheckoutLock, type PendingCheckout } from '../services/pendingCheckout';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { CartItem, PosDraft, QuickProductItem, ReceiptData } from '../types/pos.types';
+import type { CartItem, PosDraft, QuickProductItem, ReceiptData, PosPayment } from '../types/pos.types';
 import { PaymentMethod } from '../types/pos.types';
 import { posService } from '../services/posService';
-import { CheckoutAttempt } from '../services/CheckoutAttempt';
 import type { PosDeviceContext, PosPaymentAccount } from '../services/posService';
 import { soundService } from '../../../shared/services/soundService';
 import { useAuth } from '../../../shared/context/AuthContext';
@@ -15,8 +14,11 @@ import type { WarehouseDto } from '../../stock/types/stock.types';
 import { Permissions } from '../../../shared/auth/permissions';
 import { createDocumentNumber } from '../../../shared/utils/documentNumber';
 import { calculatePosTotals } from '../utils/posTotals';
+import { sumPayments, validateSplitPayments } from '../utils/splitPayments';
 
 interface PosContextType {
+  splitPayments: PosPayment[] | null;
+  applySplitPayments: (payments: PosPayment[]) => void;
   cartItems: CartItem[];
   customer: { id?: string; name: string; phone?: string };
   discount: number;
@@ -83,7 +85,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deviceGate = useRequestGate();
   const draftScope = `${currentTenantId || 'no-tenant'}:${deviceContext?.terminal.branchId || currentBranchId || 'no-branch'}:${user?.id || 'anonymous'}`;
   const draftScopeRef = useRef(draftScope);
-  const skipNextDraftSaveRef = useRef(false);
   const checkoutInFlight = useRef(false);
   const cartGeneration = useRef(0);
   const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
@@ -97,6 +98,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [taxRate] = useState<number>(0); // النسبة الضريبية الافتراضية
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.Cash);
+  const [splitPayments, setSplitPayments] = useState<PosPayment[] | null>(null);
+  const [splitTotal, setSplitTotal] = useState<number | null>(null);
   const [notes, setNotes] = useState<string>('');
   const [heldDrafts, setHeldDrafts] = useState<PosDraft[]>(() => posService.loadDrafts(draftScope));
   const heldDraftsRef = useRef(heldDrafts);
@@ -133,14 +136,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [refreshDeviceContext, currentTenantId, user?.id, deviceGate]);
 
   const pairDevice = useCallback(async (pairingCode: string) => {
-    if (checkoutAttempt.current.inFlight) return false;
+    if (checkoutInFlight.current) return false;
     if (!currentTenantId) { showError('تعذر الربط', 'لا يوجد مستأجر حالي في جلسة الدخول'); return false; }
     try { await posService.claimDevice(currentTenantId, pairingCode); await refreshDeviceContext(); return true; }
     catch (err) { showError('فشل ربط الجهاز', err instanceof Error ? err.message : 'رمز الربط غير صالح'); return false; }
   }, [currentTenantId, refreshDeviceContext, showError]);
 
   const openCashSession = useCallback(async (openingFloat: number) => {
-    if (checkoutAttempt.current.inFlight) return false;
+    if (checkoutInFlight.current) return false;
     if (!hasPermission(Permissions.Pos.OpenSession)) {
       showWarning('الإجراء غير مسموح', 'لا تملك صلاحية فتح وردية نقدية');
       return false;
@@ -150,7 +153,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [hasPermission, refreshDeviceContext, showError, showWarning]);
 
   const closeCashSession = useCallback(async (countedBalance: number, closingNotes?: string) => {
-    if (checkoutAttempt.current.inFlight) return false;
+    if (checkoutInFlight.current) return false;
     if (!hasPermission(Permissions.Pos.CloseSession)) {
       showWarning('الإجراء غير مسموح', 'لا تملك صلاحية إغلاق الوردية النقدية');
       return false;
@@ -160,7 +163,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [hasPermission, refreshDeviceContext, showError, showWarning]);
 
   const applyDiscount = useCallback((value: number) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     if (!hasPermission(Permissions.Pos.ApplyDiscount)) {
       showWarning('الإجراء غير مسموح', 'لا تملك صلاحية تطبيق خصم في نقطة البيع');
       return;
@@ -171,11 +174,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (draftScopeRef.current !== draftScope) {
       draftScopeRef.current = draftScope;
-      skipNextDraftSaveRef.current = true;
-      setHeldDrafts(posService.loadDrafts(draftScope));
+      const drafts = posService.loadDrafts(draftScope);
+      heldDraftsRef.current = drafts;
+      setHeldDrafts(drafts);
       cartGeneration.current++;
       setCartItems([]); setCustomer({ name: 'عميل نقدي' });
-      setDiscount(0); setPaidAmount(0); setNotes(''); setLastReceipt(null);
+      setDiscount(0); setPaidAmount(0); setNotes(''); setLastReceipt(null); setSplitPayments(null); setSplitTotal(null);
     }
   }, [draftScope]);
 
@@ -189,11 +193,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('storage', refresh);
   }, [draftScope]);
 
-  // مزامنة المسودات في تخزين معزول لكل مستأجر وفرع ومستخدم.
-  useEffect(() => {
-    if (skipNextDraftSaveRef.current) {
-      skipNextDraftSaveRef.current = false;
-      return;
+  const persistDrafts = useCallback((drafts: PosDraft[]): boolean => {
+    try {
+      posService.saveDrafts(draftScope, drafts);
+      heldDraftsRef.current = drafts;
+      setHeldDrafts(drafts);
+      return true;
+    } catch (error) {
+      showError('تعذر حفظ المسودات', error instanceof Error ? error.message : 'تحقق من مساحة التخزين');
+      return false;
     }
   }, [draftScope, showError]);
 
@@ -244,14 +252,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [deviceContext?.terminal.branchId, currentBranchId]);
 
   // الحسابات المالية اللحظية
-  const { subtotal, discountAmount, taxAmount, grandTotal, changeAmount, remainingAmount } = useMemo(
+  const { subtotal, discountAmount, taxAmount, grandTotal, changeAmount: singleChangeAmount, remainingAmount } = useMemo(
     () => calculatePosTotals(cartItems, discount, taxRate, paidAmount),
     [cartItems, discount, taxRate, paidAmount],
   );
+  const cashPayment = splitPayments?.find(p => p.paymentMethod === PaymentMethod.Cash);
+  const changeAmount = splitPayments ? Number(((cashPayment?.tenderedAmount ?? cashPayment?.amount ?? 0) - (cashPayment?.amount ?? 0)).toFixed(4)) : singleChangeAmount;
+  const applySplitPayments = useCallback((payments: PosPayment[]) => {
+    if (checkoutInFlight.current) return;
+    setSplitPayments(payments.map(p => ({ ...p })));
+    setSplitTotal(grandTotal);
+    setPaidAmount(sumPayments(payments));
+    setPaymentMethod(payments.length > 1 ? PaymentMethod.Multiple : payments[0].paymentMethod);
+  }, [grandTotal]);
 
   // إضافة صنف إلى السلة مع قاعدة الصالة: التجميع بمفتاح ProductId
   const addCartItem = useCallback((product: QuickProductItem | CartItem) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     const pId = 'productId' in product ? product.productId : (product as CartItem).productId;
     const price = 'price' in product ? product.price : (product as CartItem).unitPrice;
     const name = 'name' in product ? product.name : (product as CartItem).productName;
@@ -299,12 +316,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // مسح وإضافة بالباركود
   const addItemByBarcode = useCallback(async (barcode: string): Promise<boolean> => {
-    if (checkoutAttempt.current.inFlight) return false;
+    if (checkoutInFlight.current) return false;
     if (!barcode.trim()) return false;
     const scope = draftScope;
     const generation = cartGeneration.current;
     try {
-      const generation = cartGeneration.current;
       const item = await posService.findProductByBarcode(barcode.trim());
       if (scope !== draftScopeRef.current || generation !== cartGeneration.current || checkoutInFlight.current) return false;
       if (item) {
@@ -325,7 +341,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // تعديل كمية صنف
   const updateQuantity = useCallback((lineId: string, newQty: number) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     if (newQty <= 0) {
       setCartItems((prev) => prev.filter(
         (item) => (item.lineId || item.productBarCodeId || item.barCode || item.productId) !== lineId
@@ -348,7 +364,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // تعديل كمية الصنف النشط حالياً
   const setExactQuantityForSelected = useCallback((qty: number) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     setCartItems((prev) => {
       if (selectedItemIndex < 0 || selectedItemIndex >= prev.length) return prev;
       const target = prev[selectedItemIndex];
@@ -367,7 +383,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // خصم صنف فردي
   const updateItemDiscount = useCallback((lineId: string, discountAmt: number) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     setCartItems((prev) =>
       prev.map((item) => {
         if ((item.lineId || item.productBarCodeId || item.barCode || item.productId) === lineId) {
@@ -385,31 +401,31 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // حذف صنف من السلة
   const removeItem = useCallback((lineId: string) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     setCartItems((prev) => prev.filter(
       (item) => (item.lineId || item.productBarCodeId || item.barCode || item.productId) !== lineId
     ));
   }, []);
 
   // تفريغ السلة
-  const clearCart = useCallback(() => {
+  const resetCart = useCallback(() => {
     cartGeneration.current++;
     setCartItems([]);
     setDiscount(0);
     setPaidAmount(0);
+    setSplitPayments(null); setSplitTotal(null); setPaymentMethod(PaymentMethod.Cash);
     setNotes('');
     setCustomer({ name: 'عميل نقدي' });
   }, []);
 
   const clearCart = useCallback(() => {
-    if (checkoutAttempt.current.inFlight) return;
-    checkoutAttempt.current.reset();
+    if (checkoutInFlight.current) return;
     resetCart();
   }, [resetCart]);
 
   // تعليق الطلب الحالي في المسودات (F5)
   const holdCurrentOrder = useCallback((): boolean => {
-    if (checkoutAttempt.current.inFlight) return false;
+    if (checkoutInFlight.current) return false;
     if (cartItems.length === 0) {
       showWarning('السلة فارغة', 'لا توجد أصناف في السلة لتعليقها');
       return false;
@@ -426,6 +442,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tax: taxAmount,
       paid: paidAmount,
       paymentMethod,
+      payments: splitPayments || undefined,
       notes,
       total: grandTotal,
       label: `${new Date().toLocaleTimeString('ar-LY', { hour: '2-digit', minute: '2-digit' })} · ${
@@ -437,11 +454,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clearCart();
     showSuccess('تم تعليق الطلب (F5)', `تم حفظ المسودة بنجاح (#${newDraft.id.slice(-4)})`);
     return true;
-  }, [cartItems, currentBranchId, customer, discount, taxAmount, paidAmount, paymentMethod, notes, grandTotal, clearCart, persistDrafts, showSuccess, showWarning]);
+  }, [cartItems, currentBranchId, customer, discount, taxAmount, paidAmount, paymentMethod, splitPayments, notes, grandTotal, clearCart, persistDrafts, showSuccess, showWarning]);
 
   // استعادة الطلب المعلق المحدد (F6)
   const recallDraft = useCallback((draftId: string) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     const draft = heldDraftsRef.current.find((d) => d.id === draftId);
     if (!draft) return;
 
@@ -456,6 +473,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscount(draft.discount || 0);
     setPaidAmount(draft.paid || 0);
     setPaymentMethod(draft.paymentMethod || PaymentMethod.Cash);
+    setSplitPayments(draft.payments || null); setSplitTotal(draft.payments ? draft.total : null);
     setNotes(draft.notes || '');
 
     // حذف المسودة المستعادة من قائمة المعلقات
@@ -464,7 +482,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cartItems.length, persistDrafts, showSuccess, showWarning]);
 
   const deleteDraft = useCallback((draftId: string) => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     // The persisted draft list was updated before changing the active cart.
     if (!persistDrafts(heldDraftsRef.current.filter((d) => d.id !== draftId))) return;
     showSuccess('تم الحذف', 'تم حذف المسودة المعلقة');
@@ -472,15 +490,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // وضع المبلغ المستلم مساوياً للإجمالي (F8)
   const setExactCash = useCallback(() => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     setPaidAmount(grandTotal);
+    setSplitPayments(null); setSplitTotal(null);
     setPaymentMethod(PaymentMethod.Cash);
   }, [grandTotal]);
 
   // تحويل طريقة الدفع للبطاقة المصرفية فوراً (F9)
   const setCardPayment = useCallback(() => {
-    if (checkoutAttempt.current.inFlight) return;
+    if (checkoutInFlight.current) return;
     setPaymentMethod(PaymentMethod.Card);
+    setSplitPayments(null); setSplitTotal(null);
     setPaidAmount(grandTotal);
   }, [grandTotal]);
 
@@ -499,7 +519,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLastReceipt(receipt); setPendingCheckout(null); setRecoveryError('');
         const currentItems = cartItems.map((item) => ({ productId: item.productId, productBarCodeId: item.productBarCodeId,
           barCode: item.barCode, quantity: item.quantity, unitPrice: item.unitPrice, discountAmount: item.discountAmount, totalPrice: item.lineTotal }));
-        if (JSON.stringify(currentItems) === JSON.stringify(pending.request.items)) clearCart();
+        if (JSON.stringify(currentItems) === JSON.stringify(pending.request.items)) resetCart();
         showSuccess('تم استعادة نتيجة البيع', `فاتورة رقم: ${receipt.invoiceNumber}`);
         return true;
       });
@@ -507,7 +527,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (draftScopeRef.current === scope) showError('تعذر حسم نتيجة البيع', error instanceof Error ? error.message : 'أعد المحاولة بنفس رقم العملية');
       return false;
     } finally { checkoutInFlight.current = false; setIsCheckingOut(false); }
-  }, [draftScope, hasPermission, isLocked, showSuccess, showError, cartItems, clearCart]);
+  }, [draftScope, hasPermission, isLocked, showSuccess, showError, cartItems, resetCart]);
 
   // إتمام البيع والطباعة (F10)
   const completeSale = useCallback(async (): Promise<boolean> => {
@@ -532,19 +552,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    if (paymentMethod === PaymentMethod.Cash && paidAmount < grandTotal) {
+    if (splitPayments) {
+      const invalid = validateSplitPayments(splitPayments, grandTotal, Boolean(customer.id));
+      if (invalid || splitTotal !== grandTotal) {
+        showWarning('راجع توزيع الدفع', invalid || 'تغير إجمالي الفاتورة؛ افتح نافذة الدفع المتعدد واعتمد التوزيع مجدداً');
+        return false;
+      }
+    }
+    if (!splitPayments && paymentMethod === PaymentMethod.Cash && paidAmount < grandTotal) {
       soundService.playErrorBuzz();
       showWarning('المبلغ غير كافٍ', `المبلغ المستلم (${paidAmount.toFixed(2)} د.ل) أقل من الإجمالي (${grandTotal.toFixed(2)} د.ل)`);
       return false;
     }
 
-    if (paymentMethod === PaymentMethod.Cash && !deviceContext?.currentSession) {
+    if ((splitPayments || paymentMethod === PaymentMethod.Cash) && !deviceContext?.currentSession) {
       showWarning('وردية غير مفتوحة', 'اربط الجهاز بنقطة البيع وافتح وردية درج النقود قبل البيع النقدي');
       return false;
     }
 
     const effectiveBranchId = deviceContext?.terminal.branchId || currentBranchId;
-    if (paymentMethod !== PaymentMethod.Cash && grandTotal > 0 && !paymentAccounts.some((account) => account.id === paymentSafeId)) {
+    if (!splitPayments && paymentMethod !== PaymentMethod.Cash && grandTotal > 0 && !paymentAccounts.some((account) => account.id === paymentSafeId)) {
       showWarning('حساب التحصيل غير محدد', 'اختر الحساب المصرفي الذي سيستقبل مبلغ البيع');
       return false;
     }
@@ -562,7 +589,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     cartGeneration.current++;
     setIsCheckingOut(true);
     try {
-      const invoicePaidAmount = paymentMethod === PaymentMethod.Cash || paymentMethod === PaymentMethod.Card
+      const invoicePaidAmount = splitPayments ? sumPayments(splitPayments) : paymentMethod === PaymentMethod.Cash || paymentMethod === PaymentMethod.Card
         ? grandTotal
         : Math.min(grandTotal, Math.max(0, paidAmount));
       const invoicePayload = {
@@ -575,8 +602,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         taxAmount,
         totalAmount: grandTotal,
         paidAmount: invoicePaidAmount,
-        cashSessionId: paymentMethod === PaymentMethod.Cash ? deviceContext?.currentSession?.id : undefined,
-        paymentSafeId: paymentMethod !== PaymentMethod.Cash ? paymentSafeId : undefined,
+        cashSessionId: splitPayments || paymentMethod === PaymentMethod.Cash ? deviceContext?.currentSession?.id : undefined,
+        paymentSafeId: !splitPayments && paymentMethod !== PaymentMethod.Cash ? paymentSafeId : undefined,
+        payments: splitPayments || undefined,
         notes,
         items: cartItems.map((item) => ({
           productId: item.productId,
@@ -609,9 +637,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         discount: discountAmount,
         tax: taxAmount,
         total: grandTotal,
-        paid: paymentMethod === PaymentMethod.Card ? grandTotal : paidAmount,
-        change: paymentMethod === PaymentMethod.Card ? 0 : changeAmount,
-        paymentMethod: paymentMethod === PaymentMethod.Card ? 'بطاقة مصرفية' : 'نقداً',
+        paid: splitPayments ? invoicePaidAmount : paymentMethod === PaymentMethod.Card ? grandTotal : paidAmount,
+        change: splitPayments ? changeAmount : paymentMethod === PaymentMethod.Card ? 0 : changeAmount,
+        paymentMethod: splitPayments ? 'توزيع وسائل الدفع' : paymentMethod === PaymentMethod.Card ? 'بطاقة مصرفية' : 'نقداً',
+        payments: splitPayments || undefined,
         qrCodeValue: `${invoiceNumber}|${grandTotal.toFixed(2)}|${new Date().toISOString()}`,
       };
 
@@ -626,7 +655,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPendingCheckout(null);
         soundService.playSuccessChime();
         showSuccess('تم إتمام البيع بنجاح (F10)', `فاتورة رقم: ${savedReceipt.invoiceNumber} — الإجمالي: ${grandTotal.toFixed(2)} د.ل`);
-        clearCart();
+        resetCart();
       });
       if (draftScopeRef.current !== draftScope) return true;
 
@@ -651,6 +680,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [
     cartItems,
+    splitPayments,
+    splitTotal,
+    isCheckingOut,
     pendingCheckout,
     recoveryError,
     draftScope,
@@ -692,6 +724,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <PosContext.Provider
       value={{
+        splitPayments,
+        applySplitPayments,
         cartItems,
         customer,
         discount,
@@ -729,12 +763,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateItemDiscount,
         removeItem,
         clearCart,
-        setSelectedItemIndex: (value) => { if (!checkoutAttempt.current.inFlight) setSelectedItemIndex(value); },
-        setCustomer: (value) => { if (!checkoutAttempt.current.inFlight) setCustomer(value); },
+        setSelectedItemIndex: (value) => { if (!checkoutInFlight.current) setSelectedItemIndex(value); },
+        setCustomer: (value) => { if (!checkoutInFlight.current) setCustomer(value); },
         setDiscount: applyDiscount,
-        setPaidAmount: (value) => { if (!checkoutAttempt.current.inFlight) setPaidAmount(value); },
-        setPaymentMethod: (value) => { if (!checkoutAttempt.current.inFlight) setPaymentMethod(value); },
-        setNotes: (value) => { if (!checkoutAttempt.current.inFlight) setNotes(value); },
+        setPaidAmount: (value) => { if (!checkoutInFlight.current) { setSplitPayments(null); setSplitTotal(null); setPaidAmount(value); } },
+        setPaymentMethod: (value) => { if (!checkoutInFlight.current) { setSplitPayments(null); setSplitTotal(null); setPaymentMethod(value); } },
+        setNotes: (value) => { if (!checkoutInFlight.current) setNotes(value); },
         setExactCash,
         setCardPayment,
         holdCurrentOrder,

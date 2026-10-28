@@ -12,6 +12,8 @@ import { PurchaseInvoiceDetailsModal } from '../../src/features/purchase/compone
 import { ExpenseFormModal } from '../../src/features/accounting/components/ExpenseFormModal';
 import { PosTerminalFormModal } from '../../src/features/accounting/components/PosTerminalFormModal';
 import { PosProvider, usePos } from '../../src/features/pos/context/PosContext';
+import { PosPaymentPanel } from '../../src/features/pos/components/PosPaymentPanel';
+import { PosSessionPaymentsView } from '../../src/features/accounting/components/PosSessionPaymentsView';
 
 export function Dialogs() {
   const [parent, setParent] = useState(false);
@@ -36,6 +38,7 @@ export function PosProbe() {
     <button onClick={pos.setExactCash}>Exact cash</button>
     <button onClick={() => void pos.completeSale()}>Checkout</button>
     <button onClick={() => void pos.recoverPendingSale()}>Recover</button>
+    <button onClick={() => void pos.closeCashSession(104)}>Close shift</button>
     <output data-testid="cart-count">{pos.cartItems.length}</output>
     <output data-testid="pending">{pos.pendingCheckout?.request.invoiceNumber || 'none'}</output>
     <output data-testid="receipt">{pos.lastReceipt?.invoiceNumber || 'none'}</output>
@@ -61,6 +64,8 @@ export function Harness() {
     {mode === 'expense' && <ExpenseFormModal isOpen onClose={() => {}} categories={[]} safes={[]} onSaved={() => {}} />}
     {mode === 'terminal' && <PosTerminalFormModal branchId="branch-a" onClose={() => {}} onSaved={() => {}} />}
     {mode === 'pos' && <PosProvider><PosProbe /></PosProvider>}
+    {mode === 'pos-split' && <PosProvider><PosProbe /><PosPaymentPanel onOpenDraftsModal={() => {}} onOpenDiscountModal={() => {}} /></PosProvider>}
+    {mode === 'session-payments' && <PosSessionPaymentsView />}
   </>;
 }
 

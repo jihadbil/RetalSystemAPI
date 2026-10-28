@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PaymentMethodLabels, type PaymentMethod } from '../../pos/types/pos.types';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import type { SalesInvoiceDto } from '../types/sales.types';
@@ -176,6 +177,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
               <span>المبلغ المدفوع:</span>
               <span className="font-semibold num-ltr">{invoice.paidAmount.toFixed(2)} د.ل</span>
             </div>
+            {invoice.payments?.map(payment => <div key={payment.paymentMethod} className="flex justify-between text-slate-600">
+              <span>{PaymentMethodLabels[payment.paymentMethod as PaymentMethod]}:</span><span>{payment.amount.toFixed(4)} د.ل</span>
+            </div>)}
             {invoice.remainingAmount > 0 && (
               <div className="flex justify-between text-rose-700 font-bold pt-1">
                 <span>المتبقي في الذمة:</span>

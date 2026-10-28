@@ -7,6 +7,7 @@ import { InvoiceStatusLabels } from '../types/sales.types';
 import { IconPrinter, IconAlertCircle } from '@tabler/icons-react';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { Permissions } from '../../../shared/auth/permissions';
+import { PaymentMethodLabels, type PaymentMethod } from '../../pos/types/pos.types';
 
 interface SalesInvoiceDetailsModalProps {
   isOpen: boolean;
@@ -120,6 +121,9 @@ export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> =
             </div>
           </div>
 
+          {!!invoice.payments?.length && <div className="rounded-lg bg-slate-50 p-3 text-sm space-y-1">
+            {invoice.payments.map(payment => <p key={payment.paymentMethod}>{PaymentMethodLabels[payment.paymentMethod as PaymentMethod]}: {payment.amount.toFixed(4)} د.ل</p>)}
+          </div>}
           {/* Items Table */}
           <div className="border border-slate-200 rounded-xl overflow-hidden">
             <table className="w-full text-right text-xs">

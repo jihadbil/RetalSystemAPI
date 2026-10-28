@@ -88,6 +88,7 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
       if (![1, 2, 3].includes(invoice.status)) throw new Error('الفاتورة غير مرحلة أو ملغاة');
       setWarehouses(available);
       setOriginalInvoice(invoice); setWarehouseId(invoice.warehouseId || ''); setCustomerId(invoice.customerId || '');
+      if (invoice.hasSessionPayments) setPaymentMethod(1);
     }).catch((err: unknown) => {
       if (!cancelled) setError(err instanceof Error ? err.message : 'تعذر تحميل الفاتورة');
     }).finally(() => { if (!cancelled) setLoadingInvoice(false); });
@@ -336,15 +337,15 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(Number(e.target.value))}
             options={[
-              { value: 1, label: 'نقداً (من الخزينة)' },
-              { value: 3, label: 'بطاقة مصرفية' },
-              { value: 2, label: 'تحويل مصرفي' },
+              { value: 1, label: originalInvoice?.hasSessionPayments ? 'الرد بالوسائل الأصلية في الوردية' : 'نقداً (من الخزينة)' },
+              ...(!originalInvoice?.hasSessionPayments ? [{ value: 3, label: 'بطاقة مصرفية' }, { value: 2, label: 'تحويل مصرفي' }] : []),
               { value: 4, label: 'آجل / تخفيض رصيد العميل' },
             ]}
           />
         </div>
 
-        {paymentMethod !== 4 && (
+        {originalInvoice?.hasSessionPayments && <p className="text-sm text-amber-800">يُوزع الرد على وسائل القبض الأصلية، ويتطلب وردية مفتوحة للدرج الأصلي. يدخل الرد في التسوية الاختيارية للوردية.</p>}
+        {paymentMethod !== 4 && !originalInvoice?.hasSessionPayments && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
               lookup={{ resource: 'safes', branchId: currentBranchId || undefined }} label="الخزينة المنصرف منها المبلغ *"

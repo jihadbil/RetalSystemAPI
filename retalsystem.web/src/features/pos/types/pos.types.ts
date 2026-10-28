@@ -34,6 +34,7 @@ export interface CartItem {
 }
 
 export interface PosDraft {
+  payments?: PosPayment[];
   id: string;
   savedAt: string;
   branchId?: string;
@@ -61,6 +62,7 @@ export interface QuickProductItem {
 }
 
 export interface ReceiptData {
+  payments?: { paymentMethod: PaymentMethod; amount: number }[];
   invoiceNumber: string;
   date: string;
   cashierName: string;
@@ -83,3 +85,12 @@ export interface ReceiptData {
   paymentMethod: string;
   qrCodeValue?: string;
 }
+
+export interface PosPayment {
+  clientMovementId: string;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  tenderedAmount?: number;
+}
+
+export const PosTenderMethods = [PaymentMethod.Cash, PaymentMethod.Card, PaymentMethod.BankTransfer, PaymentMethod.Cheque] as const;

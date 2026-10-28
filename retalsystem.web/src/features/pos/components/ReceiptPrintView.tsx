@@ -1,4 +1,5 @@
 import React from 'react';
+import { PaymentMethodLabels } from '../types/pos.types';
 import type { ReceiptData } from '../types/pos.types';
 
 interface ReceiptPrintViewProps {
@@ -88,6 +89,9 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({ receipt }) =
           <span>طريقة الدفع:</span>
           <span>{receipt.paymentMethod}</span>
         </div>
+        {receipt.payments?.map(payment => <div key={payment.paymentMethod} className="flex justify-between">
+          <span>{PaymentMethodLabels[payment.paymentMethod]}:</span><span>{payment.amount.toFixed(4)}</span>
+        </div>)}
         <div className="flex justify-between">
           <span>المبلغ المستلم:</span>
           <span className="num-ltr">{receipt.paid.toFixed(2)} د.ل</span>

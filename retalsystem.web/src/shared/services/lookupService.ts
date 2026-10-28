@@ -7,6 +7,7 @@ export interface LookupOption { id: string; name: string; isActive?: boolean; br
 export interface LookupParams { search?: string; id?: string; barcode?: string; branchId?: string; pageNumber?: number; pageSize?: number }
 
 export interface ReturnSourceInvoice extends LookupOption {
+  hasSessionPayments?: boolean;
   invoiceNumber: string; warehouseId: string; status: number; totalAmount: number;
   customerId?: string; customerName?: string; supplierId?: string; supplierName?: string;
   items: { productId: string; productName: string; productBarCodeId?: string; quantity: number; unitPrice: number;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePos } from '../context/PosContext';
-import { PaymentMethod } from '../types/pos.types';
+import { PaymentMethod, PaymentMethodLabels } from '../types/pos.types';
+import { PosSplitPaymentModal } from './PosSplitPaymentModal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import {
@@ -26,6 +27,9 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
   const canCreateSale = hasPermission(Permissions.Pos.CreateSale);
   const canApplyDiscount = hasPermission(Permissions.Pos.ApplyDiscount);
   const {
+    splitPayments,
+    applySplitPayments,
+    customer,
     cartItems,
     subtotal,
     discountAmount,
@@ -48,6 +52,7 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
   } = usePos();
 
   const [showNotes, setShowNotes] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
 
   // أزرار الفئات النقدية السريعة
   const handleAddCash = (amount: number) => {
@@ -57,6 +62,8 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
 
   return (
     <div className="w-full lg:w-96 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col p-4 gap-4 shrink-0">
+      {splitOpen && <PosSplitPaymentModal total={grandTotal} payments={splitPayments || []} hasCustomer={Boolean(customer.id)}
+        onClose={() => setSplitOpen(false)} onSave={payments => { applySplitPayments(payments); setSplitOpen(false); }} />}
       {/* عرض الإجمالي الكبير المعتمد في design.md (30px) */}
       <div className="p-4 rounded-xl bg-gradient-to-b from-emerald-50/80 to-emerald-50/20 border border-emerald-200/70 text-center">
         <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
@@ -133,7 +140,13 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
       </div>
 
       {/* حقل المبلغ المستلم والمتبقي (لا يتغير تلقائياً مع الإجمالي) */}
-      <div className="flex flex-col gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
+      <Button variant="secondary" onClick={() => setSplitOpen(true)} disabled={!cartItems.length || isCheckingOut}>دفع متعدد</Button>
+      {splitPayments && <div className="rounded-lg bg-emerald-50 p-3 text-sm space-y-1" aria-label="توزيع الدفع المعتمد">
+        {splitPayments.map(payment => <p key={payment.paymentMethod}>{PaymentMethodLabels[payment.paymentMethod]}: {payment.amount.toFixed(4)} د.ل</p>)}
+        {changeAmount > 0 && <p>الفكة: {changeAmount.toFixed(4)} د.ل</p>}
+        {remainingAmount > 0 && <p>على حساب العميل: {remainingAmount.toFixed(4)} د.ل</p>}
+      </div>}
+      {!splitPayments && <div className="flex flex-col gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-700">المبلغ المستلم (نقد):</label>
           <button
@@ -196,7 +209,7 @@ export const PosPaymentPanel: React.FC<PosPaymentPanelProps> = ({
             </span>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* الملاحظات الاختيارية */}
       <div>

@@ -82,6 +82,7 @@ export interface SalesInvoiceItemDto {
 }
 
 export interface SalesInvoiceDto {
+  payments?: { paymentMethod: number; amount: number; tenderedAmount?: number; isSettled: boolean }[];
   issuer?: { name: string; taxNumber?: string; address?: string; phone?: string } | null;
   id: string;
   invoiceNumber: string;
