@@ -4,6 +4,7 @@ import { Shell } from './shared/components/layout/Shell';
 import { NavigationItem } from './shared/components/layout/Sidebar';
 import { LoginView } from './features/auth/LoginView';
 import { VIEW_ACCESS, canOpenView } from './shared/auth/viewAccess';
+import { Button } from './shared/components/ui/Button';
 
 const DashboardView = lazy(() => import('./features/dashboard/DashboardView').then((module) => ({ default: module.DashboardView })));
 const PosView = lazy(() => import('./features/pos/PosView').then((module) => ({ default: module.PosView })));
@@ -20,8 +21,25 @@ const UsersView = lazy(() => import('./features/users/UsersView').then((module) 
 const VIEW_ORDER = Object.keys(VIEW_ACCESS) as NavigationItem[];
 
 export function App() {
-  const { isAuthenticated, hasPermission } = useAuth();
+  const { user, isAuthenticated, isInitializing, sessionError, refreshSession, logout, hasPermission } = useAuth();
   const [currentView, setCurrentView] = useState<NavigationItem>('dashboard');
+
+  if (isInitializing || sessionError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {isInitializing ? <p role="status">جارٍ التحقق من الجلسة والصلاحيات...</p> : <>
+            <h1 className="text-lg font-bold text-slate-900">تعذر التحقق من الجلسة</h1>
+            <p role="alert" className="mt-2 text-sm text-slate-600">{sessionError}</p>
+          </>}
+          <div className="mt-4 flex justify-center gap-2">
+            {!isInitializing && <Button onClick={refreshSession}>إعادة المحاولة</Button>}
+            <Button variant="secondary" onClick={() => void logout()}>العودة لتسجيل الدخول</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginView />;
@@ -37,6 +55,11 @@ export function App() {
         <div className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
           <h1 className="text-lg font-bold text-slate-900">لا توجد شاشات مصرح بها</h1>
           <p className="mt-2 text-sm text-slate-600">راجع مسؤول النظام لإسناد الصلاحيات المناسبة إلى حسابك.</p>
+          <p className="mt-2 text-sm text-slate-500">الحساب الحالي: {user?.userName}</p>
+          <div className="mt-4 flex justify-center gap-2">
+            <Button onClick={refreshSession}>تحديث الصلاحيات</Button>
+            <Button variant="secondary" onClick={() => void logout()}>تسجيل الخروج</Button>
+          </div>
         </div>
       </div>
     );

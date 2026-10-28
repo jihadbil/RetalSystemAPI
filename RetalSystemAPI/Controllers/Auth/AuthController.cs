@@ -54,6 +54,36 @@ public class AuthController : BaseApiController
         return ToActionResult(result);
     }
 
+    /// <summary>استعادة هوية الجلسة من مطالبات رمز الوصول الموثق، دون اشتراط صلاحية شاشة.</summary>
+    [Authorize]
+    [HttpGet("session")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public IActionResult Session()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) ||
+            !Guid.TryParse(User.FindFirstValue("TenantId"), out var tenantId) ||
+            !Guid.TryParse(User.FindFirstValue("BranchId"), out var branchId))
+        {
+            return Unauthorized(ApiResponse.Fail("يرجى تسجيل الدخول مجدداً", "UNAUTHORIZED"));
+        }
+
+        var userName = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+        return Ok(ApiResponse<SessionUserDto>.Ok(new SessionUserDto
+        {
+            Id = userId,
+            UserName = userName,
+            FullName = userName,
+            Email = User.FindFirstValue(ClaimTypes.Email),
+            TenantId = tenantId,
+            BranchId = branchId,
+            Roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Permissions = User.Claims
+                .Where(c => string.Equals(c.Type, Permissions.ClaimType, StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+        }));
+    }
+
     /// <summary>
     /// إنشاء حساب مستخدم جديد في النظام وتسجيله ضمن المستأجر المحدد.
     /// نقطة نهاية عامة تتيح التسجيل الأولي.

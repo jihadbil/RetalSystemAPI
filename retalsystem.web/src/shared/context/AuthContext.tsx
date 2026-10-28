@@ -7,6 +7,9 @@ interface AuthContextType {
   user: UserDto | null;
   token: string | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
+  sessionError: string | null;
+  refreshSession: () => void;
   isLocked: boolean;
   currentBranchId: string | null;
   currentTenantId: string | null;
@@ -37,6 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [isInitializing, setIsInitializing] = useState(() => Boolean(token));
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionRevision, setSessionRevision] = useState(0);
+
   const [isLocked, setIsLocked] = useState<boolean>(() => {
     return sessionStorage.getItem('retal_locked') === 'true';
   });
@@ -66,17 +73,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLocked(false);
     setCurrentBranchId(null);
     setCurrentTenantId(null);
+    setIsInitializing(false);
+    setSessionError(null);
   }, []);
 
   const logout = useCallback(async () => {
+    const request = token ? authService.logout() : Promise.resolve();
+    clearSession();
     try {
-      if (token) await authService.logout();
+      await request;
     } catch {
       // إنهاء الجلسة محلياً حتى عند تعذر الوصول إلى الخادم.
-    } finally {
-      clearSession();
     }
   }, [clearSession, token]);
+
+  const refreshSession = useCallback(() => {
+    setIsInitializing(true);
+    setSessionError(null);
+    setSessionRevision((revision) => revision + 1);
+  }, []);
+
+  // لا تُستخدم صلاحيات الجلسة المخزنة قبل التحقق من رمز الوصول على الخادم.
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    const storage = localStorage.getItem('retal_token') === token ? localStorage : sessionStorage;
+    const isCurrent = () => !controller.signal.aborted && storage.getItem('retal_token') === token;
+
+    void authService.getSession(controller.signal).then((sessionUser) => {
+      if (!isCurrent()) return;
+      let cachedUser: UserDto | null = null;
+      try { cachedUser = JSON.parse(storage.getItem('retal_user') || 'null'); } catch { /* استبدال البيانات التالفة */ }
+      const sameUser = cachedUser?.id === sessionUser.id && cachedUser?.tenantId === sessionUser.tenantId;
+      const branchId = (sameUser && storage.getItem('retal_branch_id')) || sessionUser.branchId || null;
+      const restoredUser: UserDto = {
+        ...sessionUser,
+        fullName: (sameUser && cachedUser?.fullName) || sessionUser.fullName,
+        tenantName: sameUser ? cachedUser?.tenantName : undefined,
+        branchId: branchId || undefined,
+        branchName: sameUser && cachedUser?.branchId === branchId ? cachedUser.branchName : undefined,
+      };
+      storage.setItem('retal_user', JSON.stringify(restoredUser));
+      if (branchId) storage.setItem('retal_branch_id', branchId);
+      if (sessionUser.tenantId) storage.setItem('retal_tenant_id', sessionUser.tenantId);
+      setUser(restoredUser);
+      setCurrentBranchId(branchId);
+      setCurrentTenantId(sessionUser.tenantId || null);
+      setSessionError(null);
+    }).catch((error: unknown) => {
+      if (isCurrent()) {
+        setSessionError(error instanceof Error ? error.message : 'تعذر التحقق من الجلسة، يرجى إعادة المحاولة');
+      }
+    }).finally(() => {
+      if (isCurrent()) setIsInitializing(false);
+    });
+
+    return () => controller.abort();
+  }, [token, sessionRevision]);
 
   // الاستماع لحدث 401 للخروج التلقائي
   useEffect(() => {
@@ -114,8 +167,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setToken(token);
+    setIsInitializing(true);
+    setSessionError(null);
+    setSessionRevision((revision) => revision + 1);
     setUser(rawUser);
     setIsLocked(false);
+    sessionStorage.removeItem('retal_locked');
     setCurrentBranchId(branchId);
     setCurrentTenantId(tenantId);
   }, []);
@@ -182,6 +239,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isAuthenticated: Boolean(token && user),
+        isInitializing,
+        sessionError,
+        refreshSession,
         isLocked,
         currentBranchId,
         currentTenantId,

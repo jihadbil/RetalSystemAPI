@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/services/apiClient';
-import type { LoginRequest, LoginResponse } from '../types/auth.types';
+import type { LoginRequest, LoginResponse, UserDto } from '../types/auth.types';
 
 interface AuthApiResponse {
   token: string;
@@ -17,6 +17,10 @@ interface AuthApiResponse {
 }
 
 export const authService = {
+  async getSession(signal?: AbortSignal): Promise<UserDto> {
+    return apiClient.get<UserDto>('auth/session', undefined, { signal, cache: 'no-store' });
+  },
+
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
       const raw = await apiClient.post<AuthApiResponse>('auth/login', credentials);

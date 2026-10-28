@@ -92,7 +92,9 @@ class ApiClient {
     // إدارة الـ Timeout والـ Abort
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
-    const signal = fetchOptions.signal || controller.signal;
+    const signal = fetchOptions.signal
+      ? AbortSignal.any([fetchOptions.signal, controller.signal])
+      : controller.signal;
 
     try {
       const response = await fetch(url, {
@@ -105,7 +107,7 @@ class ApiClient {
       clearTimeout(id);
 
       if (response.status === 401 && !isLoginRequest) {
-        window.dispatchEvent(new CustomEvent('retal:unauthorized'));
+        if (token === this.getAuthToken()) window.dispatchEvent(new CustomEvent('retal:unauthorized'));
         throw new ApiError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 401, 'UNAUTHORIZED');
       }
 
@@ -223,7 +225,7 @@ class ApiClient {
       });
 
       if (response.status === 401) {
-        window.dispatchEvent(new CustomEvent('retal:unauthorized'));
+        if (token === this.getAuthToken()) window.dispatchEvent(new CustomEvent('retal:unauthorized'));
         throw new ApiError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 401, 'UNAUTHORIZED');
       }
 

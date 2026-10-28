@@ -12,7 +12,12 @@ async function session(page: Page) {
   });
 }
 
-test.beforeEach(async ({ page }) => { await session(page); });
+test.beforeEach(async ({ page }) => {
+  await session(page);
+  await page.route('**/api/auth/session', (route) => ok(route, {
+    id: 'cashier', userName: 'cashier', fullName: 'Cashier', roles: ['SuperAdmin'], permissions: [], tenantId: 'tenant', branchId: 'branch-a',
+  }));
+});
 
 test('nested dialogs trap and restore focus, close only the top dialog and retain scroll locking', async ({ page }) => {
   await page.goto('/tests/browser/harness.html?mode=dialogs');
@@ -128,6 +133,7 @@ test('lost POS response survives reload and recovers the original operation befo
   let loseFirstResponse = true;
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === '/api/auth/session') return route.fallback();
     if (path === '/api/pos-device/context') return ok(route, { terminal: { id: 'terminal', branchId: 'branch-a', name: 'Terminal' }, currentSession: { id: 'session' } });
     if (path === '/api/lookups/warehouses') return ok(route, pageResult([{ id: 'warehouse', name: 'Warehouse', branchId: 'branch-a', type: 1, isActive: true }]));
     if (path === '/api/lookups/pos-payment-accounts') return ok(route, pageResult([]));
