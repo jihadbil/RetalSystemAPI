@@ -9,7 +9,10 @@ namespace RetalSystemAPI.Models.DTOs.Accounting.SafeTransactions;
 /// </summary>
 public class TransferFundsDto
 {
+    /// <summary>تاريخ تنفيذ عملية التحويل بين الخزائن (اختياري، الافتراضي هو التاريخ الحالي)</summary>
     public DateTime? TransferDate { get; set; }
+
+    /// <summary>الرقم المرجعي الخارجي لسند التحويل أو الإيصال البنكي</summary>
     [MaxLength(100)]
     public string? ReferenceNumber { get; set; }
 

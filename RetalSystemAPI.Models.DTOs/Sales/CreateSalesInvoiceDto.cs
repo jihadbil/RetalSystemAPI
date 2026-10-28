@@ -1,6 +1,7 @@
 using RetalSystemAPI.Models.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 using RetalSystemAPI.Models.Enums;
+using RetalSystemAPI.Models.DTOs.Accounting.Pos;
 
 namespace RetalSystemAPI.Models.DTOs.Sales;
 
@@ -10,6 +11,10 @@ namespace RetalSystemAPI.Models.DTOs.Sales;
 /// </summary>
 public class CreateSalesInvoiceDto
 {
+    /// <summary>توزيع التحصيل في سجل الوردية؛ null يحافظ على عقد العملاء السابق.</summary>
+    [MinLength(1), MaxLength(4), NoNullItems]
+    public List<PosPaymentDto>? Payments { get; set; }
+
     /// <summary>رقم فاتورة المبيعات الفريد</summary>
     [Required(ErrorMessage = "رقم الفاتورة مطلوب")]
     [MaxLength(50, ErrorMessage = "رقم الفاتورة يجب أن لا يتجاوز 50 حرف")]

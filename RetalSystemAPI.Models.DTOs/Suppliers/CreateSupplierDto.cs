@@ -8,18 +8,27 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class CreateSupplierDto
 {
-    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    /// <summary>اسم الشركة الموردة التجارية أو المؤسسة</summary>
+    [MaxLength(200)]
     public string? CompanyName { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(150)]
-    [System.ComponentModel.DataAnnotations.EmailAddress]
+
+    /// <summary>البريد الإلكتروني للتواصل مع المورد</summary>
+    [MaxLength(150)]
+    [EmailAddress]
     public string? Email { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+
+    /// <summary>الرقم الضريبي للمورد</summary>
+    [MaxLength(100)]
     public string? TaxNumber { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+
+    /// <summary>ملاحظات إضافية حول المورد</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
 
+    /// <summary>حالة نشاط حساب المورد في النظام</summary>
     public bool IsActive { get; set; } = true;
-    /// <summary>اسم المورد أو الشركة الموردة</summary>
+
+    /// <summary>اسم المورد أو جهة الاتصال الرئيسية</summary>
     [Required(ErrorMessage = "اسم المورد مطلوب")]
     [MaxLength(200, ErrorMessage = "اسم المورد يجب أن لا يتجاوز 200 حرف")]
     public string Name { get; set; } = null!;

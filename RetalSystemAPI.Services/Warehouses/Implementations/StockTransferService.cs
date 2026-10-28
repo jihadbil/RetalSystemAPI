@@ -202,6 +202,10 @@ public class StockTransferService : IStockTransferService
         return ServiceResult<StockTransferResponseDto>.Success(responseDto);
     }
 
+    /// <inheritdoc/>
+    /// <summary>
+    /// تحديث حالة أمر التحويل المخزني ومعالجة الأثر المخزني عند الإرسال أو الاستلام أو الإلغاء.
+    /// </summary>
     public async Task<ServiceResult<StockTransferResponseDto>> UpdateStatusAsync(Guid id, StockTransferStatus status, CancellationToken ct = default)
     {
         var transfer = await _unitOfWork.StockTransfers.GetDetailsForUpdateAsync(id, ct);

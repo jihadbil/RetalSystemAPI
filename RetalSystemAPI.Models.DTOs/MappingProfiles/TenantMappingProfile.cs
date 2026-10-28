@@ -17,8 +17,11 @@ public class TenantMappingProfile : Profile
     {
         // تكوين تحويل كيان المستأجر إلى ناقل بيانات الاستجابة التفصيلي
         CreateMap<TenantEntity, TenantResponseDto>()
+            // تجاهل احتساب الفروع في الخريطة ليتم حسابه عبر استعلام مخصص في الخدمة
             .ForMember(d => d.BranchesCount, o => o.Ignore())
+            // تجاهل احتساب المستودعات ليتم حسابه عبر استعلام تجميعي منفصل
             .ForMember(d => d.WarehousesCount, o => o.Ignore())
+            // تجاهل احتساب المستخدمين ليتم جلبه عبر خدمة إدارة المستخدمين
             .ForMember(d => d.UsersCount, o => o.Ignore());
 
         // تكوين تحويل ناقل بيانات إنشاء المستأجر إلى كيان المستأجر
@@ -26,6 +29,7 @@ public class TenantMappingProfile : Profile
 
         // تكوين تحويل ناقل بيانات تعديل المستأجر إلى كيان المستأجر
         CreateMap<UpdateTenantDto, TenantEntity>(MemberList.None)
+            // استبعاد رابط الشعار ليتم معالجته ورفعه عبر خدمة تخزين الملفات المستقلة
             .ForMember(dest => dest.LogoUrl, opt => opt.Ignore())
             // استبعاد المعرف الأساسي Id لمنع تعديل المفتاح الأساسي للمستأجر
             .ForMember(dest => dest.Id, opt => opt.Ignore());

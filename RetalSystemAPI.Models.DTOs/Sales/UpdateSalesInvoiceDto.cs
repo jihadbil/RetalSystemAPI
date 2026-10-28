@@ -18,7 +18,7 @@ public class UpdateSalesInvoiceDto
     public InvoiceStatus? Status { get; set; }
 
     /// <summary>طريقة الدفع</summary>
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod? PaymentMethod { get; set; }
 
     /// <summary>المبلغ المسدد المحدث</summary>
@@ -26,6 +26,7 @@ public class UpdateSalesInvoiceDto
     [MoneyAmount]
     public decimal? PaidAmount { get; set; }
 
+    /// <summary>إجمالي مبلغ الضريبة المحدث (اختياري)</summary>
     [MoneyAmount]
     public decimal? TaxAmount { get; set; }
 

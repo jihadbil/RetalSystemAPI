@@ -9,7 +9,7 @@ using RetalSystemAPI.Services.Common.Models;
 namespace RetalSystemAPI.Services.Purchase.Interfaces;
 
 /// <summary>
-/// واجهة خدمة إدارة مرتجعات المشتريات وخصم البضائع المرتجعة من المخازن.
+/// واجهة خدمة إدارة مرتجعات المشتريات وخصم البضائع المرتجعة من المخازن وعكس أرصدة الموردين والخزائن.
 /// </summary>
 public interface IPurchaseReturnService
 {
@@ -18,21 +18,19 @@ public interface IPurchaseReturnService
     /// </summary>
     /// <param name="id">معرف سجل المرتجع</param>
     /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
-    /// <returns>تفاصيل مرتجع المشتريات</returns>
-    // جلب تفاصيل مرتجع المشتريات بالمعرف
+    /// <returns>تفاصيل مرتجع المشتريات الكاملة</returns>
     Task<ServiceResult<PurchaseReturnResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// جلب تفاصيل مرتجع المشتريات برقم المرتجع.
+    /// جلب تفاصيل مرتجع المشتريات برقم المرتجع المميز.
     /// </summary>
     /// <param name="returnNumber">رقم إشعار المرتجع</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>تفاصيل مرتجع المشتريات</returns>
-    // جلب تفاصيل مرتجع المشتريات برقم المرتجع
     Task<ServiceResult<PurchaseReturnResponseDto>> GetByReturnNumberAsync(string returnNumber, CancellationToken ct = default);
 
     /// <summary>
-    /// جلب كافة مرتجعات المشتريات مع إمكانية الفلترة المتقدمة.
+    /// جلب كافة مرتجعات المشتريات مع إمكانية الفلترة المتقدمة بالفرع والمستودع والمورد وتاريخ الحركة.
     /// </summary>
     /// <param name="branchId">معرف الفرع (اختياري)</param>
     /// <param name="warehouseId">معرف المستودع (اختياري)</param>
@@ -44,7 +42,6 @@ public interface IPurchaseReturnService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>قائمة بملخصات مرتجعات المشتريات</returns>
-    // جلب قائمة ملخصات مرتجعات المشتريات
     Task<ServiceResult<IReadOnlyList<PurchaseReturnSummaryDto>>> GetAllAsync(
         Guid? branchId = null,
         Guid? warehouseId = null,
@@ -71,7 +68,6 @@ public interface IPurchaseReturnService
     /// <param name="search">نص البحث (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>صفحة نتائج تحتوي على عناصر المرتجعات وإجمالي العدد</returns>
-    // استرجاع صفحة مجزأة ومفلترة لمرتجعات المشتريات
     Task<ServiceResult<PagedResult<PurchaseReturnSummaryDto>>> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -91,15 +87,13 @@ public interface IPurchaseReturnService
     /// <param name="dto">بيانات تسجيل المرتجع وبنوده</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات إشعار المرتجع المنشأ</returns>
-    // إنشاء مرتجع مشتريات جديد وخصم البضاعة من المخزون
     Task<ServiceResult<PurchaseReturnResponseDto>> CreateAsync(CreatePurchaseReturnDto dto, CancellationToken ct = default);
 
     /// <summary>
-    /// حذف مرتجع مشتريات وإعادة البضاعة للمخزن.
+    /// حذف مسودة مرتجع مشتريات وإلغاء أثره على المخزون وحسابات المورد.
     /// </summary>
     /// <param name="id">معرف سجل المرتجع المراد حذفه</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة عملية الحذف</returns>
-    // حذف مرتجع المشتريات ناعماً وعكس أثره المخزني
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

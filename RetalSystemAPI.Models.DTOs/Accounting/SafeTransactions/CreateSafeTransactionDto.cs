@@ -10,7 +10,10 @@ namespace RetalSystemAPI.Models.DTOs.Accounting.SafeTransactions;
 /// </summary>
 public class CreateSafeTransactionDto
 {
+    /// <summary>تاريخ تنفيذ الحركة (اختياري، الافتراضي هو التاريخ الحالي)</summary>
     public DateTime? TransactionDate { get; set; }
+
+    /// <summary>الرقم المرجعي الخارجي للحركة أو رقم السند الورقي</summary>
     [MaxLength(100)]
     public string? ReferenceNumber { get; set; }
 

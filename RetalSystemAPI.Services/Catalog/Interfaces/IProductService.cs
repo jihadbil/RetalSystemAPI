@@ -38,6 +38,15 @@ public interface IProductService
     /// <returns>صفحة نتائج تحتوي على عناصر المنتجات وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId, CancellationToken ct);
 
+    /// <summary>
+    /// جلب صفحة بيانات مجزأة من الأصناف مع دعم البحث والفلترة بالتصنيف والترقيم.
+    /// </summary>
+    /// <param name="pageNumber">رقم الصفحة المطلوبة</param>
+    /// <param name="pageSize">عدد المنتجات في الصفحة</param>
+    /// <param name="categoryId">معرف التصنيف للفلترة (اختياري)</param>
+    /// <param name="search">نص البحث السريع في اسم أو وصف المنتج (اختياري)</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>صفحة نتائج الأصناف والعدد الكلي</returns>
     Task<ServiceResult<PagedResult<ProductSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? categoryId = null, string? search = null, CancellationToken ct = default);
 
     /// <summary>

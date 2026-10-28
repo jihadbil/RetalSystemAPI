@@ -30,8 +30,13 @@ public class SalesReturnSummaryDto : BaseDto
     /// <summary>إجمالي قيمة المرتجع</summary>
     public decimal TotalAmount { get; set; }
 
+    /// <summary>المبلغ المعاد فعلياً للعميل</summary>
     public decimal RefundedAmount { get; set; }
+
+    /// <summary>طريقة الرد (نقدي، تحويل، رصيد دائن)</summary>
     public PaymentMethod PaymentMethod { get; set; }
+
+    /// <summary>معرف الخزينة التي تم الصرف منها</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع</summary>

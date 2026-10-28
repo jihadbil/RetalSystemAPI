@@ -38,11 +38,16 @@ public class SalesReturnResponseDto : BaseDto
     /// <summary>اسم العميل</summary>
     public string? CustomerName { get; set; }
 
-    /// <summary>إجمالي المبلغ المرتجع</summary>
+    /// <summary>إجمالي المبلغ المرتجع شاملاً الضريبة</summary>
     public decimal TotalAmount { get; set; }
 
+    /// <summary>المبلغ المعاد فعلياً للعميل نقداً أو شبكة</summary>
     public decimal RefundedAmount { get; set; }
+
+    /// <summary>طريقة رد المبلغ (نقدي، تحويل بنكي، قيد لحساب العميل)</summary>
     public PaymentMethod PaymentMethod { get; set; }
+
+    /// <summary>معرف الخزينة التي تم الصرف منها إن كان الرد نقدياً</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع التعدادي</summary>

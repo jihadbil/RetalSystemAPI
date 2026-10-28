@@ -60,6 +60,10 @@ public class SafeService : ISafeService
     public Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(CancellationToken ct = default)
         => GetAllAsync(null, null, null, ct);
 
+    /// <inheritdoc/>
+    /// <summary>
+    /// استرجاع قائمة الخزائن المسجلة مع إمكانية الفلترة بالفرع ونوع الخزينة وحالة النشاط.
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<SafeSummaryDto>>> GetAllAsync(Guid? branchId, SafeType? type, bool? isActive, CancellationToken ct = default)
     {
         // جلب كافة الخزائن من قاعدة البيانات

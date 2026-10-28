@@ -9,7 +9,7 @@ using RetalSystemAPI.Services.Common.Models;
 namespace RetalSystemAPI.Services.Purchase.Interfaces;
 
 /// <summary>
-/// واجهة خدمة فواتير المشتريات وإدارة استلام البضائع والتغذية المخزنية متعددة النكهات والمحاسبة المالية.
+/// واجهة خدمة فواتير المشتريات وإدارة استلام البضائع والتغذية المخزنية وتحديث تكاليف الأصناف وترحيل الحسابات.
 /// </summary>
 public interface IPurchaseInvoiceService
 {
@@ -28,7 +28,6 @@ public interface IPurchaseInvoiceService
     /// <param name="searchTerm">مصطلح البحث برقم الفاتورة أو اسم المورد (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     /// <returns>صفحة نتائج تحتوي على ملخصات الفواتير والعدد الإجمالي</returns>
-    // جلب صفحة مجزأة ومفلترة لفواتير المشتريات
     Task<ServiceResult<PagedResult<PurchaseInvoiceSummaryDto>>> GetPagedAsync(
         int pageNumber = 1,
         int pageSize = 10,
@@ -48,43 +47,38 @@ public interface IPurchaseInvoiceService
     /// <param name="id">معرف فاتورة المشتريات</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>تفاصيل الفاتورة الكاملة</returns>
-    // جلب تفاصيل فاتورة المشتريات بالمعرف
     Task<ServiceResult<PurchaseInvoiceResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// إنشاء واعتماد فاتورة مشتريات جديدة وتحديث أرصدة المخازن آلياً وفق تفاصيل النكهات.
+    /// إنشاء واعتماد فاتورة مشتريات جديدة وتحديث أرصدة المخازن آلياً وفق تفاصيل النكهات وتحديث متوسط التكلفة.
     /// </summary>
     /// <param name="dto">بيانات فاتورة المشتريات وبنودها وتفريعاتها</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة المنشأة</returns>
-    // إنشاء فاتورة مشتريات جديدة وتغذية المخزون وترحيل الأرصدة
     Task<ServiceResult<PurchaseInvoiceResponseDto>> CreateAsync(CreatePurchaseInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
-    /// تحديث فاتورة مشتريات موجودة وإعادة مزامنة أرصدة المخازن للبنود الجديدة أو المحذوفة.
+    /// تحديث فاتورة مشتريات مسودة وإعادة مزامنة أرصدة المخازن وتكاليف الأصناف.
     /// </summary>
     /// <param name="id">معرف فاتورة المشتريات المراد تعديلها</param>
     /// <param name="dto">البيانات الجديدة للفاتورة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات الفاتورة بعد التحديث</returns>
-    // تحديث بيانات وبنود فاتورة المشتريات
     Task<ServiceResult<PurchaseInvoiceResponseDto>> UpdateAsync(Guid id, UpdatePurchaseInvoiceDto dto, CancellationToken ct = default);
 
     /// <summary>
-    /// إلغاء فاتورة مشتريات واسترجاع كميات المخزون المستلمة سابقاً إلى ما كانت عليه.
+    /// إلغاء فاتورة مشتريات واسترجاع كميات المخزون المستلمة سابقاً إلى ما كانت عليه وعكس الترحيل المالي.
     /// </summary>
     /// <param name="id">معرف فاتورة المشتريات</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة نجاح أو فشل عملية الإلغاء</returns>
-    // إلغاء فاتورة المشتريات وخصم كمياتها من المخزون
     Task<ServiceResult> CancelAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// حذف فاتورة مشتريات منطقياً مع التحقق من عدم وجود مرتجعات مرتبطة بها وعكس المخزون.
+    /// حذف مسودة فاتورة مشتريات منطقياً مع التحقق من عدم وجود مرتجعات مرتبطة بها.
     /// </summary>
     /// <param name="id">معرف فاتورة المشتريات المراد حذفها</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة نجاح أو فشل عملية الحذف</returns>
-    // حذف فاتورة المشتريات ناعماً وعكس أثرها المالي والمخزني
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

@@ -10,14 +10,23 @@ namespace RetalSystemAPI.Models.DTOs.Customers;
 /// </summary>
 public class CreateCustomerDto
 {
+    /// <summary>حالة نشاط حساب العميل (مفعل للتعاملات افتراضياً)</summary>
     public bool IsActive { get; set; } = true;
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+
+    /// <summary>الرقم الضريبي للعميل أو المنشأة</summary>
+    [MaxLength(100)]
     public string? TaxNumber { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+
+    /// <summary>رقم السجل التجاري</summary>
+    [MaxLength(100)]
     public string? CommercialRegister { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+
+    /// <summary>ملاحظات إضافية حول العميل</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
-    [System.ComponentModel.DataAnnotations.Range(0, 100)]
+
+    /// <summary>نسبة الخصم التلقائي الممنوح للعميل بالنسبة المئوية (0 - 100)</summary>
+    [Range(0, 100)]
     [MoneyAmount]
     public decimal DiscountRate { get; set; }
 

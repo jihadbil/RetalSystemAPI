@@ -242,7 +242,7 @@ public class CreatePurchaseInvoiceDto
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Paid;
 
     /// <summary>طريقة الدفع (افتراضي: نقدي)</summary>
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>المجموع الفرعي</summary>
@@ -367,7 +367,7 @@ public class UpdatePurchaseInvoiceDto
     public InvoiceStatus Status { get; set; }
 
     /// <summary>طريقة الدفع</summary>
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod PaymentMethod { get; set; }
 
     /// <summary>المجموع الفرعي</summary>

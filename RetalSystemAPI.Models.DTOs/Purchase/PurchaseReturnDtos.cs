@@ -39,10 +39,11 @@ public class CreatePurchaseReturnDto
     public Guid WarehouseId { get; set; }
 
     /// <summary>طريقة التسوية أو استرداد القيمة</summary>
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>الخزينة التي تستلم قيمة المرتجع عند التسوية غير الآجلة.</summary>
+    /// <summary>معرف الخزينة المستلمة للمبلغ المسترد في حالة الرد النقدي</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب إرجاع المشتريات (تالف، مخالف للمواصفات، منتهي الصلاحية، إلخ)</summary>
@@ -135,6 +136,7 @@ public class PurchaseReturnSummaryDto
     /// <summary>المبلغ الإجمالي للمرتجع</summary>
     public decimal TotalAmount { get; set; }
 
+    /// <summary>معرف الخزينة المستلمة للمبلغ المسترد في حالة الرد النقدي</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع التعدادي</summary>
@@ -197,6 +199,7 @@ public class PurchaseReturnResponseDto
     /// <summary>المبلغ الإجمالي المسترد أو المخفض</summary>
     public decimal TotalAmount { get; set; }
 
+    /// <summary>معرف الخزينة المستلمة للمبلغ المسترد في حالة الرد النقدي</summary>
     public Guid? RefundSafeId { get; set; }
 
     /// <summary>سبب الإرجاع</summary>

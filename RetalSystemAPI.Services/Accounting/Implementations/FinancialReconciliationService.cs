@@ -183,6 +183,16 @@ public sealed class FinancialReconciliationService : IFinancialReconciliationSer
             x => (x.DocumentType, x.DocumentId), x => x.Amount);
 
         // 5. فحص ومطابقة فواتير المبيعات
+        // Non-cash POS receipts live in the session ledger until optional settlement.
+        // They remain the invoice's receipt evidence after settlement; closing entries are transfers, not a second receipt.
+        var nonCashMovements = await _dbContext.CashSessionMovements.AsNoTracking()
+            .Where(x => x.PaymentMethod != PaymentMethod.Cash && (!branchId.HasValue || x.CashSession.BranchId == branchId))
+            .OrderBy(x => x.Id).Take(_maxRecordsPerSource + 1)
+            .Select(x => new { x.DocumentType, x.DocumentId, Amount = x.Direction == TransactionDirection.Inbound ? x.Amount : -x.Amount })
+            .ToListAsync(ct);
+        scanLimitReached |= TrimToScanLimit(nonCashMovements);
+        var nonCashByDocument = nonCashMovements.GroupBy(x => (x.DocumentType, x.DocumentId))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
         var salesInvoices = await _dbContext.SalesInvoices.AsNoTracking()
             // تصفية بالفرع
             .Where(x => !branchId.HasValue || x.BranchId == branchId.Value)
@@ -227,7 +237,8 @@ public sealed class FinancialReconciliationService : IFinancialReconciliationSer
             // التحقق من مطابقة حركة الخزينة مع المبلغ المدفوع نقداً
             var expectedSafe = cancelled ? 0m : invoice.PaidAmount;
             // المبلغ الفعلي المسجل في حركات الخزينة
-            var actualSafe = GetAmount(safeLedgerByDocument, FinancialDocumentType.SalesInvoice, invoice.Id);
+            var actualSafe = GetAmount(safeLedgerByDocument, FinancialDocumentType.SalesInvoice, invoice.Id)
+                + nonCashByDocument.GetValueOrDefault((FinancialDocumentType.SalesInvoice, invoice.Id));
             // إضافة فجوة في حال عدم التطابق
             AddMismatchIfNeeded(issues, tolerance, "SAFE_DOCUMENT_LEDGER_MISMATCH", "SalesInvoice",
                 invoice.Id, invoice.BranchId, invoice.InvoiceNumber, expectedSafe, actualSafe,
@@ -320,7 +331,8 @@ public sealed class FinancialReconciliationService : IFinancialReconciliationSer
             }
 
             // مطابقة حركة الصرف النقدي للمرتجع من الخزينة
-            var actualSafe = GetAmount(safeLedgerByDocument, FinancialDocumentType.SalesReturn, salesReturn.Id);
+            var actualSafe = GetAmount(safeLedgerByDocument, FinancialDocumentType.SalesReturn, salesReturn.Id)
+                + nonCashByDocument.GetValueOrDefault((FinancialDocumentType.SalesReturn, salesReturn.Id));
             // فحص عدم التطابق في الخزينة
             AddMismatchIfNeeded(issues, tolerance, "SAFE_DOCUMENT_LEDGER_MISMATCH", "SalesReturn",
                 salesReturn.Id, salesReturn.BranchId, salesReturn.ReturnNumber, -salesReturn.RefundedAmount, actualSafe,

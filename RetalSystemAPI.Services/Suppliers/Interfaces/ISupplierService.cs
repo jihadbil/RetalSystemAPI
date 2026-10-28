@@ -39,6 +39,16 @@ public interface ISupplierService
     /// <returns>نتيجة مجزأة تحتوي على ملخصات الموردين وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<SupplierSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, string? search = null, bool? isActive = null, bool? hasDebt = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// جلب صفحة بيانات مجزأة من الموردين مع فلترة وجود رصيد قائم.
+    /// </summary>
+    /// <param name="pageNumber">رقم الصفحة المطلوبة</param>
+    /// <param name="pageSize">عدد العناصر في كل صفحة</param>
+    /// <param name="search">نص البحث</param>
+    /// <param name="isActive">حالة النشاط</param>
+    /// <param name="hasBalance">هل يشترط وجود رصيد قائم</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>صفحة نتائج الموردين والملخص المالي</returns>
     Task<ServiceResult<PagedResult<SupplierSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, string? search, bool? isActive, bool hasBalance, CancellationToken ct = default);
 
     /// <summary>

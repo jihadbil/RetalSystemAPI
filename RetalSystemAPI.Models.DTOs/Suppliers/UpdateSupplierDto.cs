@@ -8,17 +8,26 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class UpdateSupplierDto
 {
-    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    /// <summary>اسم الشركة الموردة التجارية أو المؤسسة المحدث</summary>
+    [MaxLength(200)]
     public string? CompanyName { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(150)]
-    [System.ComponentModel.DataAnnotations.EmailAddress]
+
+    /// <summary>البريد الإلكتروني المحدث للمورد</summary>
+    [MaxLength(150)]
+    [EmailAddress]
     public string? Email { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+
+    /// <summary>الرقم الضريبي المحدث للمورد</summary>
+    [MaxLength(100)]
     public string? TaxNumber { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+
+    /// <summary>ملاحظات إضافية حول المورد</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
 
+    /// <summary>حالة نشاط حساب المورد المحدثة</summary>
     public bool IsActive { get; set; } = true;
+
     /// <summary>المعرف الفريد للمورد المطلوب تعديله</summary>
     [Required(ErrorMessage = "معرف المورد مطلوب")]
     public Guid Id { get; set; }

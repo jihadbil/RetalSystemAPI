@@ -45,6 +45,17 @@ public interface ICustomerService
     /// <returns>نتيجة مجزأة تحتوي على ملخصات العملاء وإجمالي العدد</returns>
     Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type = null, bool? isActive = null, string? search = null, bool? hasDebt = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// جلب صفحة بيانات مجزأة من العملاء مع فلترة وجود رصيد مالي.
+    /// </summary>
+    /// <param name="pageNumber">رقم الصفحة المطلوبة</param>
+    /// <param name="pageSize">عدد العناصر في الصفحة</param>
+    /// <param name="type">نوع العميل</param>
+    /// <param name="isActive">حالة النشاط</param>
+    /// <param name="search">نص البحث</param>
+    /// <param name="hasBalance">هل يشترط وجود رصيد قائم</param>
+    /// <param name="ct">رمز إلغاء العملية</param>
+    /// <returns>نتيجة مجزأة بملخصات العملاء والأرصدة</returns>
     Task<ServiceResult<PagedResult<CustomerSummaryDto, BalanceSummary>>> GetPagedAsync(int pageNumber, int pageSize, CustomerType? type, bool? isActive, string? search, bool hasBalance, CancellationToken ct = default);
 
     /// <summary>

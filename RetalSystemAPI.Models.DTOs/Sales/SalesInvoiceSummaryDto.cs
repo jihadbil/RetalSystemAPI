@@ -39,6 +39,7 @@ public class SalesInvoiceSummaryDto : BaseDto
     /// <summary>المبلغ الإجمالي</summary>
     public decimal TotalAmount { get; set; }
 
+    /// <summary>مبلغ ضريبة القيمة المضافة الإجمالي</summary>
     public decimal TaxAmount { get; set; }
 
     /// <summary>المبلغ المدفوع</summary>
@@ -47,6 +48,7 @@ public class SalesInvoiceSummaryDto : BaseDto
     /// <summary>المبلغ المتبقي</summary>
     public decimal RemainingAmount { get; set; }
 
+    /// <summary>معرف الخزينة المستلمة للدفعة النقدية</summary>
     public Guid? PaymentSafeId { get; set; }
 
     /// <summary>عدد بنود الفاتورة</summary>

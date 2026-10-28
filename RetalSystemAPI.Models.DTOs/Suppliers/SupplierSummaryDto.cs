@@ -8,13 +8,24 @@ namespace RetalSystemAPI.Models.DTOs.Suppliers;
 /// </summary>
 public class SupplierSummaryDto : BaseDto
 {
+    /// <summary>اسم الشركة الموردة التجارية أو المؤسسة</summary>
     public string? CompanyName { get; set; }
+
+    /// <summary>البريد الإلكتروني للتواصل</summary>
     public string? Email { get; set; }
+
+    /// <summary>الرقم الضريبي للمورد</summary>
     public string? TaxNumber { get; set; }
+
+    /// <summary>ملاحظات إضافية حول المورد</summary>
     public string? Notes { get; set; }
 
+    /// <summary>حالة نشاط حساب المورد</summary>
     public bool IsActive { get; set; }
+
+    /// <summary>رقم الهاتف الأساسي الافتراضي للمورد</summary>
     public string? PrimaryPhone { get; set; }
+
     /// <summary>اسم المورد</summary>
     public string Name { get; set; } = null!;
 

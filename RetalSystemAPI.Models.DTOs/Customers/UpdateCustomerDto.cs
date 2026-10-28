@@ -9,13 +9,20 @@ namespace RetalSystemAPI.Models.DTOs.Customers;
 /// </summary>
 public class UpdateCustomerDto
 {
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+    /// <summary>الرقم الضريبي المحدث للعميل</summary>
+    [MaxLength(100)]
     public string? TaxNumber { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(100)]
+
+    /// <summary>رقم السجل التجاري المحدث</summary>
+    [MaxLength(100)]
     public string? CommercialRegister { get; set; }
-    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+
+    /// <summary>ملاحظات إضافية حول العميل</summary>
+    [MaxLength(500)]
     public string? Notes { get; set; }
-    [System.ComponentModel.DataAnnotations.Range(0, 100)]
+
+    /// <summary>نسبة الخصم الممنوح بالنسبة المئوية (0 - 100)</summary>
+    [Range(0, 100)]
     [MoneyAmount]
     public decimal DiscountRate { get; set; }
 
@@ -48,9 +55,9 @@ public class UpdateCustomerDto
     /// <summary>سقف الائتمان المالي</summary>
     [Range(0, double.MaxValue, ErrorMessage = "سقف الدين يجب أن يكون أكبر من أو يساوي 0")]
     [MoneyAmount]
-    public decimal CreditLimit { get; set; } = 0;
+    public decimal CreditLimit { get; set; }
 
-    /// <summary>حالة نشاط الحساب</summary>
+    /// <summary>حالة نشاط حساب العميل</summary>
     public bool IsActive { get; set; } = true;
 
     /// <summary>قائمة أرقام هواتف العميل المحدثة</summary>

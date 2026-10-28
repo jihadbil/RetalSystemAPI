@@ -9,7 +9,7 @@ using RetalSystemAPI.Services.Common.Models;
 namespace RetalSystemAPI.Services.Purchase.Interfaces;
 
 /// <summary>
-/// واجهة خدمة أوامر الشراء وإدارة بنود الطلبيات وتتبع حالتها (معلق، معتمد، ملغى، مكتمل).
+/// واجهة خدمة أوامر الشراء وإدارة بنود الطلبيات وتتبع دورة اعتمادها وتوليد فواتير الاستلام.
 /// </summary>
 public interface IPurchaseOrderService
 {
@@ -19,7 +19,6 @@ public interface IPurchaseOrderService
     /// <param name="id">معرف أمر الشراء الفريد</param>
     /// <param name="ct">رمز إلغاء العملية غير المتزامنة</param>
     /// <returns>نتيجة الخدمة متضمنة بيانات أمر الشراء الكاملة</returns>
-    // جلب تفاصيل أمر الشراء بالمعرف الفريد
     Task<ServiceResult<PurchaseOrderResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -30,8 +29,11 @@ public interface IPurchaseOrderService
     /// <param name="status">حالة أمر الشراء (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>قائمة ملخصات أوامر الشراء</returns>
-    // جلب كافة أوامر الشراء وفق الفلاتر المحددة
-    Task<ServiceResult<IReadOnlyList<PurchaseOrderSummaryDto>>> GetAllAsync(Guid? branchId = null, Guid? warehouseId = null, PurchaseOrderStatus? status = null, CancellationToken ct = default);
+    Task<ServiceResult<IReadOnlyList<PurchaseOrderSummaryDto>>> GetAllAsync(
+        Guid? branchId = null,
+        Guid? warehouseId = null,
+        PurchaseOrderStatus? status = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// جلب صفحة بيانات مجزأة من أوامر الشراء مع الترقيم وخيارات الفلترة والبحث.
@@ -44,8 +46,14 @@ public interface IPurchaseOrderService
     /// <param name="search">نص البحث في رقم أمر الشراء (اختياري)</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>صفحة نتائج تحتوي على عناصر أوامر الشراء وإجمالي العدد</returns>
-    // استرجاع صفحة مجزأة ومفلترة لأوامر الشراء
-    Task<ServiceResult<PagedResult<PurchaseOrderSummaryDto>>> GetPagedAsync(int pageNumber, int pageSize, Guid? branchId = null, Guid? warehouseId = null, PurchaseOrderStatus? status = null, string? search = null, CancellationToken ct = default);
+    Task<ServiceResult<PagedResult<PurchaseOrderSummaryDto>>> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        Guid? branchId = null,
+        Guid? warehouseId = null,
+        PurchaseOrderStatus? status = null,
+        string? search = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// إنشاء أمر شراء جديد مع التحقق من عدم تكرار رقم الطلبية وحساب الإجماليات.
@@ -53,7 +61,6 @@ public interface IPurchaseOrderService
     /// <param name="dto">بيانات إنشاء أمر الشراء وبنوده</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات أمر الشراء المنشأ حديثاً</returns>
-    // إنشاء أمر شراء جديد وحفظ بنوده
     Task<ServiceResult<PurchaseOrderResponseDto>> CreateAsync(CreatePurchaseOrderDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -63,7 +70,6 @@ public interface IPurchaseOrderService
     /// <param name="dto">البيانات والبنود الجديدة</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات أمر الشراء المحدثة</returns>
-    // تحديث بيانات وبنود أمر الشراء
     Task<ServiceResult<PurchaseOrderResponseDto>> UpdateAsync(Guid id, UpdatePurchaseOrderDto dto, CancellationToken ct = default);
 
     /// <summary>
@@ -73,7 +79,6 @@ public interface IPurchaseOrderService
     /// <param name="status">الحالة الجديدة المطلوب تطبيقها</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>بيانات أمر الشراء بعد تعديل الحالة</returns>
-    // تعديل حالة أمر الشراء وإتمام إجراءات التوريد
     Task<ServiceResult<PurchaseOrderResponseDto>> UpdateStatusAsync(Guid id, PurchaseOrderStatus status, CancellationToken ct = default);
 
     /// <summary>
@@ -82,6 +87,5 @@ public interface IPurchaseOrderService
     /// <param name="id">معرف أمر الشراء المراد حذفه</param>
     /// <param name="ct">رمز إلغاء العملية</param>
     /// <returns>نتيجة نجاح أو فشل عملية الحذف</returns>
-    // حذف أمر الشراء ناعماً من النظام
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

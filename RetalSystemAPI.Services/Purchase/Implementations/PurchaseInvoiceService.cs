@@ -810,6 +810,10 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
         return null;
     }
 
+    /// <inheritdoc/>
+    /// <summary>
+    /// حذف مسودة فاتورة مشتريات منطقياً مع التحقق من عدم وجود مرتجعات مرتبطة.
+    /// </summary>
     public async Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         // تحميل متتبع لتفادي تضارب النسخ المكررة عند تكرار الصنف في البنود أثناء SoftDelete

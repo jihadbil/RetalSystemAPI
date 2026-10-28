@@ -19,6 +19,7 @@ public class SalesMappingProfile : Profile
         // ── تحويلات فواتير المبيعات (Sales Invoice) ──────────────────────────
         // تكوين تحويل كيان فاتورة المبيعات إلى ناقل بيانات الاستجابة التفصيلي
         CreateMap<SalesInvoice, SalesInvoiceResponseDto>()
+            .ForMember(dest => dest.Payments, opt => opt.Ignore())
             .ForMember(dest => dest.Issuer, opt => opt.Ignore())
             // إسقاط اسم الفرع
             .ForMember(dest => dest.BranchName, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : string.Empty))
@@ -40,7 +41,7 @@ public class SalesMappingProfile : Profile
                 src.PaymentMethod == PaymentMethod.BankTransfer ? "تحويل مصرفي" :
                 src.PaymentMethod == PaymentMethod.CreditCard ? "بطاقة مصرفية" :
                 src.PaymentMethod == PaymentMethod.Credit ? "آجل" :
-                src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod.ToString()))
+                src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod == PaymentMethod.Multiple ? "دفع متعدد" : src.PaymentMethod.ToString()))
             // إسقاط قائمة بنود الفاتورة المفصلة
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items));
 
@@ -66,7 +67,7 @@ public class SalesMappingProfile : Profile
                 src.PaymentMethod == PaymentMethod.BankTransfer ? "تحويل مصرفي" :
                 src.PaymentMethod == PaymentMethod.CreditCard ? "بطاقة مصرفية" :
                 src.PaymentMethod == PaymentMethod.Credit ? "آجل" :
-                src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod.ToString()))
+                src.PaymentMethod == PaymentMethod.Cheque ? "صك" : src.PaymentMethod == PaymentMethod.Multiple ? "دفع متعدد" : src.PaymentMethod.ToString()))
             // احتساب إجمالي عدد البنود المسجلة بالفاتورة
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
 
