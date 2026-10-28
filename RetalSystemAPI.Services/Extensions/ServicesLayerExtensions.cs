@@ -136,6 +136,7 @@ public static class ServicesLayerExtensions
         services.AddScoped<IFinancialPostingService, FinancialPostingService>();
         services.AddScoped<IFinancialReconciliationService, FinancialReconciliationService>();
         services.AddScoped<IPosCashService, PosCashService>();
+        services.AddScoped<IPosPaymentService, PosPaymentService>();
 
         // تسجيل خدمة إدارة تصنيفات المصروفات بنطاق Scoped
         services.AddScoped<RetalSystemAPI.Services.Accounting.Interfaces.IExpenseCategoryService, RetalSystemAPI.Services.Accounting.Implementations.ExpenseCategoryService>();

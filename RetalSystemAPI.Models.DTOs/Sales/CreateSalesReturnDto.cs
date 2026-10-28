@@ -40,7 +40,7 @@ public class CreateSalesReturnDto
     public decimal? RefundedAmount { get; set; }
 
     /// <summary>طريقة رد المبلغ. استخدم Credit لقيد كامل القيمة في حساب العميل.</summary>
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod? PaymentMethod { get; set; }
 
     /// <summary>الخزينة التي يُصرف منها المبلغ المرتجع.</summary>

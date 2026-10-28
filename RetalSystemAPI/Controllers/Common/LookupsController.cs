@@ -83,6 +83,7 @@ public sealed class LookupsController(AppDbContext db) : BaseApiController
             && (!query.BranchId.HasValue || i.BranchId == query.BranchId))
             .Select(i => new ReturnSource { Id = i.Id, Name = i.InvoiceNumber, InvoiceNumber = i.InvoiceNumber,
                 BranchId = i.BranchId, WarehouseId = i.WarehouseId, CustomerId = i.CustomerId,
+                HasSessionPayments = db.CashSessionMovements.Any(m => m.SalesInvoiceId == i.Id),
                 CustomerName = i.Customer != null ? i.Customer.Name : null, Status = (int)i.Status, TotalAmount = i.TotalAmount });
         var page = await ReadPage(source, query, ct);
         if (query.Id.HasValue && page.Items.Count == 1)
@@ -281,6 +282,7 @@ public sealed class LookupsController(AppDbContext db) : BaseApiController
     }
     public sealed class ReturnSource : Option
     {
+        public bool HasSessionPayments { get; set; }
         public string InvoiceNumber { get; set; } = "";
         public Guid WarehouseId { get; set; }
         public Guid? CustomerId { get; set; }

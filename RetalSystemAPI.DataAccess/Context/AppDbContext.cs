@@ -171,6 +171,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PosTerminal> PosTerminals => Set<PosTerminal>();
     public DbSet<PosDeviceCredential> PosDeviceCredentials => Set<PosDeviceCredential>();
     public DbSet<CashSession> CashSessions => Set<CashSession>();
+    public DbSet<CashSessionMovement> CashSessionMovements => Set<CashSessionMovement>();
+    public DbSet<CashSessionPaymentSettlement> CashSessionPaymentSettlements => Set<CashSessionPaymentSettlement>();
 
     /// <summary>
     /// تكوين العلاقات، ومفاتيح الجداول، وتطبيق مرشحات الاستعلام العامة للعزل المتعدد للمستأجرين والحذف الناعم.

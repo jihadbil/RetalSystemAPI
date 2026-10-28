@@ -34,5 +34,8 @@ public enum PaymentMethod
     /// صك مصرفي / شيك بنكي.
     /// </summary>
     // وسيلة السداد بالصك المصرفي
-    Cheque = 5
+    Cheque = 5,
+
+    /// <summary>ملخص فاتورة مسددة بأكثر من وسيلة؛ ليس وسيلة قبض مستقلة.</summary>
+    Multiple = 6
 }

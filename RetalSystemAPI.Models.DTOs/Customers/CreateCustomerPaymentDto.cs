@@ -22,7 +22,7 @@ public class CreateCustomerPaymentDto
 
     /// <summary>طريقة الدفع</summary>
     [Required(ErrorMessage = "طريقة الدفع مطلوبة")]
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>معرف الخزينة أو الدرج المودع به المبلغ</summary>

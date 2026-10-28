@@ -75,6 +75,15 @@ public class CashSessionsController : BaseApiController
     private readonly IPosCashService _service;
     public CashSessionsController(IPosCashService service) => _service = service;
 
+    [HttpGet("payments"), HasPermission(Permissions.Safes.View)]
+    public async Task<IActionResult> Payments([FromQuery] Guid? branchId, [FromServices] IPosPaymentService payments, CancellationToken ct) =>
+        ToActionResult(await payments.GetSessionsAsync(branchId, ct));
+
+    [HttpPost("{id:guid}/settle-payments"), HasPermission(Permissions.Safes.Transfer)]
+    public async Task<IActionResult> Settle(Guid id, [FromBody] SettleCashSessionPaymentsDto dto,
+        [FromServices] IPosPaymentService payments, CancellationToken ct) =>
+        ToActionResult(await payments.SettleAsync(id, dto, ct));
+
     [HttpPost("{id:guid}/approve-difference"), HasPermission(Permissions.Safes.Edit)]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveCashDifferenceDto dto, CancellationToken ct) =>
         ToActionResult(await _service.ApproveDifferenceAsync(id, dto, ct));

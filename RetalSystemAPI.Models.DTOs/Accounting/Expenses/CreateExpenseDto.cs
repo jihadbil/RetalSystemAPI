@@ -31,7 +31,7 @@ public class CreateExpenseDto
 
     /// <summary>طريقة الدفع (نقدي، تحويل مصرفي، بطاقة...)</summary>
     [Required(ErrorMessage = "طريقة الدفع مطلوبة")]
-    [EnumDataType(typeof(PaymentMethod))]
+    [SinglePaymentMethod]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     /// <summary>معرف الخزينة أو الدرج المسحوب منه المبلغ (اختياري / مطلوب في الدفع النقدي والبنكي)</summary>
