@@ -80,14 +80,13 @@ export const customerService = {
     search?: string,
     isActive?: boolean,
     hasBalance = false
-  ): Promise<PagedResult<CustomerDto>> {
+  ): Promise<PagedResultWithSummary<CustomerDto, BalanceSummary>> {
     try {
       const params: Record<string, string | number> = { pageNumber, pageSize };
       if (search) params.search = search;
       if (isActive !== undefined) params.isActive = String(isActive);
       if (hasBalance) params.hasBalance = 'true';
 
-      if (hasDebt !== undefined) params.hasDebt = String(hasDebt);
       const result = await apiClient.get<PagedResultWithSummary<CustomerApiDto, BalanceSummary>>('customers/paged', params);
       return { ...result, items: result.items.map(normalizeCustomer) };
     } catch (err) {

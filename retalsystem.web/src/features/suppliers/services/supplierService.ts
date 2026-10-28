@@ -69,15 +69,13 @@ export const supplierService = {
     search?: string,
     isActive?: boolean,
     hasBalance = false
-  ): Promise<PagedResult<SupplierDto>> {
+  ): Promise<PagedResultWithSummary<SupplierDto, BalanceSummary>> {
     try {
       const params: Record<string, string | number> = { pageNumber, pageSize };
       if (search) params.search = search;
       if (isActive !== undefined) params.isActive = String(isActive);
       if (hasBalance) params.hasBalance = 'true';
 
-      if (isActive !== undefined) params.isActive = String(isActive);
-      if (hasDebt !== undefined) params.hasDebt = String(hasDebt);
       const result = await apiClient.get<PagedResultWithSummary<SupplierApiDto, BalanceSummary>>('suppliers/paged', params);
       return { ...result, items: result.items.map(normalizeSupplier) };
     } catch (err) {

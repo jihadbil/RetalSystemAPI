@@ -66,9 +66,9 @@ describe('V2 engineering repairs', () => {
     const summary = { totalDebt: 300, totalCredit: 0, withDebt: 30 };
     transport.get.mockResolvedValue({ items: [], totalCount: 30, summary });
     expect((await customerService.getPaged(2, 10, 'text', undefined, true)).summary).toEqual(summary);
-    expect(transport.get).toHaveBeenLastCalledWith('customers/paged', { pageNumber: 2, pageSize: 10, search: 'text', hasDebt: 'true' });
+    expect(transport.get).toHaveBeenLastCalledWith('customers/paged', { pageNumber: 2, pageSize: 10, search: 'text', hasBalance: 'true' });
     await supplierService.getPaged(2, 10, undefined, true, true);
-    expect(transport.get).toHaveBeenLastCalledWith('suppliers/paged', { pageNumber: 2, pageSize: 10, isActive: 'true', hasDebt: 'true' });
+    expect(transport.get).toHaveBeenLastCalledWith('suppliers/paged', { pageNumber: 2, pageSize: 10, isActive: 'true', hasBalance: 'true' });
   });
   it('preserves manual transaction and transfer dates and references', async () => {
     await accountingService.createTransaction({ safeId: 'safe', amount: 10, direction: TransactionDirection.Inbound,

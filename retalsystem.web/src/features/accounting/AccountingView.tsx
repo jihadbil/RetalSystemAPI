@@ -25,7 +25,6 @@ import { Tabs, TabItem } from '../../shared/components/ui/Tabs';
 import { LoadingOverlay } from '../../shared/components/ui/LoadingOverlay';
 import { Pagination } from '../../shared/components/ui/Pagination';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
-import { Pagination } from '../../shared/components/ui/Pagination';
 import { usePagination } from '../../shared/hooks/usePagination';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useToast } from '../../shared/context/ToastContext';
@@ -66,15 +65,6 @@ export const AccountingView: React.FC = () => {
 
   // بيانات المصروفات
   const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
-  const [expensePage, setExpensePage] = useState(1);
-  const [expensePageSize, setExpensePageSize] = useState(25);
-  const [expenseTotalCount, setExpenseTotalCount] = useState(0);
-  const [expenseTotalPages, setExpenseTotalPages] = useState(0);
-  const [totalExpensesAmount, setTotalExpensesAmount] = useState(0);
-  const [transactionPage, setTransactionPage] = useState(1);
-  const [transactionPageSize, setTransactionPageSize] = useState(25);
-  const [transactionTotalCount, setTransactionTotalCount] = useState(0);
-  const [transactionTotalPages, setTransactionTotalPages] = useState(0);
   const [categories, setCategories] = useState<ExpenseCategoryDto[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
@@ -108,8 +98,10 @@ export const AccountingView: React.FC = () => {
   useEffect(() => { resetSafePage(); }, [currentBranchId, resetSafePage]);
   const expensePagination = usePagination({ initialPageSize: 20 });
   const transactionPagination = usePagination({ initialPageSize: 20 });
-  const { page: expensePage, pageSize: expensePageSize, setTotalCount: setExpenseCount, resetPage: resetExpensePage } = expensePagination;
-  const { page: transactionPage, pageSize: transactionPageSize, setTotalCount: setTransactionCount, resetPage: resetTransactionPage } = transactionPagination;
+  const { page: expensePage, pageSize: expensePageSize, totalCount: expenseTotalCount, totalPages: expenseTotalPages,
+    goToPage: setExpensePage, changePageSize: setExpensePageSize, setTotalCount: setExpenseCount, resetPage: resetExpensePage } = expensePagination;
+  const { page: transactionPage, pageSize: transactionPageSize, totalCount: transactionTotalCount, totalPages: transactionTotalPages,
+    goToPage: setTransactionPage, changePageSize: setTransactionPageSize, setTotalCount: setTransactionCount, resetPage: resetTransactionPage } = transactionPagination;
   const safeRequestVersion = useRef(0);
   const expenseRequestVersion = useRef(0);
   const transactionRequestVersion = useRef(0);

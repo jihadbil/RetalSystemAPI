@@ -133,6 +133,16 @@ export const CatalogView: React.FC = () => {
     if (canViewProducts) loadProducts();
   }, [canViewProducts, loadProducts]);
 
+  const handleEditProduct = async (id: string) => {
+    try {
+      const product = await catalogService.getProductById(id);
+      setEditingProduct(product);
+      setIsFormOpen(true);
+    } catch (error) {
+      showError('تعذر تحميل الصنف', error instanceof Error ? error.message : 'أعد المحاولة');
+    }
+  };
+
   const handleSaveProduct = async (data: CreateProductRequest) => {
     try {
       if (editingProduct) {
